@@ -12,6 +12,8 @@ import { registerStatic } from "./plugins/static.js";
 import { startCleanupCron } from "./lib/cleanup.js";
 import { fileRoutes } from "./routes/files.js";
 import { registerToolRoutes } from "./routes/tools/index.js";
+import { registerBatchRoutes } from "./routes/batch.js";
+import { registerProgressRoutes } from "./routes/progress.js";
 
 // Run before anything else
 runMigrations();
@@ -62,6 +64,12 @@ await fileRoutes(app);
 
 // Tool routes (generic factory-based)
 await registerToolRoutes(app);
+
+// Batch processing routes (must be after tool routes so the registry is populated)
+await registerBatchRoutes(app);
+
+// Progress SSE routes
+await registerProgressRoutes(app);
 
 // Health check
 app.get("/api/v1/health", async () => ({

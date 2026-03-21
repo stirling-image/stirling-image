@@ -20,6 +20,21 @@ export interface ToolRouteConfig<T> {
 }
 
 /**
+ * In-memory registry of all tool configs, keyed by toolId.
+ * Populated by createToolRoute() calls; used by batch processing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toolRegistry = new Map<string, ToolRouteConfig<any>>();
+
+/**
+ * Retrieve a registered tool config by its ID.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getToolConfig(toolId: string): ToolRouteConfig<any> | undefined {
+  return toolRegistry.get(toolId);
+}
+
+/**
  * Sanitize a filename to prevent path traversal attacks.
  */
 function sanitizeFilename(raw: string): string {
@@ -51,6 +66,9 @@ export function createToolRoute<T>(
   app: FastifyInstance,
   config: ToolRouteConfig<T>,
 ): void {
+  // Register in the tool registry for batch processing
+  toolRegistry.set(config.toolId, config);
+
   app.post(
     `/api/v1/tools/${config.toolId}`,
     async (request: FastifyRequest, reply: FastifyReply) => {
