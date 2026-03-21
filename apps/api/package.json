@@ -24,7 +24,11 @@
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.38.0",
     "fastify": "^5.2.0",
+    "jsqr": "^1.4.0",
     "p-queue": "^9.1.0",
+    "pdfkit": "^0.18.0",
+    "potrace": "^2.1.8",
+    "qrcode": "^1.5.4",
     "sharp": "^0.33.0",
     "zod": "^3.24.0"
   },
@@ -32,6 +36,9 @@
     "@types/archiver": "^7.0.0",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
+    "@types/pdfkit": "^0.17.5",
+    "@types/potrace": "^2.1.5",
+    "@types/qrcode": "^1.5.6",
     "drizzle-kit": "^0.30.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
