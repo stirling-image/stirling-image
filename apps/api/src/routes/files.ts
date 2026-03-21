@@ -157,6 +157,10 @@ function getContentType(ext: string): string {
     tif: "image/tiff",
     avif: "image/avif",
     svg: "image/svg+xml",
+    pdf: "application/pdf",
+    zip: "application/zip",
+    ico: "image/x-icon",
+    json: "application/json",
   };
   return map[ext] ?? "application/octet-stream";
 }
