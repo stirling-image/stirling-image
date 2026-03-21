@@ -12,7 +12,7 @@ Stirling-Image is an open-source, self-hostable image manipulation suite. Inspir
 
 It eliminates the need for ad-heavy, privacy-invasive online image converters (TinyPNG, Remove.bg, Canva) by providing a professional-grade, self-hostable alternative deployable with a single Docker command.
 
-**The one-liner:**
+**The one-liner (works on Intel, AMD, and Apple Silicon):**
 ```bash
 docker run -d -p 1349:1349 -v ./data:/data stirlingtools/stirling-image:latest
 ```
@@ -52,12 +52,12 @@ docker run -d -p 1349:1349 -v ./data:/data stirlingtools/stirling-image:latest
 | **UI Components** | shadcn/ui + Tailwind CSS 4 | AI models generate excellent code; composable; accessible (Radix primitives) |
 | **Backend** | Fastify | 30-40% faster than Express; built-in JSON validation; 30-50MB memory baseline |
 | **Image Engine** | Sharp (libvips) + ImageMagick | Sharp: 4-8x faster than ImageMagick, handles 95% of operations. IM: fallback for edge cases |
-| **AI/ML** | Node.js ONNX Runtime | @imgly/background-removal-node for BG removal. Real-ESRGAN ONNX model with custom onnxruntime-node wrapper for upscaling (NOT UpscalerJS which uses TensorFlow.js). Models cached in Docker volume |
+| **AI/ML** | Python (embedded in same container) | State-of-the-art Python ML ecosystem for maximum reliability. rembg (U2Net/ISNet) for BG removal, Real-ESRGAN for upscaling, LaMa for inpainting, PaddleOCR for text extraction, MediaPipe/RetinaFace for face detection. Node.js calls Python scripts via child_process. Single container — no sidecar needed |
 | **Database** | SQLite + Drizzle ORM | Zero config for self-hosters; Drizzle: 7.4KB runtime, faster than Prisma with SQLite |
 | **Job Queue** | Worker threads + p-queue | In-process concurrency. No Redis container needed. Configurable concurrency limit |
 | **Authentication** | Better-Auth | TypeScript-native; built-in 2FA, rate limiting, password policies; works with SQLite + Drizzle |
 | **Monorepo** | Turborepo + pnpm | Efficient builds, shared packages, cache |
-| **Deployment** | Docker (single container) | Multi-stage Debian slim build. Target: 700MB-1GB image (includes libheif, libraw, ImageMagick, Tesseract, ONNX Runtime) |
+| **Deployment** | Docker (single container, multi-arch) | Multi-stage Debian build. Multi-architecture: `linux/amd64` + `linux/arm64` (Intel, AMD, Apple Silicon, ARM servers). No size limits — reliability over size. Includes Node.js, Python, Sharp, ImageMagick, Tesseract, libraw, all AI models |
 | **Storage** | Adapter pattern | `STORAGE_MODE=local` (default) or `STORAGE_MODE=s3` (future SaaS) |
 
 ### 4.2 Monorepo Structure
@@ -99,12 +99,22 @@ stirling-image/
 │   │   │   ├── formats/        # Format-specific handlers (heic, svg, gif, etc.)
 │   │   │   └── utils/          # Metadata, hashing, color extraction
 │   │   └── index.ts
-│   └── ai/                     # ONNX Runtime AI operations wrapper
+│   └── ai/                     # Python ML bridge — TS wrappers calling Python scripts
 │       ├── src/
-│       │   ├── background-removal.ts
-│       │   ├── upscaling.ts
-│       │   ├── face-detection.ts
-│       │   └── model-manager.ts  # Download, cache, version AI models
+│       │   ├── bridge.ts              # Generic Python child_process executor
+│       │   ├── background-removal.ts  # Calls rembg (U2Net/ISNet)
+│       │   ├── upscaling.ts           # Calls Real-ESRGAN
+│       │   ├── inpainting.ts          # Calls LaMa via lama-cleaner
+│       │   ├── ocr.ts                 # Calls PaddleOCR + Tesseract
+│       │   ├── face-detection.ts      # Calls MediaPipe / RetinaFace
+│       │   └── smart-crop.ts          # Calls MediaPipe saliency
+│       ├── python/                    # Python scripts (run in venv inside Docker)
+│       │   ├── remove_bg.py
+│       │   ├── upscale.py
+│       │   ├── inpaint.py
+│       │   ├── ocr.py
+│       │   ├── detect_faces.py
+│       │   └── requirements.txt       # All Python ML dependencies
 │       └── index.ts
 │
 ├── docker/
@@ -150,17 +160,32 @@ services:
     volumes:
       - ./data:/data          # SQLite DB + settings
       - ./workspace:/tmp/workspace  # Temporary file processing
-      - ./models:/models      # Cached AI models
     restart: unless-stopped
 ```
 
 **Dockerfile strategy:**
 - Multi-stage build (builder → production)
-- Base: `node:22-slim` (Debian slim, NOT Alpine — Alpine lacks prebuilt libheif/libraw/libjxl)
-- Install: Sharp (compile libvips from source with libheif/libde265 for HEIC support), ImageMagick, Tesseract (for OCR), libraw (for RAW formats)
-- AI models NOT baked in - downloaded on first use, cached in `/models` volume
-- Target image size: 700MB-1GB (realistic with all native dependencies)
+- Base: `node:22-bookworm` (full Debian, NOT slim/Alpine — maximum compatibility and native lib support)
+- Multi-architecture: `docker buildx` with `--platform linux/amd64,linux/arm64` (works on Intel Mac, Apple Silicon, AMD, ARM servers, Raspberry Pi 4+)
+- Install ALL dependencies for maximum reliability:
+  - **Node.js 22** + pnpm
+  - **Python 3.12** + pip + venv (for AI/ML)
+  - **Sharp** (compile libvips from source with libheif/libde265/x265 for full HEIC support)
+  - **ImageMagick 7** (for edge case format handling)
+  - **Tesseract 5** + language packs (for OCR)
+  - **libraw** (for camera RAW format support)
+  - **libjxl** (for JPEG XL support)
+  - **potrace** + **vtracer** (for image vectorization)
+- Python ML packages (installed in venv):
+  - `rembg[gpu,cpu]` — background removal (U2Net, ISNet models)
+  - `realesrgan` — image upscaling (Real-ESRGAN models)
+  - `lama-cleaner` — object erasing / inpainting (LaMa model)
+  - `paddleocr` — OCR (more accurate than Tesseract alone)
+  - `mediapipe` — face detection, landmark detection
+  - `onnxruntime` — ONNX model inference backend
+- AI models baked into the image for instant availability (no first-use download delay). Reliability over size.
 - Production: Fastify serves both API routes and the Vite-built SPA as static files
+- **No Docker size limits** — expect 3-5GB image. Reliability and cross-platform support are the priority.
 
 ### 4.4 SQLite Configuration
 
@@ -209,14 +234,16 @@ Database file stored at `/data/stirling.db` (Docker volume mounted).
 
 ### 5.4 Category: AI Tools
 
-| # | Tool | Description | Controls |
-|---|------|-------------|----------|
-| AI-01 | **Background Removal** | AI-powered subject isolation | One-click process, output: transparent PNG. Option to replace background with solid color or image. Batch support |
-| AI-02 | **Image Upscaling** | AI super-resolution enhancement (Real-ESRGAN ONNX model with custom onnxruntime-node wrapper) | Scale factor (2x, 4x), model quality (fast/balanced/quality), before/after slider preview |
-| AI-03 | **Object Eraser** | Paint over unwanted elements, AI fills the gap (LaMa ONNX model with custom onnxruntime-node wrapper). **Experimental/Alpha** - limited Node.js ecosystem maturity | Brush tool with adjustable size, paint-to-erase interface, inpainting preview |
-| AI-04 | **OCR / Text Extraction** | Extract text from images | Language selection, output format (plain text / structured), copy-to-clipboard, download as .txt |
-| AI-05 | **Face / PII Blur** | Auto-detect and blur faces, license plates, text | Detection sensitivity slider, blur intensity slider, manual region selection for additional blurring |
-| AI-06 | **Smart Crop** | AI detects subject and crops optimally | Target aspect ratio, subject detection preview, manual adjustment |
+All AI tools use **state-of-the-art Python ML models** called from Node.js via child_process. Models are baked into the Docker image for instant reliability — no download-on-first-use delays.
+
+| # | Tool | Description | Model / Engine | Controls |
+|---|------|-------------|---------------|----------|
+| AI-01 | **Background Removal** | AI-powered subject isolation | **rembg** with U2Net (general) + ISNet (high detail) models. User can select model. | One-click process, output: transparent PNG. Option to replace background with solid color or image. Model selection (U2Net/ISNet). Batch support |
+| AI-02 | **Image Upscaling** | AI super-resolution enhancement | **Real-ESRGAN** (x2, x4 models). RealESRGAN_x4plus for photos, RealESRGAN_x4plus_anime for illustrations. | Scale factor (2x, 4x), model type (photo/illustration), before/after slider preview |
+| AI-03 | **Object Eraser** | Paint over unwanted elements, AI fills the gap | **LaMa** (Large Mask Inpainting) via lama-cleaner. Production-grade Python library. | Brush tool with adjustable size, paint-to-erase interface, inpainting preview |
+| AI-04 | **OCR / Text Extraction** | Extract text from images | **PaddleOCR** (primary, 80+ languages, higher accuracy) + **Tesseract 5** (fallback). | Language selection, engine choice (PaddleOCR/Tesseract), output format (plain text / structured JSON), copy-to-clipboard, download as .txt/.json |
+| AI-05 | **Face / PII Blur** | Auto-detect and blur faces, license plates, text | **MediaPipe Face Detection** (Google, real-time capable) + **RetinaFace** (higher accuracy option). | Detection sensitivity slider, blur intensity slider, model choice (fast/accurate), manual region selection for additional blurring |
+| AI-06 | **Smart Crop** | AI detects subject and crops optimally | **MediaPipe** object/subject detection for saliency mapping. | Target aspect ratio, subject detection preview, manual adjustment |
 
 ### 5.5 Category: Watermark & Overlay
 
@@ -838,7 +865,7 @@ server: {
 | `MAX_BATCH_SIZE` | `200` | Max files per batch |
 | `CONCURRENT_JOBS` | `3` | Parallel processing limit |
 | `DB_PATH` | `/data/stirling.db` | SQLite database path |
-| `MODELS_PATH` | `/models` | AI model cache directory |
+| `PYTHON_VENV_PATH` | `/opt/venv` | Python virtual environment path |
 | `WORKSPACE_PATH` | `/tmp/workspace` | Temp processing directory |
 | `APP_NAME` | `Stirling Image` | Custom branding name |
 | `APP_LOGO` | (default) | Custom logo path |
@@ -859,7 +886,6 @@ server: {
 |--------|---------------|---------|
 | `data` | `/data` | SQLite database, settings, user data |
 | `workspace` | `/tmp/workspace` | Temporary file processing (auto-cleaned) |
-| `models` | `/models` | Cached AI models (downloaded on first use) |
 
 ### 16.3 Health Check
 
@@ -873,7 +899,7 @@ Response:
   "uptime": "2d 5h 30m",
   "storage": { "mode": "local", "available": "45.2 GB" },
   "queue": { "active": 1, "pending": 3 },
-  "models": { "background-removal": "loaded", "upscaling": "not-loaded" }
+  "ai": { "python": "available", "rembg": "ready", "realesrgan": "ready", "lama": "ready", "paddleocr": "ready", "mediapipe": "ready" }
 }
 ```
 
@@ -952,11 +978,11 @@ The README must prove ease-of-use in 5 seconds:
 ### Phase 4: AI Tools (Weeks 12-15)
 - ONNX Runtime integration
 - Background Removal
-- Image Upscaling (2x, 4x) - Real-ESRGAN ONNX with custom wrapper
+- Image Upscaling (2x, 4x) - Real-ESRGAN Python
 - OCR / Text Extraction
 - Face / PII Blur
 - Smart Crop
-- Object Eraser (experimental/alpha - LaMa ONNX)
+- Object Eraser (LaMa via lama-cleaner — production Python library)
 - Find Duplicates (dHash perceptual hashing)
 - Image Compare (side-by-side + slider)
 
@@ -980,7 +1006,7 @@ The README must prove ease-of-use in 5 seconds:
 |--------|--------|
 | Docker Run → First Tool Used | Under 60 seconds |
 | Click-to-Result (any tool) | Under 3 clicks |
-| Docker Image Size | Under 500MB (without AI models) |
+| Cross-Platform | Works on linux/amd64 + linux/arm64 (Intel, AMD, Apple Silicon) |
 | Batch Processing (100 images resize) | Under 30 seconds |
 | GitHub Stars (6 months) | 500+ |
 | Zero external data transmission | 0 bytes to third parties |
