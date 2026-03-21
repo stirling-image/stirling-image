@@ -3,6 +3,7 @@ import { useMemo, useCallback } from "react";
 import { TOOLS } from "@stirling-image/shared";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Dropzone } from "@/components/common/dropzone";
+import { BeforeAfterSlider } from "@/components/common/before-after-slider";
 import { useFileStore } from "@/stores/file-store";
 import { ResizeSettings } from "@/components/tools/resize-settings";
 import { CropSettings } from "@/components/tools/crop-settings";
@@ -39,7 +40,7 @@ function ToolSettingsPanel({ toolId }: { toolId: string }) {
 export function ToolPage() {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = useMemo(() => TOOLS.find((t) => t.id === toolId), [toolId]);
-  const { files, setFiles, reset } = useFileStore();
+  const { files, setFiles, reset, processedUrl, originalBlobUrl, originalSize, processedSize } = useFileStore();
 
   const handleFiles = useCallback(
     (newFiles: File[]) => {
@@ -128,11 +129,21 @@ export function ToolPage() {
 
         {/* Dropzone / Preview */}
         <div className="flex-1 flex items-center justify-center p-6">
-          <Dropzone
-            onFiles={handleFiles}
-            accept="image/*"
-            multiple={false}
-          />
+          {processedUrl && originalBlobUrl ? (
+            <BeforeAfterSlider
+              beforeSrc={originalBlobUrl}
+              afterSrc={processedUrl}
+              beforeSize={originalSize ?? undefined}
+              afterSize={processedSize ?? undefined}
+            />
+          ) : (
+            <Dropzone
+              onFiles={handleFiles}
+              accept="image/*"
+              multiple
+              currentFiles={files}
+            />
+          )}
         </div>
       </div>
     </AppLayout>

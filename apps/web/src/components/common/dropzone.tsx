@@ -1,14 +1,16 @@
 import { useCallback, useState, type DragEvent } from "react";
-import { Upload } from "lucide-react";
+import { Upload, FileImage } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DropzoneProps {
   onFiles?: (files: File[]) => void;
   accept?: string;
   multiple?: boolean;
+  /** Files that have already been dropped (for showing count & list). */
+  currentFiles?: File[];
 }
 
-export function Dropzone({ onFiles, accept, multiple = true }: DropzoneProps) {
+export function Dropzone({ onFiles, accept, multiple = true, currentFiles = [] }: DropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDrag = useCallback((e: DragEvent) => {
@@ -41,6 +43,8 @@ export function Dropzone({ onFiles, accept, multiple = true }: DropzoneProps) {
     input.click();
   };
 
+  const hasMultipleFiles = currentFiles.length > 1;
+
   return (
     <div
       onDragEnter={handleDrag}
@@ -66,6 +70,27 @@ export function Dropzone({ onFiles, accept, multiple = true }: DropzoneProps) {
         <p className="text-sm text-muted-foreground">
           Drop files here or click the upload button
         </p>
+
+        {/* Show file count badge and list when multiple files are dropped */}
+        {hasMultipleFiles && (
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              <FileImage className="h-3.5 w-3.5" />
+              {currentFiles.length} files selected
+            </span>
+            <div className="max-h-32 overflow-y-auto w-full max-w-xs">
+              {currentFiles.map((f, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-xs text-muted-foreground px-2 py-0.5"
+                >
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 ml-2">{(f.size / 1024).toFixed(0)} KB</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
