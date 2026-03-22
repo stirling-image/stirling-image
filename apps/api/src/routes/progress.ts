@@ -19,11 +19,23 @@ export interface JobProgress {
   currentFile?: string;
 }
 
+export interface SingleFileProgress {
+  jobId: string;
+  type: "single";
+  phase: "processing" | "complete" | "failed";
+  stage?: string;
+  percent: number;
+  error?: string;
+}
+
 /** In-memory store of job progress, keyed by jobId. */
 const jobProgressStore = new Map<string, JobProgress>();
 
 /** SSE listeners waiting for updates, keyed by jobId. */
-const listeners = new Map<string, Set<(data: JobProgress) => void>>();
+const listeners = new Map<
+  string,
+  Set<(data: JobProgress | SingleFileProgress) => void>
+>();
 
 /**
  * Create or update progress for a job.
@@ -41,6 +53,23 @@ export function updateJobProgress(progress: JobProgress): void {
       setTimeout(() => {
         listeners.delete(progress.jobId);
         jobProgressStore.delete(progress.jobId);
+      }, 5000);
+    }
+  }
+}
+
+export function updateSingleFileProgress(
+  progress: Omit<SingleFileProgress, "type">,
+): void {
+  const event: SingleFileProgress = { ...progress, type: "single" };
+  const subs = listeners.get(progress.jobId);
+  if (subs) {
+    for (const cb of subs) {
+      cb(event);
+    }
+    if (progress.phase === "complete" || progress.phase === "failed") {
+      setTimeout(() => {
+        listeners.delete(progress.jobId);
       }, 5000);
     }
   }
@@ -73,7 +102,7 @@ export async function registerProgressRoutes(
       });
 
       // Helper to send an SSE message
-      const sendEvent = (data: JobProgress) => {
+      const sendEvent = (data: JobProgress | SingleFileProgress) => {
         reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
       };
 
@@ -95,9 +124,14 @@ export async function registerProgressRoutes(
         listeners.set(jobId, new Set());
       }
 
-      const callback = (data: JobProgress) => {
+      const callback = (data: JobProgress | SingleFileProgress) => {
         sendEvent(data);
-        if (data.status === "completed" || data.status === "failed") {
+        if (
+          ("status" in data &&
+            (data.status === "completed" || data.status === "failed")) ||
+          ("phase" in data &&
+            (data.phase === "complete" || data.phase === "failed"))
+        ) {
           reply.raw.end();
         }
       };
