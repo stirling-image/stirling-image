@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { setToken } from "@/lib/api";
 
 export function LoginPage() {
@@ -7,7 +6,6 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -26,7 +24,10 @@ export function LoginPage() {
       }
       const data = await res.json();
       setToken(data.token);
-      navigate("/");
+      // Store username for settings display
+      localStorage.setItem("stirling-username", data.user?.username || username);
+      // Full reload to force auth re-check (useAuth runs on mount)
+      window.location.href = "/";
     } catch {
       setError("Connection error");
     } finally {
@@ -46,8 +47,9 @@ export function LoginPage() {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1 text-foreground">Username</label>
+              <label htmlFor="username" className="block text-sm font-medium mb-1 text-foreground">Username</label>
               <input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -57,8 +59,9 @@ export function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-foreground">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium mb-1 text-foreground">Password</label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

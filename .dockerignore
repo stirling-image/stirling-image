@@ -1,0 +1,16 @@
+node_modules
+.git
+.turbo
+dist
+*.db
+*.db-journal
+*.db-wal
+.env
+.env.local
+.DS_Store
+test-results
+playwright-report
+tests
+docs
+*.md
+!README.md

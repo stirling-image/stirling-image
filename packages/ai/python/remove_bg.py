@@ -16,12 +16,17 @@ def main():
         with open(input_path, "rb") as f:
             input_data = f.read()
 
-        output_data = remove(
-            input_data,
-            alpha_matting=True,
-            alpha_matting_foreground_threshold=240,
-            alpha_matting_background_threshold=10,
-        )
+        # Try with alpha matting first for better edges, but fall back
+        # without it if the image triggers the known rembg matting error
+        try:
+            output_data = remove(
+                input_data,
+                alpha_matting=True,
+                alpha_matting_foreground_threshold=240,
+                alpha_matting_background_threshold=10,
+            )
+        except Exception:
+            output_data = remove(input_data)
 
         with open(output_path, "wb") as f:
             f.write(output_data)

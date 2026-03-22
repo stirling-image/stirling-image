@@ -15,6 +15,8 @@ import { registerToolRoutes } from "./routes/tools/index.js";
 import { registerBatchRoutes } from "./routes/batch.js";
 import { registerPipelineRoutes } from "./routes/pipeline.js";
 import { registerProgressRoutes } from "./routes/progress.js";
+import { apiKeyRoutes } from "./routes/api-keys.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 // Run before anything else
 runMigrations();
@@ -74,6 +76,12 @@ await registerPipelineRoutes(app);
 
 // Progress SSE routes
 await registerProgressRoutes(app);
+
+// API key management routes
+await apiKeyRoutes(app);
+
+// Settings routes
+await settingsRoutes(app);
 
 // Health check
 app.get("/api/v1/health", async () => ({

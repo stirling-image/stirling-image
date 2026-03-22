@@ -109,6 +109,18 @@ export function EraseObjectSettings() {
         {processing ? "Erasing..." : "Erase Object"}
       </button>
 
+      {/* Progress indicator */}
+      {processing && (
+        <div className="space-y-2">
+          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '100%' }} />
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            AI processing may take 10-30 seconds...
+          </p>
+        </div>
+      )}
+
       {/* Download */}
       {downloadUrl && (
         <a

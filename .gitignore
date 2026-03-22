@@ -16,6 +16,11 @@ apps/api/data/
 apps/api/tmp/
 apps/web/.vite/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Screenshots from UI research (not part of the app)
 stirling-pdf-*.png
 settings-*.png

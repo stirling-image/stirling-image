@@ -102,16 +102,26 @@ export function BeforeAfterSlider({
           draggable={false}
         />
 
-        {/* After image (clipped, top layer) */}
-        <img
-          src={afterSrc}
-          alt="Processed"
-          className="absolute inset-0 w-full h-full object-contain"
-          draggable={false}
+        {/* After image (clipped, top layer) — checkerboard background shows transparency */}
+        <div
+          className="absolute inset-0"
           style={{
             clipPath: `inset(0 0 0 ${position}%)`,
+            backgroundImage: `linear-gradient(45deg, #ccc 25%, transparent 25%),
+              linear-gradient(-45deg, #ccc 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #ccc 75%),
+              linear-gradient(-45deg, transparent 75%, #ccc 75%)`,
+            backgroundSize: "16px 16px",
+            backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
           }}
-        />
+        >
+          <img
+            src={afterSrc}
+            alt="Processed"
+            className="w-full h-full object-contain"
+            draggable={false}
+          />
+        </div>
 
         {/* Divider line */}
         <div

@@ -41,12 +41,21 @@ def main():
             Image.fromarray(result).save(output_path)
             method = "lama"
 
-        except (ImportError, Exception):
-            # Fallback: simple inpainting using PIL
-            # Just copy the image (mask areas won't be processed without ML model)
-            img = Image.open(input_path)
-            img.save(output_path)
-            method = "copy"
+        except ImportError:
+            # LaMa not available — report error instead of silently copying
+            print(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": "Object eraser requires the lama-cleaner package. Install with: pip install lama-cleaner",
+                    }
+                )
+            )
+            sys.exit(1)
+        except Exception as e:
+            # LaMa installed but processing failed — still report error
+            print(json.dumps({"success": False, "error": f"Inpainting failed: {str(e)}"}))
+            sys.exit(1)
 
         print(json.dumps({"success": True, "method": method}))
 

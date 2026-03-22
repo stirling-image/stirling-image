@@ -63,18 +63,16 @@ def main():
                 )
 
         except ImportError:
-            # Fallback: no face detection available, save original
-            img.save(output_path)
+            # MediaPipe not available — report error clearly
             print(
                 json.dumps(
                     {
-                        "success": True,
-                        "facesDetected": 0,
-                        "faces": [],
-                        "note": "mediapipe not available - no faces detected",
+                        "success": False,
+                        "error": "Face detection requires the mediapipe package. Install with: pip install mediapipe",
                     }
                 )
             )
+            sys.exit(1)
 
     except ImportError:
         print(

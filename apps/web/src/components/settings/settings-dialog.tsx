@@ -12,9 +12,13 @@ import {
   RefreshCw,
   LogOut,
   Monitor,
+  Users,
+  Trash2,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { clearToken } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete, clearToken } from "@/lib/api";
 import { APP_VERSION } from "@stirling-image/shared";
 
 interface SettingsDialogProps {
@@ -22,7 +26,7 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
-type Section = "general" | "system" | "security" | "api-keys" | "about";
+type Section = "general" | "system" | "security" | "people" | "api-keys" | "about";
 
 interface NavItem {
   id: Section;
@@ -34,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "system", label: "System Settings", icon: Monitor },
   { id: "security", label: "Security", icon: Shield },
+  { id: "people", label: "People", icon: Users },
   { id: "api-keys", label: "API Keys", icon: Key },
   { id: "about", label: "About", icon: Info },
 ];
@@ -97,6 +102,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           {section === "general" && <GeneralSection />}
           {section === "system" && <SystemSection />}
           {section === "security" && <SecuritySection />}
+          {section === "people" && <PeopleSection />}
           {section === "api-keys" && <ApiKeysSection />}
           {section === "about" && <AboutSection />}
         </div>
@@ -105,15 +111,56 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   );
 }
 
+/* ────────────────────── Types ────────────────────── */
+
+interface SessionUser {
+  id: number;
+  username: string;
+  role: string;
+}
+
+interface ApiKeyEntry {
+  id: number;
+  name: string;
+  prefix: string;
+  createdAt: string;
+}
+
+interface UserEntry {
+  id: number;
+  username: string;
+  role: string;
+  createdAt: string;
+}
+
 /* ────────────────────── General ────────────────────── */
 
 function GeneralSection() {
-  const username = localStorage.getItem("stirling-username") || "admin";
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiGet<{ user: SessionUser }>("/auth/session")
+      .then((data) => setUser(data.user))
+      .catch(() => {
+        // Fallback to localStorage if session endpoint fails
+        setUser({
+          id: 0,
+          username: localStorage.getItem("stirling-username") || "admin",
+          role: "admin",
+        });
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleLogout = () => {
     clearToken();
+    localStorage.removeItem("stirling-username");
     window.location.href = "/login";
   };
+
+  const username = user?.username || "admin";
+  const role = user?.role || "admin";
 
   return (
     <div className="space-y-6">
@@ -128,11 +175,11 @@ function GeneralSection() {
       <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-            {username.charAt(0).toUpperCase()}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : username.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-medium text-foreground">{username}</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="font-medium text-foreground">{loading ? "Loading..." : username}</p>
+            <p className="text-xs text-muted-foreground capitalize">{role}</p>
           </div>
         </div>
         <button
@@ -163,6 +210,55 @@ function GeneralSection() {
 /* ────────────────────── System ────────────────────── */
 
 function SystemSection() {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<Record<string, string>>("/v1/settings")
+      .then((data) => setSettings(data))
+      .catch(() => {
+        // Fallback defaults if endpoint not ready
+        setSettings({
+          appName: "Stirling Image",
+          fileUploadLimitMb: "100",
+          defaultTheme: "system",
+          defaultLocale: "en",
+        });
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const updateSetting = useCallback(
+    (key: string, value: string) => {
+      setSettings((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      await apiPut("/v1/settings", settings);
+      setSaveMsg("Settings saved.");
+    } catch {
+      setSaveMsg("Failed to save settings.");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaveMsg(null), 3000);
+    }
+  }, [settings]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -175,17 +271,28 @@ function SystemSection() {
       <SettingRow label="App Name" description="Display name for the application">
         <input
           type="text"
-          defaultValue="Stirling Image"
+          value={settings.appName || ""}
+          onChange={(e) => updateSetting("appName", e.target.value)}
           className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground w-48"
         />
       </SettingRow>
 
-      <SettingRow label="File Upload Limit" description="Maximum file size per upload">
-        <span className="text-sm font-mono text-muted-foreground">100 MB</span>
+      <SettingRow label="File Upload Limit (MB)" description="Maximum file size per upload">
+        <input
+          type="number"
+          value={settings.fileUploadLimitMb || "100"}
+          onChange={(e) => updateSetting("fileUploadLimitMb", e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground w-24"
+          min={1}
+        />
       </SettingRow>
 
       <SettingRow label="Default Theme" description="Theme applied for new sessions">
-        <select className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground">
+        <select
+          value={settings.defaultTheme || "system"}
+          onChange={(e) => updateSetting("defaultTheme", e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground"
+        >
           <option value="light">Light</option>
           <option value="dark">Dark</option>
           <option value="system">System</option>
@@ -193,8 +300,35 @@ function SystemSection() {
       </SettingRow>
 
       <SettingRow label="Default Locale" description="Language for the interface">
-        <span className="text-sm font-mono text-muted-foreground">English (en)</span>
+        <select
+          value={settings.defaultLocale || "en"}
+          onChange={(e) => updateSetting("defaultLocale", e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground"
+        >
+          <option value="en">English (en)</option>
+          <option value="es">Spanish (es)</option>
+          <option value="fr">French (fr)</option>
+          <option value="de">German (de)</option>
+          <option value="zh">Chinese (zh)</option>
+          <option value="ja">Japanese (ja)</option>
+        </select>
       </SettingRow>
+
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Save Settings
+        </button>
+        {saveMsg && (
+          <span className={cn("text-sm", saveMsg.includes("Failed") ? "text-destructive" : "text-green-600 dark:text-green-400")}>
+            {saveMsg}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -207,10 +341,11 @@ function SecuritySection() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleChangePassword = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (newPassword !== confirmPassword) {
         setMessage({ type: "error", text: "Passwords do not match" });
@@ -220,13 +355,23 @@ function SecuritySection() {
         setMessage({ type: "error", text: "Password must be at least 4 characters" });
         return;
       }
-      // In a real implementation this would call the API
-      setMessage({ type: "success", text: "Password changed successfully" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+
+      setSubmitting(true);
+      setMessage(null);
+      try {
+        await apiPost("/auth/change-password", { currentPassword, newPassword });
+        setMessage({ type: "success", text: "Password changed successfully" });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to change password";
+        setMessage({ type: "error", text: msg.includes("401") ? "Current password is incorrect" : msg });
+      } finally {
+        setSubmitting(false);
+      }
     },
-    [newPassword, confirmPassword]
+    [currentPassword, newPassword, confirmPassword]
   );
 
   return (
@@ -300,8 +445,10 @@ function SecuritySection() {
 
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            disabled={submitting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
+            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Change Password
           </button>
         </div>
@@ -316,27 +463,245 @@ function SecuritySection() {
   );
 }
 
+/* ────────────────────── People ────────────────────── */
+
+function PeopleSection() {
+  const [users, setUsers] = useState<UserEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("user");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const data = await apiGet<{ users: UserEntry[] }>("/auth/users");
+      setUsers(data.users);
+    } catch {
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const handleAddUser = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setAddError(null);
+      setAdding(true);
+      try {
+        await apiPost("/auth/register", {
+          username: newUsername,
+          password: newPassword,
+          role: newRole,
+        });
+        setNewUsername("");
+        setNewPassword("");
+        setNewRole("user");
+        setShowAddForm(false);
+        await loadUsers();
+      } catch (err) {
+        setAddError(err instanceof Error ? err.message : "Failed to create user");
+      } finally {
+        setAdding(false);
+      }
+    },
+    [newUsername, newPassword, newRole, loadUsers]
+  );
+
+  const handleDeleteUser = useCallback(
+    async (id: number, username: string) => {
+      if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+      try {
+        await apiDelete(`/auth/users/${id}`);
+        await loadUsers();
+      } catch {
+        // Silently fail - user likely lacks permission
+      }
+    },
+    [loadUsers]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">People</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage users and their roles.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add User
+        </button>
+      </div>
+
+      {/* Add user form */}
+      {showAddForm && (
+        <form onSubmit={handleAddUser} className="p-4 rounded-lg border border-border bg-muted/20 space-y-3">
+          <h4 className="text-sm font-medium text-foreground">New User</h4>
+          <div className="flex flex-wrap gap-3">
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder="Username"
+              required
+              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground w-40"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Password"
+              required
+              minLength={4}
+              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground w-40"
+            />
+            <select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button
+              type="submit"
+              disabled={adding}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Create
+            </button>
+          </div>
+          {addError && (
+            <p className="text-sm text-destructive">{addError}</p>
+          )}
+        </form>
+      )}
+
+      {/* User list */}
+      <div className="space-y-1">
+        {users.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No users found.</p>
+        ) : (
+          users.map((u) => (
+            <div
+              key={u.id}
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+                  {u.username.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{u.username}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{u.role}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleDeleteUser(u.id, u.username)}
+                className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title={`Delete ${u.username}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ────────────────────── API Keys ────────────────────── */
 
 function ApiKeysSection() {
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [keys, setKeys] = useState<ApiKeyEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [keyName, setKeyName] = useState("");
 
-  const generateKey = useCallback(() => {
-    // Generate a random API key (in production this calls the backend)
-    const key = "si_" + Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    setApiKey(key);
+  const loadKeys = useCallback(async () => {
+    try {
+      const data = await apiGet<{ keys: ApiKeyEntry[] }>("/v1/api-keys");
+      setKeys(data.keys);
+    } catch {
+      setKeys([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const copyKey = useCallback(() => {
-    if (!apiKey) return;
-    navigator.clipboard.writeText(apiKey).then(() => {
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
+
+  const generateKey = useCallback(async () => {
+    setGenerating(true);
+    setNewKey(null);
+    try {
+      const data = await apiPost<{ key: string }>("/v1/api-keys", {
+        name: keyName || "default",
+      });
+      setNewKey(data.key);
+      setKeyName("");
+      await loadKeys();
+    } catch {
+      // Silently fail
+    } finally {
+      setGenerating(false);
+    }
+  }, [keyName, loadKeys]);
+
+  const copyKey = useCallback((key: string) => {
+    navigator.clipboard.writeText(key).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, [apiKey]);
+  }, []);
+
+  const deleteKey = useCallback(
+    async (id: number) => {
+      if (!confirm("Delete this API key? Any integrations using it will stop working.")) return;
+      try {
+        await apiDelete(`/v1/api-keys/${id}`);
+        await loadKeys();
+      } catch {
+        // Silently fail
+      }
+    },
+    [loadKeys]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -347,14 +712,34 @@ function ApiKeysSection() {
         </p>
       </div>
 
-      {apiKey ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/20">
+      {/* Generate new key */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={keyName}
+          onChange={(e) => setKeyName(e.target.value)}
+          placeholder="Key name (optional)"
+          className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground w-48"
+        />
+        <button
+          onClick={generateKey}
+          disabled={generating}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+          Generate API Key
+        </button>
+      </div>
+
+      {/* Newly generated key display */}
+      {newKey && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
             <code className="flex-1 text-sm font-mono text-foreground break-all select-all">
-              {apiKey}
+              {newKey}
             </code>
             <button
-              onClick={copyKey}
+              onClick={() => copyKey(newKey)}
               className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground shrink-0"
               title="Copy"
             >
@@ -362,24 +747,40 @@ function ApiKeysSection() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Store this key securely. It will not be shown again after you leave this page.
+            Store this key securely. It will not be shown again.
           </p>
-          <button
-            onClick={generateKey}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Regenerate
-          </button>
         </div>
-      ) : (
-        <button
-          onClick={generateKey}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Key className="h-4 w-4" />
-          Generate API Key
-        </button>
+      )}
+
+      {/* Existing keys list */}
+      {keys.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-foreground">Existing Keys</h4>
+          {keys.map((k) => (
+            <div
+              key={k.id}
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">{k.name}</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {k.prefix}... &middot; Created {new Date(k.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => deleteKey(k.id)}
+                className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title="Delete key"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {keys.length === 0 && !newKey && (
+        <p className="text-sm text-muted-foreground">No API keys yet. Generate one to get started.</p>
       )}
     </div>
   );

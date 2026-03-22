@@ -9,7 +9,7 @@ const settingsSchema = z.object({
   cornerRadius: z.number().min(0).max(500).default(0),
   padding: z.number().min(0).max(200).default(0),
   shadowBlur: z.number().min(0).max(50).default(0),
-  shadowColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#00000080"),
+  shadowColor: z.string().regex(/^#[0-9a-fA-F]{6,8}$/).default("#00000080"),
 });
 
 export function registerBorder(app: FastifyInstance) {

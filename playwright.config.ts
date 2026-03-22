@@ -1,0 +1,57 @@
+import { defineConfig, devices } from "@playwright/test";
+import path from "node:path";
+
+const authFile = path.join(__dirname, "test-results", ".auth", "user.json");
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  timeout: 30_000,
+  expect: {
+    timeout: 10_000,
+  },
+  fullyParallel: false,
+  retries: 0,
+  workers: 1,
+  reporter: "html",
+  use: {
+    baseURL: "http://localhost:1349",
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
+  },
+  projects: [
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: authFile,
+      },
+      dependencies: ["setup"],
+    },
+  ],
+  webServer: [
+    {
+      command: "pnpm --filter @stirling-image/api dev",
+      port: 1350,
+      reuseExistingServer: !process.env.CI,
+      env: {
+        AUTH_ENABLED: "true",
+        DEFAULT_USERNAME: "admin",
+        DEFAULT_PASSWORD: "admin",
+        RATE_LIMIT_PER_MIN: "1000",
+      },
+      timeout: 30_000,
+    },
+    {
+      command: "pnpm --filter @stirling-image/web dev",
+      port: 1349,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+  ],
+});
+
+export { authFile };
