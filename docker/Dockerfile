@@ -71,10 +71,12 @@ RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
 # This makes the Docker image fully self-contained — works offline
 RUN /opt/venv/bin/python3 -c "\
 from rembg import new_session; \
-print('Downloading u2net model...'); \
+print('Downloading BiRefNet model (SOTA)...'); \
+new_session('birefnet-general'); \
+print('Downloading u2net model (fallback)...'); \
 new_session('u2net'); \
-print('u2net model ready') \
-" 2>/dev/null || echo "WARNING: Could not pre-download u2net model"
+print('Background removal models ready') \
+" 2>/dev/null || echo "WARNING: Could not pre-download rembg models"
 
 RUN /opt/venv/bin/python3 -c "\
 try: \

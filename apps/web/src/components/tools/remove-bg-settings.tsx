@@ -1,17 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFileStore } from "@/stores/file-store";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { Download, Loader2 } from "lucide-react";
 
-type BgModel = "u2net" | "isnet";
+type BgModel =
+  | "birefnet-general"
+  | "birefnet-general-lite"
+  | "birefnet-portrait"
+  | "bria-rmbg"
+  | "isnet-general-use"
+  | "u2net";
+
+const MODELS: { value: BgModel; label: string; description: string }[] = [
+  { value: "birefnet-general", label: "BiRefNet", description: "Best quality (recommended)" },
+  { value: "birefnet-general-lite", label: "BiRefNet Lite", description: "Faster, slightly less accurate" },
+  { value: "birefnet-portrait", label: "BiRefNet Portrait", description: "Optimized for people" },
+  { value: "bria-rmbg", label: "BRIA RMBG", description: "Great for products" },
+  { value: "isnet-general-use", label: "IS-Net", description: "Good general purpose" },
+  { value: "u2net", label: "U2-Net", description: "Classic, fast" },
+];
+
+const BG_PRESETS = [
+  { color: "", label: "Transparent", preview: "checkerboard" },
+  { color: "#FFFFFF", label: "White", preview: "#FFFFFF" },
+  { color: "#000000", label: "Black", preview: "#000000" },
+  { color: "#FF0000", label: "Red", preview: "#FF0000" },
+  { color: "#00FF00", label: "Green", preview: "#00FF00" },
+  { color: "#0000FF", label: "Blue", preview: "#0000FF" },
+];
 
 export function RemoveBgSettings() {
   const { files } = useFileStore();
   const { processFiles, processing, error, downloadUrl, originalSize, processedSize } =
     useToolProcessor("remove-background");
 
-  const [model, setModel] = useState<BgModel>("u2net");
+  const [model, setModel] = useState<BgModel>("birefnet-general");
   const [bgColor, setBgColor] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Progress timer
+  useEffect(() => {
+    if (processing) {
+      setElapsed(0);
+      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [processing]);
 
   const handleProcess = () => {
     const settings: Record<string, unknown> = { model };
@@ -20,6 +57,15 @@ export function RemoveBgSettings() {
   };
 
   const hasFile = files.length > 0;
+
+  const progressStage =
+    elapsed < 3 ? "Loading AI model..." :
+    elapsed < 8 ? "Analyzing image..." :
+    elapsed < 15 ? "Removing background..." :
+    elapsed < 25 ? "Refining edges..." :
+    "Almost done...";
+
+  const progressPercent = Math.min(95, elapsed * 4);
 
   return (
     <div className="space-y-4">
@@ -31,51 +77,71 @@ export function RemoveBgSettings() {
           onChange={(e) => setModel(e.target.value as BgModel)}
           className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
         >
-          <option value="u2net">U2-Net (General purpose)</option>
-          <option value="isnet">IS-Net (Higher accuracy)</option>
+          {MODELS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label} — {m.description}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Background color */}
+      {/* Background color - intuitive preset buttons */}
       <div>
-        <label className="text-xs text-muted-foreground">
-          Replacement Background (leave empty for transparent)
+        <label className="text-sm font-medium text-muted-foreground">
+          Output Background
         </label>
-        <div className="flex gap-2 mt-0.5">
+        <div className="flex gap-1.5 mt-1.5 flex-wrap">
+          {BG_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              onClick={() => setBgColor(preset.color)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                bgColor === preset.color
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/50"
+              }`}
+            >
+              <span
+                className="w-4 h-4 rounded-sm border border-border shrink-0"
+                style={
+                  preset.preview === "checkerboard"
+                    ? {
+                        backgroundImage:
+                          "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)",
+                        backgroundSize: "8px 8px",
+                        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px",
+                      }
+                    : { backgroundColor: preset.preview }
+                }
+              />
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom color picker */}
+        <div className="flex items-center gap-2 mt-2">
           <input
             type="color"
             value={bgColor || "#ffffff"}
             onChange={(e) => setBgColor(e.target.value)}
-            className="w-10 h-8 rounded border border-border cursor-pointer"
+            className="w-8 h-8 rounded border border-border cursor-pointer"
           />
           <input
             type="text"
             value={bgColor}
             onChange={(e) => setBgColor(e.target.value)}
-            placeholder="Transparent"
-            className="flex-1 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+            placeholder="Custom hex (#FF5500)"
+            className="flex-1 px-2 py-1.5 rounded border border-border bg-background text-xs text-foreground"
           />
-          {bgColor && (
-            <button
-              onClick={() => setBgColor("")}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Clear
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Info */}
-      <p className="text-[10px] text-muted-foreground">
-        Requires Python with rembg installed. Works best with photos of people, products, and animals.
-      </p>
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {/* Size info */}
-      {originalSize != null && processedSize != null && (
+      {originalSize != null && processedSize != null && !processing && (
         <div className="text-xs text-muted-foreground space-y-0.5">
           <p>Original: {(originalSize / 1024).toFixed(1)} KB</p>
           <p>Processed: {(processedSize / 1024).toFixed(1)} KB</p>
@@ -92,20 +158,27 @@ export function RemoveBgSettings() {
         {processing ? "Removing Background..." : "Remove Background"}
       </button>
 
-      {/* Progress indicator */}
+      {/* Animated progress bar with stages */}
       {processing && (
-        <div className="space-y-2">
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-            <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '100%' }} />
+        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{progressStage}</span>
+            <span>{elapsed}s</span>
           </div>
-          <p className="text-xs text-muted-foreground text-center">
-            AI processing may take 10-30 seconds...
+          <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center">
+            First run may take longer as the model loads into memory
           </p>
         </div>
       )}
 
       {/* Download */}
-      {downloadUrl && (
+      {downloadUrl && !processing && (
         <a
           href={downloadUrl}
           download
