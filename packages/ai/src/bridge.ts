@@ -69,8 +69,21 @@ export async function runPythonScript(
       execOpts,
     );
     return { stdout: stdout.trim(), stderr: stderr.trim() };
-  } catch {
-    // Try system python as fallback
+  } catch (venvError: unknown) {
+    // Only fall back to system python if the venv python binary doesn't exist
+    // (ENOENT). If the script itself failed, re-throw — don't hide the error.
+    const isNotFound =
+      venvError &&
+      typeof venvError === "object" &&
+      "code" in venvError &&
+      (venvError as { code?: string }).code === "ENOENT";
+
+    if (!isNotFound) {
+      const message = extractPythonError(venvError);
+      throw new Error(message);
+    }
+
+    // venv python not found — try system python3 as fallback
     try {
       const { stdout, stderr } = await execFileAsync(
         "python3",
