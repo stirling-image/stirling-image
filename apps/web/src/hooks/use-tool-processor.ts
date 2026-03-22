@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useFileStore } from "@/stores/file-store";
 
 function getToken(): string {
@@ -11,6 +11,25 @@ interface ProcessResult {
   originalSize: number;
   processedSize: number;
 }
+
+export interface ToolProgress {
+  phase: "idle" | "uploading" | "processing" | "complete";
+  percent: number;
+  stage?: string;
+  elapsed: number;
+}
+
+const IDLE_PROGRESS: ToolProgress = {
+  phase: "idle",
+  percent: 0,
+  elapsed: 0,
+};
+
+// AI tools that go through Python/bridge.ts and can emit SSE progress.
+// smart-crop is category "ai" but uses Sharp (no Python), so it's excluded.
+const AI_PYTHON_TOOLS = new Set([
+  "remove-background", "upscale", "blur-faces", "erase-object", "ocr",
+]);
 
 export function useToolProcessor(toolId: string) {
   const {
@@ -26,8 +45,24 @@ export function useToolProcessor(toolId: string) {
     setJobId,
   } = useFileStore();
 
+  const [progress, setProgress] = useState<ToolProgress>(IDLE_PROGRESS);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const isAiTool = AI_PYTHON_TOOLS.has(toolId);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
+      if (eventSourceRef.current) eventSourceRef.current.close();
+      if (xhrRef.current) xhrRef.current.abort();
+    };
+  }, []);
+
   const processFiles = useCallback(
-    async (files: File[], settings: Record<string, unknown>) => {
+    (files: File[], settings: Record<string, unknown>) => {
       if (files.length === 0) {
         setError("No files selected");
         return;
@@ -36,44 +71,132 @@ export function useToolProcessor(toolId: string) {
       setProcessing(true);
       setError(null);
       setProcessedUrl(null);
+      setProgress({ phase: "uploading", percent: 0, elapsed: 0 });
 
-      try {
-        // Build multipart form with the file and settings
-        const formData = new FormData();
-        formData.append("file", files[0]);
-        formData.append("settings", JSON.stringify(settings));
+      // Start elapsed timer
+      const startTime = Date.now();
+      elapsedRef.current = setInterval(() => {
+        setProgress((prev) => ({
+          ...prev,
+          elapsed: Math.floor((Date.now() - startTime) / 1000),
+        }));
+      }, 1000);
 
-        const headers: Record<string, string> = {};
-        const token = getToken();
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
+      // Generate client job ID for SSE correlation
+      const clientJobId = crypto.randomUUID();
 
-        const res = await fetch(`/api/v1/tools/${toolId}`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            body.error || body.details || `Processing failed: ${res.status}`,
+      // For AI tools, open SSE before uploading
+      if (isAiTool) {
+        try {
+          const es = new EventSource(
+            `/api/v1/jobs/${clientJobId}/progress`,
           );
+          eventSourceRef.current = es;
+
+          es.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "single" && typeof data.percent === "number") {
+                setProgress((prev) => ({
+                  ...prev,
+                  phase: "processing",
+                  percent: data.percent,
+                  stage: data.stage,
+                }));
+              }
+            } catch {
+              // Ignore malformed SSE
+            }
+          };
+
+          es.onerror = () => {
+            es.close();
+            eventSourceRef.current = null;
+          };
+        } catch {
+          // EventSource creation failed — proceed without SSE
+        }
+      }
+
+      // Build form data
+      const formData = new FormData();
+      formData.append("file", files[0]);
+      formData.append("settings", JSON.stringify(settings));
+      if (isAiTool) {
+        formData.append("clientJobId", clientJobId);
+      }
+
+      // Use XHR for upload progress tracking
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const uploadPercent = (event.loaded / event.total) * 100;
+          setProgress((prev) => {
+            if (prev.phase !== "uploading") return prev;
+            return { ...prev, percent: uploadPercent };
+          });
+        }
+      };
+
+      xhr.upload.onload = () => {
+        setProgress((prev) => ({
+          ...prev,
+          phase: "processing",
+          percent: isAiTool ? 0 : 100,
+          stage: isAiTool ? "Starting..." : "Processing...",
+        }));
+      };
+
+      xhr.onload = () => {
+        if (elapsedRef.current) clearInterval(elapsedRef.current);
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
         }
 
-        const result: ProcessResult = await res.json();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const result: ProcessResult = JSON.parse(xhr.responseText);
+            setJobId(result.jobId);
+            setProcessedUrl(result.downloadUrl);
+            setSizes(result.originalSize, result.processedSize);
+          } catch {
+            setError("Invalid response from server");
+          }
+        } else {
+          try {
+            const body = JSON.parse(xhr.responseText);
+            setError(body.error || body.details || `Processing failed: ${xhr.status}`);
+          } catch {
+            setError(`Processing failed: ${xhr.status}`);
+          }
+        }
 
-        setJobId(result.jobId);
-        setProcessedUrl(result.downloadUrl);
-        setSizes(result.originalSize, result.processedSize);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Processing failed");
-      } finally {
         setProcessing(false);
+        setProgress(IDLE_PROGRESS);
+      };
+
+      xhr.onerror = () => {
+        if (elapsedRef.current) clearInterval(elapsedRef.current);
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+        setError("Network error — check your connection");
+        setProcessing(false);
+        setProgress(IDLE_PROGRESS);
+      };
+
+      xhr.open("POST", `/api/v1/tools/${toolId}`);
+      const token = getToken();
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       }
+      xhr.send(formData);
     },
-    [toolId, setProcessing, setError, setProcessedUrl, setSizes, setJobId],
+    [toolId, isAiTool, setProcessing, setError, setProcessedUrl, setSizes, setJobId],
   );
 
   return {
@@ -83,5 +206,6 @@ export function useToolProcessor(toolId: string) {
     downloadUrl: processedUrl,
     originalSize,
     processedSize,
+    progress,
   };
 }
