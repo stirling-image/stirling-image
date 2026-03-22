@@ -67,7 +67,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       />
 
       {/* Dialog */}
-      <div className="relative bg-background border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex overflow-hidden">
+      <div className="relative bg-background border border-border rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex overflow-hidden">
         {/* Sidebar nav */}
         <div className="w-48 border-r border-border bg-muted/30 p-3 space-y-1 shrink-0">
           <div className="flex items-center justify-between mb-4 px-2">
@@ -216,8 +216,8 @@ function SystemSection() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<Record<string, string>>("/v1/settings")
-      .then((data) => setSettings(data))
+    apiGet<{ settings: Record<string, string> }>("/v1/settings")
+      .then((data) => setSettings(data.settings))
       .catch(() => {
         // Fallback defaults if endpoint not ready
         setSettings({
@@ -645,8 +645,8 @@ function ApiKeysSection() {
 
   const loadKeys = useCallback(async () => {
     try {
-      const data = await apiGet<{ keys: ApiKeyEntry[] }>("/v1/api-keys");
-      setKeys(data.keys);
+      const data = await apiGet<{ apiKeys: ApiKeyEntry[] }>("/v1/api-keys");
+      setKeys(data.apiKeys);
     } catch {
       setKeys([]);
     } finally {
@@ -824,12 +824,20 @@ function AboutSection() {
             GitHub Repository
           </a>
           <a
+            href="https://siddharthksah.github.io/Stirling-Image/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary hover:underline"
+          >
+            Documentation
+          </a>
+          <a
             href="/api/docs"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
           >
-            API Documentation
+            API Reference (Swagger)
           </a>
         </div>
       </div>
