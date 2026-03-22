@@ -1,4 +1,6 @@
 export { runPythonScript } from "./bridge.js";
+export { runPythonWithProgress } from "./bridge.js";
+export type { ProgressCallback } from "./bridge.js";
 export { removeBackground } from "./background-removal.js";
 export type { RemoveBackgroundOptions } from "./background-removal.js";
 export { upscale } from "./upscaling.js";

@@ -1,4 +1,4 @@
-import { runPythonScript } from "./bridge.js";
+import { runPythonWithProgress, type ProgressCallback } from "./bridge.js";
 import { writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -24,16 +24,17 @@ export async function blurFaces(
   inputBuffer: Buffer,
   outputDir: string,
   options: BlurFacesOptions = {},
+  onProgress?: ProgressCallback,
 ): Promise<BlurFacesResult> {
   const inputPath = join(outputDir, "input_faces.png");
   const outputPath = join(outputDir, "output_faces.png");
 
   await writeFile(inputPath, inputBuffer);
-  const { stdout } = await runPythonScript("detect_faces.py", [
+  const { stdout } = await runPythonWithProgress("detect_faces.py", [
     inputPath,
     outputPath,
     JSON.stringify(options),
-  ]);
+  ], { onProgress });
 
   const result = JSON.parse(stdout);
   if (!result.success) {
