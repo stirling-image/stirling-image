@@ -22,14 +22,12 @@ jobs:
           fetch-depth: 2 # Fetch previous commit to get diff
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -43,7 +41,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           echo "Running Claude to analyze changes and update docs..."
-          npx tsx apps/docs/scripts/update-docs.ts ./diff.patch
+          cd apps/docs && pnpm exec tsx scripts/update-docs.ts ../../diff.patch
           
       - name: Commit and Push Changes
         run: |
