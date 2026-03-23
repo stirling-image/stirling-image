@@ -28,9 +28,9 @@ export function EraseObjectSettings() {
   const handleProcess = async () => {
     if (files.length === 0 || !maskFile) return;
 
-    setProcessing(true);
     setError(null);
     setDownloadUrl(null);
+    setProcessing(true);
     setProgressPhase("uploading");
     setProgressPercent(0);
     setProgressStage(undefined);

@@ -36,9 +36,9 @@ export function OcrSettings() {
   const handleProcess = async () => {
     if (files.length === 0) return;
 
-    setProcessing(true);
     setError(null);
     setText(null);
+    setProcessing(true);
     setProgressPhase("uploading");
     setProgressPercent(0);
     setProgressStage(undefined);

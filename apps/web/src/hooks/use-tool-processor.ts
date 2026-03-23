@@ -68,9 +68,9 @@ export function useToolProcessor(toolId: string) {
         return;
       }
 
-      setProcessing(true);
       setError(null);
       setProcessedUrl(null);
+      setProcessing(true);
       setProgress({ phase: "uploading", percent: 0, elapsed: 0 });
 
       // Start elapsed timer
