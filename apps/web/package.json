@@ -17,6 +17,7 @@
     "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-image-crop": "^11.0.10",
     "react-router-dom": "^7.1.0",
     "tailwind-merge": "^2.6.0",
     "zustand": "^5.0.0"
