@@ -388,7 +388,7 @@ function extractToken(request: FastifyRequest): string | null {
 
 // ── Auth middleware ────────────────────────────────────────────────
 
-const PUBLIC_PATHS = ["/api/v1/health", "/api/v1/config/", "/api/auth/", "/api/docs", "/api/v1/download/"];
+const PUBLIC_PATHS = ["/api/v1/health", "/api/v1/config/", "/api/auth/", "/api/docs", "/api/v1/download/", "/api/v1/jobs/"];
 
 function isPublicRoute(url: string): boolean {
   // Non-API routes are public (SPA static files — auth is handled client-side)
