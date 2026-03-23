@@ -65,6 +65,7 @@ export function registerBulkRename(app: FastifyInstance) {
       try {
         const jobId = randomUUID();
 
+        reply.hijack();
         reply.raw.writeHead(200, {
           "Content-Type": "application/zip",
           "Content-Disposition": `attachment; filename="renamed-${jobId.slice(0, 8)}.zip"`,

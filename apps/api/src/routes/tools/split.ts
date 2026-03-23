@@ -70,6 +70,7 @@ export function registerSplit(app: FastifyInstance) {
         const jobId = randomUUID();
 
         // Set up response headers for ZIP
+        reply.hijack();
         reply.raw.writeHead(200, {
           "Content-Type": "application/zip",
           "Content-Disposition": `attachment; filename="split-${jobId.slice(0, 8)}.zip"`,

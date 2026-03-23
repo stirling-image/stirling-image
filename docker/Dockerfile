@@ -6,7 +6,7 @@
 # ============================================
 # Stage 1: Build the frontend (Vite + React)
 # ============================================
-FROM node:22-bookworm AS builder
+FROM --platform=linux/amd64 node:22-bookworm AS builder
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
@@ -35,7 +35,7 @@ RUN pnpm --filter @stirling-image/web build
 # ============================================
 # Stage 2: Production runtime
 # ============================================
-FROM node:22-bookworm AS production
+FROM --platform=linux/amd64 node:22-bookworm AS production
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
@@ -67,10 +67,6 @@ RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
     (/opt/venv/bin/pip install --no-cache-dir lama-cleaner || echo "WARNING: lama-cleaner not installed - object eraser will be unavailable") && \
     rm /tmp/requirements.txt
 
-# Remove build tools no longer needed in production
-RUN apt-get purge -y --auto-remove build-essential python3-dev && \
-    rm -rf /var/lib/apt/lists/*
-
 # Pre-download ALL AI model weights into the image (no first-use download delays)
 # This makes the Docker image fully self-contained — works offline
 COPY docker/download_models.py /tmp/download_models.py
@@ -98,6 +94,10 @@ COPY packages/ai/package.json packages/ai/tsconfig.json ./packages/ai/
 
 # Install production dependencies (tsx is now in prod deps)
 RUN pnpm install --frozen-lockfile --prod
+
+# Remove build tools no longer needed in production
+RUN apt-get purge -y --auto-remove build-essential python3-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy source code for API (tsx runs TS directly - no build step needed)
 COPY apps/api/src ./apps/api/src

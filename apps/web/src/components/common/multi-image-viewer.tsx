@@ -22,14 +22,14 @@ export function MultiImageViewer() {
   const hasProcessed = !!currentEntry.processedUrl;
 
   return (
-    <div className="flex flex-col w-full h-full" onKeyDown={hasMultiple ? handleKeyDown : undefined} tabIndex={hasMultiple ? 0 : undefined}>
-      <div className="flex-1 relative flex items-center justify-center">
+    <div className="flex flex-col w-full h-full min-h-0" onKeyDown={hasMultiple ? handleKeyDown : undefined} tabIndex={hasMultiple ? 0 : undefined}>
+      <div className="flex-1 relative flex items-center justify-center min-h-0">
         {hasMultiple && hasPrev && (
           <button onClick={navigatePrev} className="absolute left-3 z-10 w-8 h-8 rounded-full bg-background/80 border border-border shadow-sm flex items-center justify-center hover:bg-background transition-colors" aria-label="Previous image">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
-        <div className="w-full h-full">
+        <div className="w-full h-full min-h-0">
           {hasProcessed ? (
             <BeforeAfterSlider beforeSrc={currentEntry.blobUrl} afterSrc={currentEntry.processedUrl!} beforeSize={currentEntry.originalSize} afterSize={currentEntry.processedSize ?? undefined} />
           ) : (

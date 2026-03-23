@@ -117,17 +117,34 @@ export async function registerBatchRoutes(
       };
       updateJobProgress({ ...progress });
 
-      // Set up response headers for ZIP streaming
+      // Tell Fastify we're taking over the response — without this,
+      // Fastify's lifecycle hooks conflict with reply.raw.writeHead()
+      // and can throw unhandled errors that crash the process.
+      reply.hijack();
+
+      // Set up response headers for ZIP streaming.
+      // X-File-Order must be URI-encoded because filenames can contain
+      // spaces/special chars that are invalid in HTTP header values.
       reply.raw.writeHead(200, {
         "Content-Type": "application/zip",
         "Content-Disposition": `attachment; filename="batch-${toolId}-${jobId.slice(0, 8)}.zip"`,
         "Transfer-Encoding": "chunked",
         "X-Job-Id": jobId,
-        "X-File-Order": files.map(f => f.filename).join(","),
+        "X-File-Order": files.map(f => encodeURIComponent(f.filename)).join(","),
       });
 
       // Create ZIP archive that pipes directly to the response
       const archive = archiver("zip", { zlib: { level: 5 } });
+
+      // Handle archive-level errors to prevent unhandled exceptions
+      // that would crash the server process.
+      archive.on("error", (err) => {
+        request.log.error({ err }, "Archiver error during batch processing");
+        if (!reply.raw.writableEnded) {
+          reply.raw.end();
+        }
+      });
+
       archive.pipe(reply.raw);
 
       // Use p-queue for concurrency control
@@ -154,50 +171,54 @@ export async function registerBatchRoutes(
       }
 
       // Process all files through the queue
-      const tasks = files.map((file) =>
-        queue.add(async () => {
-          progress.currentFile = file.filename;
-          updateJobProgress({ ...progress });
-
-          // Validate the image
-          const validation = await validateImageBuffer(file.buffer);
-          if (!validation.valid) {
-            progress.failedFiles++;
-            progress.errors.push({
-              filename: file.filename,
-              error: `Invalid image: ${validation.reason}`,
-            });
-            progress.completedFiles++;
+      try {
+        const tasks = files.map((file) =>
+          queue.add(async () => {
+            progress.currentFile = file.filename;
             updateJobProgress({ ...progress });
-            return;
-          }
 
-          try {
-            const result = await toolConfig.process(
-              file.buffer,
-              settings,
-              file.filename,
-            );
+            // Validate the image
+            const validation = await validateImageBuffer(file.buffer);
+            if (!validation.valid) {
+              progress.failedFiles++;
+              progress.errors.push({
+                filename: file.filename,
+                error: `Invalid image: ${validation.reason}`,
+              });
+              progress.completedFiles++;
+              updateJobProgress({ ...progress });
+              return;
+            }
 
-            const zipFilename = getUniqueName(result.filename);
-            archive.append(result.buffer, { name: zipFilename });
+            try {
+              const result = await toolConfig.process(
+                file.buffer,
+                settings,
+                file.filename,
+              );
 
-            progress.completedFiles++;
-            updateJobProgress({ ...progress });
-          } catch (err) {
-            progress.failedFiles++;
-            progress.errors.push({
-              filename: file.filename,
-              error: err instanceof Error ? err.message : "Processing failed",
-            });
-            progress.completedFiles++;
-            updateJobProgress({ ...progress });
-          }
-        }),
-      );
+              const zipFilename = getUniqueName(result.filename);
+              archive.append(result.buffer, { name: zipFilename });
 
-      // Wait for all tasks to complete
-      await Promise.all(tasks);
+              progress.completedFiles++;
+              updateJobProgress({ ...progress });
+            } catch (err) {
+              progress.failedFiles++;
+              progress.errors.push({
+                filename: file.filename,
+                error: err instanceof Error ? err.message : "Processing failed",
+              });
+              progress.completedFiles++;
+              updateJobProgress({ ...progress });
+            }
+          }),
+        );
+
+        // Wait for all tasks to complete
+        await Promise.all(tasks);
+      } catch (err) {
+        request.log.error({ err }, "Unexpected error in batch queue");
+      }
 
       // Finalize progress
       progress.status =

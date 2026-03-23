@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import { ImageViewer } from "@/components/common/image-viewer";
+import { MultiImageViewer } from "@/components/common/multi-image-viewer";
 import { useFileStore } from "@/stores/file-store";
 import { TOOLS, CATEGORIES } from "@stirling-image/shared";
 import * as icons from "lucide-react";
@@ -124,8 +125,10 @@ export function HomePage() {
         </div>
 
         {/* Right panel: Image preview */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          {originalBlobUrl ? (
+        <div className="flex-1 flex items-center justify-center p-6 min-h-0">
+          {files.length > 1 ? (
+            <MultiImageViewer />
+          ) : originalBlobUrl ? (
             <ImageViewer
               src={originalBlobUrl}
               filename={selectedFileName ?? files[0].name}

@@ -1,10 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
 import { env } from "./config.js";
-import { APP_VERSION } from "@stirling-image/shared";
 import { runMigrations } from "./db/migrate.js";
 import { ensureDefaultAdmin, authRoutes, authMiddleware } from "./plugins/auth.js";
 import { registerUpload } from "./plugins/upload.js";
@@ -50,24 +47,6 @@ await app.register(rateLimit, {
   max: env.RATE_LIMIT_PER_MIN,
   timeWindow: "1 minute",
 });
-
-// Swagger / OpenAPI documentation (dev only)
-if (process.env.NODE_ENV !== "production") {
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: "Stirling Image API",
-        description: "API for Stirling Image — self-hosted image processing suite",
-        version: APP_VERSION,
-      },
-      servers: [{ url: `http://localhost:1349` }],
-    },
-  });
-
-  await app.register(swaggerUi, {
-    routePrefix: "/api/docs",
-  });
-}
 
 // Multipart upload support
 await registerUpload(app);

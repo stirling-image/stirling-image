@@ -4,8 +4,8 @@ import type { Crop } from "react-image-crop";
 import { TOOLS } from "@stirling-image/shared";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Dropzone } from "@/components/common/dropzone";
-import { MultiImageViewer } from "@/components/common/multi-image-viewer";
 import { ImageViewer } from "@/components/common/image-viewer";
+import { ThumbnailStrip } from "@/components/common/thumbnail-strip";
 import { BeforeAfterSlider } from "@/components/common/before-after-slider";
 import { SideBySideComparison } from "@/components/common/side-by-side-comparison";
 import { ReviewPanel } from "@/components/common/review-panel";
@@ -55,7 +55,7 @@ import { BlurFacesSettings } from "@/components/tools/blur-faces-settings";
 import { EraseObjectSettings } from "@/components/tools/erase-object-settings";
 import { SmartCropSettings } from "@/components/tools/smart-crop-settings";
 import * as icons from "lucide-react";
-import { CheckCircle2, Download } from "lucide-react";
+import { CheckCircle2, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 const COLOR_TOOL_IDS = new Set([
   "brightness-contrast",
@@ -66,8 +66,9 @@ const COLOR_TOOL_IDS = new Set([
 
 // Tools that don't need a file dropzone (they generate content or have custom UI)
 const NO_DROPZONE_TOOLS = new Set(["qr-generate"]);
-const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop"]);
+const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop", "rotate"]);
 const LIVE_PREVIEW_TOOLS = new Set(["rotate"]);
+const NO_COMPARISON_TOOLS = new Set(["strip-metadata", "convert"]);
 const INTERACTIVE_CROP_TOOLS = new Set(["crop"]);
 
 function ToolSettingsPanel({
@@ -194,8 +195,20 @@ export function ToolPage() {
     undoProcessing,
     batchZipBlob,
     batchZipFilename,
+    selectedIndex,
+    setSelectedIndex,
+    navigateNext,
+    navigatePrev,
   } = useFileStore();
   const isMobile = useMobile();
+  const hasMultiple = entries.length > 1;
+  const hasPrev = selectedIndex > 0;
+  const hasNext = selectedIndex < entries.length - 1;
+
+  const handleImageKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); navigatePrev(); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); navigateNext(); }
+  }, [navigateNext, navigatePrev]);
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(true);
   const [previewTransform, setPreviewTransform] = useState<PreviewTransform | null>(null);
 
@@ -367,63 +380,87 @@ export function ToolPage() {
           )}
 
           {/* Main area: Dropzone / Image Viewer / Before-After */}
-          <div className="flex-1 flex items-center justify-center p-4">
-            {isNoDropzone ? (
-              <div className="text-center text-muted-foreground">
-                <p className="text-sm">Configure settings and generate.</p>
-              </div>
-            ) : files.length > 1 ? (
-              <MultiImageViewer />
-            ) : INTERACTIVE_CROP_TOOLS.has(tool.id) && hasFile && !hasProcessed && originalBlobUrl ? (
-              <CropCanvas
-                imageSrc={originalBlobUrl}
-                crop={cropCrop}
-                aspect={cropAspect}
-                showGrid={cropShowGrid}
-                imgDimensions={cropImgDimensions}
-                onCropChange={setCropCrop}
-                onImageLoad={setCropImgDimensions}
-              />
-            ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
-              <SideBySideComparison
-                beforeSrc={originalBlobUrl}
-                afterSrc={processedUrl}
-                beforeSize={originalSize ?? undefined}
-                afterSize={processedSize ?? undefined}
-              />
-            ) : hasProcessed && originalBlobUrl && LIVE_PREVIEW_TOOLS.has(tool.id) ? (
-              <ImageViewer
-                src={processedUrl}
-                filename={processedFileName}
-                fileSize={processedSize ?? 0}
-              />
-            ) : hasProcessed && originalBlobUrl ? (
-              <BeforeAfterSlider
-                beforeSrc={originalBlobUrl}
-                afterSrc={processedUrl}
-                beforeSize={originalSize ?? undefined}
-                afterSize={processedSize ?? undefined}
-              />
-            ) : hasFile && originalBlobUrl ? (
-              <ImageViewer
-                src={originalBlobUrl}
-                filename={selectedFileName ?? files[0].name}
-                fileSize={selectedFileSize ?? files[0].size}
-                {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewTransform
-                  ? {
-                      cssRotate: previewTransform.rotate,
-                      cssFlipH: previewTransform.flipH,
-                      cssFlipV: previewTransform.flipV,
-                    }
-                  : {})}
-              />
-            ) : (
-              <Dropzone
-                onFiles={handleFiles}
-                accept="image/*"
-                multiple
-                currentFiles={files}
-              />
+          <div className="flex-1 flex flex-col min-h-0" onKeyDown={hasMultiple ? handleImageKeyDown : undefined} tabIndex={hasMultiple ? 0 : undefined}>
+            <div className="flex-1 relative flex items-center justify-center p-4 min-h-0">
+              {hasMultiple && hasPrev && (
+                <button onClick={navigatePrev} className="absolute left-3 z-10 w-8 h-8 rounded-full bg-background/80 border border-border shadow-sm flex items-center justify-center hover:bg-background transition-colors" aria-label="Previous image">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              )}
+              {isNoDropzone ? (
+                <div className="text-center text-muted-foreground">
+                  <p className="text-sm">Configure settings and generate.</p>
+                </div>
+              ) : INTERACTIVE_CROP_TOOLS.has(tool.id) && hasFile && !hasProcessed && originalBlobUrl ? (
+                <CropCanvas
+                  imageSrc={originalBlobUrl}
+                  crop={cropCrop}
+                  aspect={cropAspect}
+                  showGrid={cropShowGrid}
+                  imgDimensions={cropImgDimensions}
+                  onCropChange={setCropCrop}
+                  onImageLoad={setCropImgDimensions}
+                />
+              ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
+                <SideBySideComparison
+                  beforeSrc={originalBlobUrl}
+                  afterSrc={processedUrl}
+                  beforeSize={originalSize ?? undefined}
+                  afterSize={processedSize ?? undefined}
+                />
+              ) : hasProcessed && originalBlobUrl && LIVE_PREVIEW_TOOLS.has(tool.id) ? (
+                <ImageViewer
+                  src={processedUrl}
+                  filename={processedFileName}
+                  fileSize={processedSize ?? 0}
+                />
+              ) : hasProcessed && originalBlobUrl && NO_COMPARISON_TOOLS.has(tool.id) ? (
+                <ImageViewer
+                  src={processedUrl}
+                  filename={processedFileName}
+                  fileSize={processedSize ?? 0}
+                />
+              ) : hasProcessed && originalBlobUrl ? (
+                <BeforeAfterSlider
+                  beforeSrc={originalBlobUrl}
+                  afterSrc={processedUrl}
+                  beforeSize={originalSize ?? undefined}
+                  afterSize={processedSize ?? undefined}
+                />
+              ) : hasFile && originalBlobUrl ? (
+                <ImageViewer
+                  src={originalBlobUrl}
+                  filename={selectedFileName ?? files[0].name}
+                  fileSize={selectedFileSize ?? files[0].size}
+                  {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewTransform
+                    ? {
+                        cssRotate: previewTransform.rotate,
+                        cssFlipH: previewTransform.flipH,
+                        cssFlipV: previewTransform.flipV,
+                      }
+                    : {})}
+                />
+              ) : (
+                <Dropzone
+                  onFiles={handleFiles}
+                  accept="image/*"
+                  multiple
+                  currentFiles={files}
+                />
+              )}
+              {hasMultiple && hasNext && (
+                <button onClick={navigateNext} className="absolute right-3 z-10 w-8 h-8 rounded-full bg-background/80 border border-border shadow-sm flex items-center justify-center hover:bg-background transition-colors" aria-label="Next image">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+              {hasMultiple && (
+                <div className="absolute top-3 right-3 z-10 bg-background/80 border border-border px-2 py-0.5 rounded-full text-xs text-muted-foreground tabular-nums">
+                  {selectedIndex + 1} / {entries.length}
+                </div>
+              )}
+            </div>
+            {hasMultiple && (
+              <ThumbnailStrip entries={entries} selectedIndex={selectedIndex} onSelect={setSelectedIndex} />
             )}
           </div>
         </div>
@@ -510,63 +547,87 @@ export function ToolPage() {
         </div>
 
         {/* Main area: Dropzone / Image Viewer / Before-After */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          {isNoDropzone ? (
-            <div className="text-center text-muted-foreground">
-              <p className="text-sm">Configure settings and generate.</p>
-            </div>
-          ) : files.length > 1 ? (
-            <MultiImageViewer />
-          ) : INTERACTIVE_CROP_TOOLS.has(tool.id) && hasFile && !hasProcessed && originalBlobUrl ? (
-            <CropCanvas
-              imageSrc={originalBlobUrl}
-              crop={cropCrop}
-              aspect={cropAspect}
-              showGrid={cropShowGrid}
-              imgDimensions={cropImgDimensions}
-              onCropChange={setCropCrop}
-              onImageLoad={setCropImgDimensions}
-            />
-          ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
-            <SideBySideComparison
-              beforeSrc={originalBlobUrl}
-              afterSrc={processedUrl}
-              beforeSize={originalSize ?? undefined}
-              afterSize={processedSize ?? undefined}
-            />
-          ) : hasProcessed && originalBlobUrl && LIVE_PREVIEW_TOOLS.has(tool.id) ? (
-            <ImageViewer
-              src={processedUrl}
-              filename={processedFileName}
-              fileSize={processedSize ?? 0}
-            />
-          ) : hasProcessed && originalBlobUrl ? (
-            <BeforeAfterSlider
-              beforeSrc={originalBlobUrl}
-              afterSrc={processedUrl}
-              beforeSize={originalSize ?? undefined}
-              afterSize={processedSize ?? undefined}
-            />
-          ) : hasFile && originalBlobUrl ? (
-            <ImageViewer
-              src={originalBlobUrl}
-              filename={selectedFileName ?? files[0].name}
-              fileSize={selectedFileSize ?? files[0].size}
-              {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewTransform
-                ? {
-                    cssRotate: previewTransform.rotate,
-                    cssFlipH: previewTransform.flipH,
-                    cssFlipV: previewTransform.flipV,
-                  }
-                : {})}
-            />
-          ) : (
-            <Dropzone
-              onFiles={handleFiles}
-              accept="image/*"
-              multiple
-              currentFiles={files}
-            />
+        <div className="flex-1 flex flex-col min-h-0" onKeyDown={hasMultiple ? handleImageKeyDown : undefined} tabIndex={hasMultiple ? 0 : undefined}>
+          <div className="flex-1 relative flex items-center justify-center p-6 min-h-0">
+            {hasMultiple && hasPrev && (
+              <button onClick={navigatePrev} className="absolute left-3 z-10 w-8 h-8 rounded-full bg-background/80 border border-border shadow-sm flex items-center justify-center hover:bg-background transition-colors" aria-label="Previous image">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            {isNoDropzone ? (
+              <div className="text-center text-muted-foreground">
+                <p className="text-sm">Configure settings and generate.</p>
+              </div>
+            ) : INTERACTIVE_CROP_TOOLS.has(tool.id) && hasFile && !hasProcessed && originalBlobUrl ? (
+              <CropCanvas
+                imageSrc={originalBlobUrl}
+                crop={cropCrop}
+                aspect={cropAspect}
+                showGrid={cropShowGrid}
+                imgDimensions={cropImgDimensions}
+                onCropChange={setCropCrop}
+                onImageLoad={setCropImgDimensions}
+              />
+            ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
+              <SideBySideComparison
+                beforeSrc={originalBlobUrl}
+                afterSrc={processedUrl}
+                beforeSize={originalSize ?? undefined}
+                afterSize={processedSize ?? undefined}
+              />
+            ) : hasProcessed && originalBlobUrl && LIVE_PREVIEW_TOOLS.has(tool.id) ? (
+              <ImageViewer
+                src={processedUrl}
+                filename={processedFileName}
+                fileSize={processedSize ?? 0}
+              />
+            ) : hasProcessed && originalBlobUrl && NO_COMPARISON_TOOLS.has(tool.id) ? (
+              <ImageViewer
+                src={processedUrl}
+                filename={processedFileName}
+                fileSize={processedSize ?? 0}
+              />
+            ) : hasProcessed && originalBlobUrl ? (
+              <BeforeAfterSlider
+                beforeSrc={originalBlobUrl}
+                afterSrc={processedUrl}
+                beforeSize={originalSize ?? undefined}
+                afterSize={processedSize ?? undefined}
+              />
+            ) : hasFile && originalBlobUrl ? (
+              <ImageViewer
+                src={originalBlobUrl}
+                filename={selectedFileName ?? files[0].name}
+                fileSize={selectedFileSize ?? files[0].size}
+                {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewTransform
+                  ? {
+                      cssRotate: previewTransform.rotate,
+                      cssFlipH: previewTransform.flipH,
+                      cssFlipV: previewTransform.flipV,
+                    }
+                  : {})}
+              />
+            ) : (
+              <Dropzone
+                onFiles={handleFiles}
+                accept="image/*"
+                multiple
+                currentFiles={files}
+              />
+            )}
+            {hasMultiple && hasNext && (
+              <button onClick={navigateNext} className="absolute right-3 z-10 w-8 h-8 rounded-full bg-background/80 border border-border shadow-sm flex items-center justify-center hover:bg-background transition-colors" aria-label="Next image">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+            {hasMultiple && (
+              <div className="absolute top-3 right-3 z-10 bg-background/80 border border-border px-2 py-0.5 rounded-full text-xs text-muted-foreground tabular-nums">
+                {selectedIndex + 1} / {entries.length}
+              </div>
+            )}
+          </div>
+          {hasMultiple && (
+            <ThumbnailStrip entries={entries} selectedIndex={selectedIndex} onSelect={setSelectedIndex} />
           )}
         </div>
       </div>

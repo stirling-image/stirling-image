@@ -43,6 +43,7 @@ export function registerFavicon(app: FastifyInstance) {
       try {
         const jobId = randomUUID();
 
+        reply.hijack();
         reply.raw.writeHead(200, {
           "Content-Type": "application/zip",
           "Content-Disposition": `attachment; filename="favicons-${jobId.slice(0, 8)}.zip"`,

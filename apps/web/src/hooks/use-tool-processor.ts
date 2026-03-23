@@ -289,7 +289,7 @@ export function useToolProcessor(toolId: string) {
         const zipBuffer = new Uint8Array(await zipBlob.arrayBuffer() as ArrayBuffer);
         const extracted = unzipSync(zipBuffer);
 
-        const fileOrder = response.headers.get("X-File-Order")?.split(",") ?? [];
+        const fileOrder = (response.headers.get("X-File-Order")?.split(",") ?? []).map(decodeURIComponent);
         const entries = useFileStore.getState().entries;
         const extractedNames = Object.keys(extracted);
 

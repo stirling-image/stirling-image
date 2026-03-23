@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFileStore } from "@/stores/file-store";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import {
-  Download,
   RotateCcw,
   RotateCw,
   FlipHorizontal,
@@ -22,24 +21,42 @@ interface RotateSettingsProps {
 
 export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
   const { files } = useFileStore();
-  const { processFiles, processAllFiles, processing, error, downloadUrl, progress } =
+  const { processFiles, processAllFiles, processing, error, progress } =
     useToolProcessor("rotate");
 
-  const [angle, setAngle] = useState(0);
+  // Quick rotation in 90° steps: 0, 90, 180, 270
+  const [rotation, setRotation] = useState(0);
+  // Fine straighten adjustment: -45 to +45
+  const [straighten, setStraighten] = useState(0);
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
 
+  const totalAngle = rotation + straighten;
+
   // Emit preview transform on every change
   useEffect(() => {
-    onPreviewTransform?.({ rotate: angle, flipH, flipV });
-  }, [angle, flipH, flipV, onPreviewTransform]);
+    onPreviewTransform?.({ rotate: totalAngle, flipH, flipV });
+  }, [totalAngle, flipH, flipV, onPreviewTransform]);
 
-  const rotateLeft = () => setAngle((a) => (a - 90 + 360) % 360);
-  const rotateRight = () => setAngle((a) => (a + 90) % 360);
+  // Reset controls after successful processing
+  const prevProcessing = useRef(processing);
+  useEffect(() => {
+    if (prevProcessing.current && !processing && !error) {
+      setRotation(0);
+      setStraighten(0);
+      setFlipH(false);
+      setFlipV(false);
+    }
+    prevProcessing.current = processing;
+  }, [processing, error]);
+
+  const rotateLeft = () => setRotation((r) => r - 90);
+  const rotateRight = () => setRotation((r) => r + 90);
 
   const handleProcess = () => {
+    const backendAngle = ((totalAngle % 360) + 360) % 360;
     const settings = {
-      angle,
+      angle: backendAngle,
       horizontal: flipH,
       vertical: flipV,
     };
@@ -51,52 +68,78 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
   };
 
   const hasFile = files.length > 0;
-  const hasChanges = angle !== 0 || flipH || flipV;
+  const hasChanges = totalAngle !== 0 || flipH || flipV;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (hasFile && hasChanges && !processing) handleProcess();
   };
 
+  const handleReset = () => {
+    setRotation(0);
+    setStraighten(0);
+    setFlipH(false);
+    setFlipV(false);
+  };
+
+  // Display angle normalized to 0-359
+  const displayAngle = ((totalAngle % 360) + 360) % 360;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Quick rotate buttons */}
+      {/* Quick rotate */}
       <div>
-        <label className="text-xs text-muted-foreground">Quick Rotate</label>
-        <div className="flex gap-2 mt-1">
+        <label className="text-xs text-muted-foreground">Rotate</label>
+        <div className="flex items-center gap-2 mt-1">
           <button
             type="button"
             onClick={rotateLeft}
-            className="flex-1 flex items-center justify-center gap-1 py-2 rounded bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm font-medium"
+            title="Rotate 90° counter-clockwise"
           >
             <RotateCcw className="h-4 w-4" />
-            90 Left
+            Left
           </button>
+          <div className="px-3 py-1.5 rounded-md bg-background border border-border text-center min-w-[4rem]">
+            <span className="text-sm font-mono font-medium tabular-nums">
+              {displayAngle}°
+            </span>
+          </div>
           <button
             type="button"
             onClick={rotateRight}
-            className="flex-1 flex items-center justify-center gap-1 py-2 rounded bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm font-medium"
+            title="Rotate 90° clockwise"
           >
+            Right
             <RotateCw className="h-4 w-4" />
-            90 Right
           </button>
         </div>
       </div>
 
-      {/* Angle slider */}
+      {/* Straighten */}
       <div>
         <div className="flex justify-between items-center">
-          <label className="text-xs text-muted-foreground">Angle</label>
-          <span className="text-xs font-mono text-foreground">{angle} deg</span>
+          <label className="text-xs text-muted-foreground">Straighten</label>
+          <span className="text-xs font-mono tabular-nums text-muted-foreground">
+            {straighten > 0 ? "+" : ""}
+            {straighten}°
+          </span>
         </div>
         <input
           type="range"
-          min={0}
-          max={360}
-          value={angle}
-          onChange={(e) => setAngle(Number(e.target.value))}
+          min={-45}
+          max={45}
+          step={0.5}
+          value={straighten}
+          onChange={(e) => setStraighten(Number(e.target.value))}
           className="w-full mt-1"
         />
+        <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+          <span>-45°</span>
+          <span>0°</span>
+          <span>+45°</span>
+        </div>
       </div>
 
       {/* Flip buttons */}
@@ -106,7 +149,7 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
           <button
             type="button"
             onClick={() => setFlipH(!flipH)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded text-sm transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               flipH
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-primary/10"
@@ -118,7 +161,7 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
           <button
             type="button"
             onClick={() => setFlipV(!flipV)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded text-sm transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               flipV
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-primary/10"
@@ -129,6 +172,17 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
           </button>
         </div>
       </div>
+
+      {/* Reset all */}
+      {hasChanges && (
+        <button
+          type="button"
+          onClick={handleReset}
+          className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
+        >
+          Reset all changes
+        </button>
+      )}
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -151,18 +205,6 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
         >
           {files.length > 1 ? `Apply (${files.length} files)` : "Apply"}
         </button>
-      )}
-
-      {/* Download */}
-      {downloadUrl && (
-        <a
-          href={downloadUrl}
-          download
-          className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
-        >
-          <Download className="h-4 w-4" />
-          Download
-        </a>
       )}
     </form>
   );

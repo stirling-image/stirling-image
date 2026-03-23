@@ -86,6 +86,9 @@ export async function registerProgressRoutes(
     ) => {
       const { jobId } = request.params;
 
+      // Take over the response from Fastify for SSE streaming
+      reply.hijack();
+
       // Send SSE headers via the raw Node response
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",
