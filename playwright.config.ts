@@ -42,9 +42,10 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm --filter @stirling-image/api dev",
-      port: 1350,
+      port: 13490,
       reuseExistingServer: !process.env.CI,
       env: {
+        PORT: "13490",
         AUTH_ENABLED: "true",
         DEFAULT_USERNAME: "admin",
         DEFAULT_PASSWORD: "admin",

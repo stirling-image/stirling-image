@@ -63,7 +63,7 @@ const COLOR_TOOL_IDS = new Set([
 
 // Tools that don't need a file dropzone (they generate content or have custom UI)
 const NO_DROPZONE_TOOLS = new Set(["qr-generate"]);
-const SIDE_BY_SIDE_TOOLS = new Set(["resize"]);
+const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop"]);
 const LIVE_PREVIEW_TOOLS = new Set(["rotate"]);
 
 function ToolSettingsPanel({

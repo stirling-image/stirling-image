@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import { getTestImagePath } from "./helpers";
 
-const API = "http://localhost:1350";
+const API = "http://localhost:13490";
 
 async function getAuthToken(): Promise<string> {
   const res = await fetch(`${API}/api/auth/login`, {

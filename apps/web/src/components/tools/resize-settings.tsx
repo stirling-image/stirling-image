@@ -22,7 +22,7 @@ export function ResizeSettings() {
   const { processFiles, processing, error, downloadUrl, progress } =
     useToolProcessor("resize");
 
-  const [tab, setTab] = useState<ResizeTab>("presets");
+  const [tab, setTab] = useState<ResizeTab>("custom");
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [width, setWidth] = useState<string>("");
   const [height, setHeight] = useState<string>("");
@@ -80,14 +80,14 @@ export function ResizeSettings() {
       {/* Tab selector */}
       <div>
         <div className="flex gap-1">
-          <button type="button" onClick={() => setTab("presets")} className={tabClass("presets")}>
-            Presets
-          </button>
           <button type="button" onClick={() => setTab("custom")} className={tabClass("custom")}>
             Custom Size
           </button>
           <button type="button" onClick={() => setTab("scale")} className={tabClass("scale")}>
             Scale
+          </button>
+          <button type="button" onClick={() => setTab("presets")} className={tabClass("presets")}>
+            Presets
           </button>
         </div>
       </div>

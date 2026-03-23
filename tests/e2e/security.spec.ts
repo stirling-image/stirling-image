@@ -7,7 +7,7 @@ import { getTestImagePath } from "./helpers";
 // auth token handling, and unauthenticated access.
 // ---------------------------------------------------------------------------
 
-const API = "http://localhost:1350";
+const API = "http://localhost:13490";
 
 async function getAuthToken(): Promise<string> {
   const res = await fetch(`${API}/api/auth/login`, {

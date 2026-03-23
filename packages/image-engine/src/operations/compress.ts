@@ -22,7 +22,8 @@ export async function compress(image: Sharp, options: CompressOptions): Promise<
     if (targetSizeBytes <= 0) {
       throw new Error("Target size must be greater than 0");
     }
-    return compressToTargetSize(image, outputFormat, targetSizeBytes);
+    const inputBuffer = await image.toBuffer();
+    return compressToTargetSize(inputBuffer, outputFormat, targetSizeBytes);
   }
 
   const q = quality ?? 80;
@@ -34,16 +35,13 @@ export async function compress(image: Sharp, options: CompressOptions): Promise<
 }
 
 async function compressToTargetSize(
-  image: Sharp,
+  inputBuffer: Buffer,
   format: keyof import("sharp").FormatEnum,
   targetBytes: number
 ): Promise<Sharp> {
-  // Get the raw buffer to re-create Sharp instances for each attempt
-  const inputBuffer = await image.toBuffer();
-
   let low = 1;
   let high = 100;
-  let bestQuality = 80;
+  let bestQuality = 1;
   let bestBuffer: Buffer | null = null;
   const maxIterations = 8;
   const tolerance = 0.05; // 5%
@@ -69,12 +67,13 @@ async function compressToTargetSize(
     }
   }
 
-  // If we never found a suitable buffer, compress at the best quality we found
+  // If we never found a suitable buffer, compress at lowest quality found
   if (bestBuffer === null) {
     bestBuffer = await sharp(inputBuffer)
       .toFormat(format, { quality: bestQuality })
       .toBuffer();
   }
 
-  return sharp(bestBuffer);
+  // Preserve format + quality so the caller's .toBuffer() doesn't re-encode at defaults
+  return sharp(bestBuffer).toFormat(format, { quality: bestQuality });
 }

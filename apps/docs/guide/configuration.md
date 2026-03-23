@@ -8,7 +8,7 @@ All configuration is done through environment variables. Every variable has a se
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `1350` | Port the server listens on. The Docker image overrides this to `1349`. |
+| `PORT` | `1349` | Port the server listens on. |
 | `RATE_LIMIT_PER_MIN` | `100` | Maximum requests per minute per IP. |
 
 ### Authentication

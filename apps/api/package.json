@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "PORT=13490 tsx watch src/index.ts",
     "build": "tsc",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
@@ -24,6 +24,7 @@
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.38.0",
+    "exif-reader": "^2.0.3",
     "fastify": "^5.2.0",
     "jsqr": "^1.4.0",
     "p-queue": "^9.1.0",
