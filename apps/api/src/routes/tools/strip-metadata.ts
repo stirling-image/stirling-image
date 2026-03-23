@@ -48,19 +48,19 @@ function parseGpsCoordinates(gps: Record<string, unknown>): {
 
   const lat = gps.GPSLatitude as number[] | undefined;
   const latRef = gps.GPSLatitudeRef as string | undefined;
-  if (lat && lat.length === 3) {
+  if (lat && lat.length === 3 && lat.every((v) => typeof v === "number" && !Number.isNaN(v))) {
     latitude = lat[0] + lat[1] / 60 + lat[2] / 3600;
     if (latRef === "S") latitude = -latitude;
   }
 
   const lon = gps.GPSLongitude as number[] | undefined;
   const lonRef = gps.GPSLongitudeRef as string | undefined;
-  if (lon && lon.length === 3) {
+  if (lon && lon.length === 3 && lon.every((v) => typeof v === "number" && !Number.isNaN(v))) {
     longitude = lon[0] + lon[1] / 60 + lon[2] / 3600;
     if (lonRef === "W") longitude = -longitude;
   }
 
-  if (typeof gps.GPSAltitude === "number") {
+  if (typeof gps.GPSAltitude === "number" && !Number.isNaN(gps.GPSAltitude)) {
     altitude = gps.GPSAltitude;
     if (gps.GPSAltitudeRef === 1) altitude = -altitude;
   }
