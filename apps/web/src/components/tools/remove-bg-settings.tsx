@@ -2,23 +2,34 @@ import { useState } from "react";
 import { useFileStore } from "@/stores/file-store";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { ProgressCard } from "@/components/common/progress-card";
-import { Download } from "lucide-react";
+import { Download, User, Package, ImageIcon } from "lucide-react";
+
+type SubjectType = "people" | "products" | "general";
+type Quality = "fast" | "balanced" | "best";
 
 type BgModel =
   | "birefnet-general"
   | "birefnet-general-lite"
   | "birefnet-portrait"
   | "bria-rmbg"
-  | "isnet-general-use"
   | "u2net";
 
-const MODELS: { value: BgModel; label: string; description: string }[] = [
-  { value: "u2net", label: "U2-Net", description: "Fast, good quality (recommended)" },
-  { value: "isnet-general-use", label: "IS-Net", description: "Good general purpose" },
-  { value: "bria-rmbg", label: "BRIA RMBG", description: "Great for products" },
-  { value: "birefnet-general-lite", label: "BiRefNet Lite", description: "Higher quality, slower (~15s)" },
-  { value: "birefnet-portrait", label: "BiRefNet Portrait", description: "Best for people, slower (~15s)" },
-  { value: "birefnet-general", label: "BiRefNet Full", description: "Best quality, very slow (~60s+)" },
+const MODEL_MAP: Record<SubjectType, Record<Quality, BgModel>> = {
+  people:   { fast: "u2net", balanced: "birefnet-portrait", best: "birefnet-portrait" },
+  products: { fast: "u2net", balanced: "bria-rmbg",         best: "birefnet-general" },
+  general:  { fast: "u2net", balanced: "birefnet-general-lite", best: "birefnet-general" },
+};
+
+const SUBJECT_OPTIONS: { value: SubjectType; label: string; icon: typeof User }[] = [
+  { value: "people", label: "People", icon: User },
+  { value: "products", label: "Products", icon: Package },
+  { value: "general", label: "General", icon: ImageIcon },
+];
+
+const QUALITY_OPTIONS: { value: Quality; label: string; hint: string }[] = [
+  { value: "fast", label: "Fast", hint: "~2s" },
+  { value: "balanced", label: "Balanced", hint: "~15s" },
+  { value: "best", label: "Best", hint: "~60s" },
 ];
 
 const BG_PRESETS = [
@@ -35,8 +46,12 @@ export function RemoveBgSettings() {
   const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
     useToolProcessor("remove-background");
 
-  const [model, setModel] = useState<BgModel>("u2net");
+  const [subject, setSubject] = useState<SubjectType>("people");
+  const [quality, setQuality] = useState<Quality>("balanced");
+  const [isPassport, setIsPassport] = useState(false);
   const [bgColor, setBgColor] = useState("");
+
+  const model = isPassport ? "birefnet-portrait" : MODEL_MAP[subject][quality];
 
   const handleProcess = () => {
     const settings: Record<string, unknown> = { model };
@@ -48,20 +63,65 @@ export function RemoveBgSettings() {
 
   return (
     <div className="space-y-4">
-      {/* Model selector */}
+      {/* Subject type */}
       <div>
-        <label className="text-sm font-medium text-muted-foreground">AI Model</label>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value as BgModel)}
-          className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
-        >
-          {MODELS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label} — {m.description}
-            </option>
+        <label className="text-sm font-medium text-muted-foreground">What's in the photo?</label>
+        <div className="grid grid-cols-3 gap-1.5 mt-1.5">
+          {SUBJECT_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  setSubject(opt.value);
+                  if (opt.value !== "people") setIsPassport(false);
+                }}
+                className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors ${
+                  subject === opt.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Passport checkbox - only for people */}
+      {subject === "people" && (
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isPassport}
+            onChange={(e) => setIsPassport(e.target.checked)}
+            className="rounded border-border accent-primary"
+          />
+          <span className="text-sm text-muted-foreground">Passport / ID photo</span>
+        </label>
+      )}
+
+      {/* Quality */}
+      <div>
+        <label className="text-sm font-medium text-muted-foreground">Quality</label>
+        <div className="grid grid-cols-3 gap-1.5 mt-1.5">
+          {QUALITY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setQuality(opt.value)}
+              className={`py-2 px-2 rounded-lg border text-xs font-medium transition-colors ${
+                quality === opt.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/50"
+              }`}
+            >
+              <div>{opt.label}</div>
+              <div className="text-[10px] opacity-60 mt-0.5">{opt.hint}</div>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* Background color - intuitive preset buttons */}
