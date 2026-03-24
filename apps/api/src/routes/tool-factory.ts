@@ -3,10 +3,10 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
-import sharp from "sharp";
 import { createWorkspace } from "../lib/workspace.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { autoOrient } from "../lib/auto-orient.js";
 
 export interface ToolRouteConfig<T> {
   /** Unique tool identifier, used as the URL path segment. */
@@ -127,19 +127,7 @@ export function createToolRoute<T>(
       }
 
       // Auto-orient based on EXIF metadata before processing.
-      // Camera photos often have EXIF orientation tags (values 2-8) that browsers
-      // respect when displaying, but Sharp does NOT apply by default. Without this,
-      // processed images appear rotated because the output (PNG) strips EXIF data.
-      // Only re-encodes when orientation correction is actually needed.
-      let processBuffer = fileBuffer;
-      try {
-        const meta = await sharp(fileBuffer).metadata();
-        if (meta.orientation && meta.orientation > 1) {
-          processBuffer = await sharp(fileBuffer).rotate().toBuffer();
-        }
-      } catch {
-        // If metadata reading fails, proceed with original buffer
-      }
+      const processBuffer = await autoOrient(fileBuffer);
 
       // Process the image
       try {

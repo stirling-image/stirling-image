@@ -14,6 +14,7 @@ import PQueue from "p-queue";
 import { getToolConfig } from "./tool-factory.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { autoOrient } from "../lib/auto-orient.js";
 import { env } from "../config.js";
 import { updateJobProgress, type JobProgress } from "./progress.js";
 
@@ -191,8 +192,9 @@ export async function registerBatchRoutes(
             }
 
             try {
+              const orientedBuffer = await autoOrient(file.buffer);
               const result = await toolConfig.process(
-                file.buffer,
+                orientedBuffer,
                 settings,
                 file.filename,
               );

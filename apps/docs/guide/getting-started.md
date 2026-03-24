@@ -47,7 +47,7 @@ See [Configuration](./configuration) for the full list of environment variables.
 
 ## Build from source
 
-Requirements: Node.js 20+, pnpm 9+, Python 3.10+
+Requirements: Node.js 22+, pnpm 9+, Python 3.10+
 
 ```bash
 git clone https://github.com/siddharthksah/Stirling-Image.git

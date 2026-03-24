@@ -1629,6 +1629,450 @@ describe("Pipeline", () => {
       });
       expect(res.statusCode).toBe(400);
     });
+
+    it("executes Social Media Ready template pipeline", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 1080, height: 1080, fit: "cover" } },
+          { toolId: "compress", settings: { quality: 80 } },
+          { toolId: "strip-metadata", settings: {} },
+          { toolId: "convert", settings: { format: "webp" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "social.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(4);
+      expect(body.steps).toHaveLength(4);
+      expect(body.steps[0].toolId).toBe("resize");
+      expect(body.steps[1].toolId).toBe("compress");
+      expect(body.steps[2].toolId).toBe("strip-metadata");
+      expect(body.steps[3].toolId).toBe("convert");
+      expect(body.downloadUrl).toContain(".webp");
+      // Note: upscaling from 200x150 to 1080x1080 increases size
+      expect(body.processedSize).toBeGreaterThan(0);
+    });
+
+    it("executes Privacy Clean template pipeline", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "strip-metadata", settings: {} },
+          { toolId: "convert", settings: { format: "jpg" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "privacy.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(2);
+      expect(body.downloadUrl).toContain(".jpg");
+    });
+
+    it("executes Web Optimization template pipeline", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 1920, fit: "inside" } },
+          { toolId: "convert", settings: { format: "webp" } },
+          { toolId: "compress", settings: { quality: 80 } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "web.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(3);
+    });
+
+    it("executes Profile Picture template pipeline", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 400, height: 400, fit: "cover" } },
+          { toolId: "compress", settings: { quality: 85 } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "profile.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(2);
+    });
+
+    it("executes Watermark Batch template pipeline", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "watermark-text", settings: { text: "SAMPLE", opacity: 30 } },
+          { toolId: "strip-metadata", settings: {} },
+          { toolId: "compress", settings: { quality: 85 } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "watermark.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(3);
+    });
+
+    it("executes a single-step pipeline", async () => {
+      const pipeline = {
+        steps: [{ toolId: "convert", settings: { format: "webp" } }],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "single.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(1);
+      expect(body.downloadUrl).toContain(".webp");
+    });
+
+    it("returns full step details in response", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 50 } },
+          { toolId: "convert", settings: { format: "jpg" } },
+          { toolId: "compress", settings: { quality: 60 } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "details.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.jobId).toBeDefined();
+      expect(typeof body.jobId).toBe("string");
+      expect(body.originalSize).toBeGreaterThan(0);
+      expect(body.processedSize).toBeGreaterThan(0);
+      expect(body.steps).toHaveLength(3);
+      for (const step of body.steps) {
+        expect(step.step).toBeGreaterThan(0);
+        expect(step.toolId).toBeDefined();
+        expect(step.size).toBeGreaterThan(0);
+      }
+    });
+
+    it("returns 400 for invalid JSON pipeline", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "bad.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "pipeline", content: "not valid json{{{" },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toContain("JSON");
+    });
+
+    it("returns 400 when no file is provided", async () => {
+      const pipeline = {
+        steps: [{ toolId: "resize", settings: { width: 100 } }],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("handles pipeline with different image formats (JPG input)", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 50 } },
+          { toolId: "convert", settings: { format: "png" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "test.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(2);
+      expect(body.downloadUrl).toContain(".png");
+    });
+
+    it("handles pipeline with WebP input", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 25 } },
+          { toolId: "convert", settings: { format: "jpg" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "test.webp", contentType: "image/webp", content: WEBP_50x50 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(2);
+    });
+
+    it("executes a pipeline with border + rotate combo", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "border", settings: { borderWidth: 10, borderColor: "#ff0000" } },
+          { toolId: "rotate", settings: { angle: 45 } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "bordered.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).stepsCompleted).toBe(2);
+    });
+
+    it("executes pipeline with 5 steps chained", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 150 } },
+          { toolId: "rotate", settings: { angle: 90 } },
+          { toolId: "strip-metadata", settings: {} },
+          { toolId: "compress", settings: { quality: 70 } },
+          { toolId: "convert", settings: { format: "webp" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "chain.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.stepsCompleted).toBe(5);
+      expect(body.steps).toHaveLength(5);
+    });
+
+    it("rejects pipeline exceeding 20 steps", async () => {
+      const steps = Array.from({ length: 21 }, () => ({
+        toolId: "resize",
+        settings: { width: 100 },
+      }));
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "too-many.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "pipeline", content: JSON.stringify({ steps }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("processes result file is downloadable", async () => {
+      const pipeline = {
+        steps: [{ toolId: "resize", settings: { width: 50 } }],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "downloadable.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+
+      // Verify the download URL is valid
+      const dlRes = await app.inject({
+        method: "GET",
+        url: body.downloadUrl,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(dlRes.statusCode).toBe(200);
+      expect(dlRes.rawPayload.length).toBeGreaterThan(0);
+    });
+
+    it("returns 400 with mixed valid and invalid tool IDs", async () => {
+      const pipeline = {
+        steps: [
+          { toolId: "resize", settings: { width: 100 } },
+          { toolId: "nonexistent-tool", settings: {} },
+          { toolId: "convert", settings: { format: "jpg" } },
+        ],
+      };
+
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "mixed.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "pipeline", content: JSON.stringify(pipeline) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/execute",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toContain("nonexistent-tool");
+    });
   });
 
   describe("Pipeline CRUD", () => {
@@ -1711,6 +2155,160 @@ describe("Pipeline", () => {
       });
       expect(res.statusCode).toBe(400);
     });
+
+    it("saves pipeline without description", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: "No Description Pipeline",
+          steps: [{ toolId: "resize", settings: { width: 100 } }],
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.name).toBe("No Description Pipeline");
+      expect(body.description).toBeNull();
+
+      // Cleanup
+      await app.inject({
+        method: "DELETE",
+        url: `/api/v1/pipeline/${body.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+    });
+
+    it("saves and retrieves pipeline with correct step data", async () => {
+      const steps = [
+        { toolId: "resize", settings: { width: 200, height: 200, fit: "cover" } },
+        { toolId: "compress", settings: { quality: 75 } },
+        { toolId: "convert", settings: { format: "webp" } },
+      ];
+
+      const saveRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { name: "Full Pipeline", description: "With all data", steps },
+      });
+      expect(saveRes.statusCode).toBe(201);
+      const saved = JSON.parse(saveRes.body);
+
+      // List and verify the pipeline steps are correctly stored
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/pipeline/list",
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      const listed = JSON.parse(listRes.body);
+      const found = listed.pipelines.find((p: { id: string }) => p.id === saved.id);
+      expect(found).toBeDefined();
+      expect(found.steps).toHaveLength(3);
+      expect(found.steps[0].toolId).toBe("resize");
+      expect(found.steps[0].settings.width).toBe(200);
+      expect(found.steps[1].toolId).toBe("compress");
+      expect(found.steps[2].toolId).toBe("convert");
+      expect(found.createdAt).toBeDefined();
+
+      // Cleanup
+      await app.inject({
+        method: "DELETE",
+        url: `/api/v1/pipeline/${saved.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+    });
+
+    it("rejects pipeline name exceeding 100 characters", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: "A".repeat(101),
+          steps: [{ toolId: "resize", settings: {} }],
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("rejects pipeline description exceeding 500 characters", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: "Long Desc",
+          description: "D".repeat(501),
+          steps: [{ toolId: "resize", settings: {} }],
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("rejects saving pipeline with more than 20 steps", async () => {
+      const steps = Array.from({ length: 21 }, () => ({
+        toolId: "resize",
+        settings: { width: 100 },
+      }));
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { name: "Too Many Steps", steps },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("can save and delete multiple pipelines", async () => {
+      // Save two pipelines
+      const res1 = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: "Pipeline A",
+          steps: [{ toolId: "resize", settings: { width: 100 } }],
+        },
+      });
+      const res2 = await app.inject({
+        method: "POST",
+        url: "/api/v1/pipeline/save",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: "Pipeline B",
+          steps: [{ toolId: "convert", settings: { format: "jpg" } }],
+        },
+      });
+      expect(res1.statusCode).toBe(201);
+      expect(res2.statusCode).toBe(201);
+
+      const id1 = JSON.parse(res1.body).id;
+      const id2 = JSON.parse(res2.body).id;
+
+      // List should have both
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/pipeline/list",
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      const pipelines = JSON.parse(listRes.body).pipelines;
+      expect(pipelines.some((p: { id: string }) => p.id === id1)).toBe(true);
+      expect(pipelines.some((p: { id: string }) => p.id === id2)).toBe(true);
+
+      // Delete both
+      await app.inject({
+        method: "DELETE",
+        url: `/api/v1/pipeline/${id1}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      await app.inject({
+        method: "DELETE",
+        url: `/api/v1/pipeline/${id2}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+    });
   });
 });
 
@@ -1774,6 +2372,223 @@ describe("Batch processing", () => {
         payload,
       });
       expect(res.statusCode).toBe(400);
+    });
+
+    it("batch converts multiple images to webp", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "img1.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "img2.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "settings", content: JSON.stringify({ format: "webp" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/convert/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("batch compresses images with quality setting", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "settings", content: JSON.stringify({ quality: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/compress/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("batch strips metadata from images", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "meta1.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "meta2.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "settings", content: JSON.stringify({}) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/strip-metadata/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("batch rotates images", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "rot1.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "rot2.webp", contentType: "image/webp", content: WEBP_50x50 },
+        { name: "settings", content: JSON.stringify({ angle: 180 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/rotate/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("returns 400 for batch with invalid settings", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "a.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "settings", content: JSON.stringify({ format: "invalid-format" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/convert/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("batch with single file works", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "solo.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ width: 100 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("batch uses default settings when none provided", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "default.png", contentType: "image/png", content: PNG_200x150 },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/strip-metadata/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
+    });
+
+    it("batch includes X-File-Order header", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "first.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "file", filename: "second.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["x-file-order"]).toBeDefined();
+    });
+
+    it("returns ZIP with content-disposition attachment header", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "a.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-disposition"]).toContain("attachment");
+      expect(res.headers["content-disposition"]).toContain("batch-resize");
+    });
+
+    it("batch with clientJobId uses provided ID", async () => {
+      const clientJobId = "my-custom-job-id-12345";
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "a.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+        { name: "clientJobId", content: clientJobId },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["x-job-id"]).toBe(clientJobId);
+    });
+
+    it("batch handles mixed file formats", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", content: WEBP_50x50 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/zip");
     });
   });
 });

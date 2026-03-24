@@ -71,7 +71,7 @@ This VitePress site. Deployed to GitHub Pages automatically on push to `main`.
 
 1. The user picks a tool in the web UI and uploads an image.
 2. The frontend sends a multipart POST to `/api/v1/tools/:toolId` with the file and settings.
-3. The API route validates the input with Zod, then calls the appropriate package function -- either `@stirling-image/image-engine` for standard operations or `@stirling-image/ai` for ML tasks.
+3. The API route validates the input with Zod, auto-orients the image based on EXIF metadata (so camera photos display correctly after processing), then calls the appropriate package function -- either `@stirling-image/image-engine` for standard operations or `@stirling-image/ai` for ML tasks.
 4. For AI tools, the TypeScript bridge spawns a Python subprocess, waits for it to finish, and reads the output file.
 5. The API returns a `jobId` and `downloadUrl`. The frontend can poll `/api/v1/jobs/:jobId/progress` via SSE for real time status on longer tasks.
 6. The user downloads the processed image from `/api/v1/download/:jobId/:filename`.
