@@ -15,6 +15,7 @@ import { registerPipelineRoutes } from "./routes/pipeline.js";
 import { registerProgressRoutes } from "./routes/progress.js";
 import { apiKeyRoutes } from "./routes/api-keys.js";
 import { settingsRoutes } from "./routes/settings.js";
+import { userFileRoutes } from "./routes/user-files.js";
 import { db, schema } from "./db/index.js";
 
 // Run before anything else
@@ -68,6 +69,9 @@ await authRoutes(app);
 
 // File upload/download routes
 await fileRoutes(app);
+
+// User file library routes (persistent file management with versioning)
+await userFileRoutes(app);
 
 // Tool routes (generic factory-based)
 await registerToolRoutes(app);

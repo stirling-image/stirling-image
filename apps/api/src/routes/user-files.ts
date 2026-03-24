@@ -1,0 +1,558 @@
+/**
+ * User file library CRUD routes.
+ *
+ * GET    /api/v1/files              — List latest files (one per version chain)
+ * POST   /api/v1/files/upload       — Upload one or more image files
+ * GET    /api/v1/files/:id          — File details + full version history
+ * GET    /api/v1/files/:id/download — Stream file as attachment
+ * GET    /api/v1/files/:id/thumbnail — 300px JPEG thumbnail on-the-fly
+ * DELETE /api/v1/files              — Bulk delete entire version chains
+ * POST   /api/v1/files/save-result  — Save a tool processing result (new version)
+ */
+import { randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { extname } from "node:path";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { eq, desc, like, and, sql } from "drizzle-orm";
+import sharp from "sharp";
+import { validateImageBuffer } from "../lib/file-validation.js";
+import { sanitizeFilename } from "../lib/filename.js";
+import { saveFile, deleteStoredFile, getStoredFilePath } from "../lib/file-storage.js";
+import { getAuthUser } from "../plugins/auth.js";
+import { db, schema } from "../db/index.js";
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+function formatToMime(format: string): string {
+  const map: Record<string, string> = {
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    bmp: "image/bmp",
+    tiff: "image/tiff",
+    avif: "image/avif",
+  };
+  return map[format] ?? "application/octet-stream";
+}
+
+function extToMime(ext: string): string {
+  const clean = ext.toLowerCase().replace(/^\./, "");
+  const map: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    bmp: "image/bmp",
+    tiff: "image/tiff",
+    tif: "image/tiff",
+    avif: "image/avif",
+  };
+  return map[clean] ?? "application/octet-stream";
+}
+
+function serializeFile(row: typeof schema.userFiles.$inferSelect) {
+  return {
+    id: row.id,
+    originalName: row.originalName,
+    mimeType: row.mimeType,
+    size: row.size,
+    width: row.width,
+    height: row.height,
+    version: row.version,
+    parentId: row.parentId,
+    toolChain: row.toolChain ? JSON.parse(row.toolChain) : null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// ── Route registration ─────────────────────────────────────────────
+
+export async function userFileRoutes(app: FastifyInstance): Promise<void> {
+  /**
+   * GET /api/v1/files
+   *
+   * Returns the latest version of each file chain, sorted by createdAt DESC.
+   * A file is "latest" if its id is not referenced as a parentId by any other file.
+   *
+   * Query params:
+   *   search  — filter on originalName (SQL LIKE)
+   *   limit   — default 50
+   *   offset  — default 0
+   */
+  app.get(
+    "/api/v1/files",
+    async (
+      request: FastifyRequest<{
+        Querystring: { search?: string; limit?: string; offset?: string };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const user = getAuthUser(request);
+      const userId = user?.id ?? null;
+
+      const limit = Math.min(parseInt(request.query.limit ?? "50", 10) || 50, 200);
+      const offset = parseInt(request.query.offset ?? "0", 10) || 0;
+      const search = request.query.search?.trim();
+
+      // A file is the "latest" if no other row has it as its parentId.
+      // We use a SQL NOT IN subquery for this.
+      const latestCondition = sql`${schema.userFiles.id} NOT IN (
+        SELECT parent_id FROM user_files WHERE parent_id IS NOT NULL
+      )`;
+
+      // Build the where clauses
+      const conditions = [latestCondition];
+
+      if (userId) {
+        conditions.push(eq(schema.userFiles.userId, userId));
+      }
+
+      if (search) {
+        conditions.push(like(schema.userFiles.originalName, `%${search}%`));
+      }
+
+      const rows = db
+        .select()
+        .from(schema.userFiles)
+        .where(and(...conditions))
+        .orderBy(desc(schema.userFiles.createdAt))
+        .limit(limit)
+        .offset(offset)
+        .all();
+
+      // Total count (for pagination)
+      const countResult = db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.userFiles)
+        .where(and(...conditions))
+        .get();
+
+      return reply.send({
+        files: rows.map(serializeFile),
+        total: countResult?.count ?? 0,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  /**
+   * POST /api/v1/files/upload
+   *
+   * Multipart form with one or more image file parts.
+   * Validates each (magic bytes + dimensions), stores to disk, creates DB record.
+   */
+  app.post(
+    "/api/v1/files/upload",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = getAuthUser(request);
+      const userId = user?.id ?? null;
+
+      const created: ReturnType<typeof serializeFile>[] = [];
+
+      const parts = request.parts();
+
+      for await (const part of parts) {
+        if (part.type !== "file") continue;
+
+        // Consume the stream into a buffer
+        const chunks: Buffer[] = [];
+        for await (const chunk of part.file) {
+          chunks.push(chunk);
+        }
+        const buffer = Buffer.concat(chunks);
+
+        if (buffer.length === 0) continue;
+
+        // Validate image
+        const validation = await validateImageBuffer(buffer);
+        if (!validation.valid) {
+          return reply.status(400).send({
+            error: `Invalid file "${part.filename}": ${validation.reason}`,
+          });
+        }
+
+        const safeName = sanitizeFilename(part.filename ?? "upload");
+        const mimeType = formatToMime(validation.format);
+
+        // Persist to disk
+        const storedName = await saveFile(buffer, safeName);
+
+        // Create DB record
+        const id = randomUUID();
+        db.insert(schema.userFiles)
+          .values({
+            id,
+            userId,
+            originalName: safeName,
+            storedName,
+            mimeType,
+            size: buffer.length,
+            width: validation.width,
+            height: validation.height,
+            version: 1,
+            parentId: null,
+            toolChain: null,
+          })
+          .run();
+
+        const row = db
+          .select()
+          .from(schema.userFiles)
+          .where(eq(schema.userFiles.id, id))
+          .get();
+
+        if (row) created.push(serializeFile(row));
+      }
+
+      if (created.length === 0) {
+        return reply.status(400).send({ error: "No valid files uploaded" });
+      }
+
+      return reply.status(201).send({ files: created });
+    },
+  );
+
+  /**
+   * GET /api/v1/files/:id
+   *
+   * Returns full metadata for a file plus the complete version chain
+   * (from the root ancestor down through every version to the latest).
+   */
+  app.get(
+    "/api/v1/files/:id",
+    async (
+      request: FastifyRequest<{ Params: { id: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { id } = request.params;
+
+      const file = db
+        .select()
+        .from(schema.userFiles)
+        .where(eq(schema.userFiles.id, id))
+        .get();
+
+      if (!file) {
+        return reply.status(404).send({ error: "File not found" });
+      }
+
+      // Walk the full version chain using a recursive CTE.
+      // First find the root ancestor, then collect all descendants.
+      interface ChainRow {
+        id: string;
+        original_name: string;
+        mime_type: string;
+        size: number;
+        width: number | null;
+        height: number | null;
+        version: number;
+        parent_id: string | null;
+        tool_chain: string | null;
+        created_at: number;
+      }
+
+      const chainRows = db.all<ChainRow>(
+        sql`
+          WITH RECURSIVE
+          ancestors(id, parent_id) AS (
+            SELECT id, parent_id FROM user_files WHERE id = ${id}
+            UNION ALL
+            SELECT uf.id, uf.parent_id FROM user_files uf
+            INNER JOIN ancestors a ON uf.id = a.parent_id
+          ),
+          chain(id, original_name, mime_type, size, width, height,
+                version, parent_id, tool_chain, created_at) AS (
+            SELECT f.id, f.original_name, f.mime_type, f.size, f.width, f.height,
+                   f.version, f.parent_id, f.tool_chain, f.created_at
+            FROM user_files f
+            WHERE f.id = (SELECT id FROM ancestors WHERE parent_id IS NULL LIMIT 1)
+            UNION ALL
+            SELECT child.id, child.original_name, child.mime_type, child.size,
+                   child.width, child.height, child.version, child.parent_id,
+                   child.tool_chain, child.created_at
+            FROM user_files child
+            INNER JOIN chain c ON child.parent_id = c.id
+          )
+          SELECT * FROM chain ORDER BY version ASC
+        `,
+      );
+
+      const versions = chainRows.map((r) => ({
+        id: r.id,
+        originalName: r.original_name,
+        mimeType: r.mime_type,
+        size: r.size,
+        width: r.width,
+        height: r.height,
+        version: r.version,
+        parentId: r.parent_id,
+        toolChain: r.tool_chain ? JSON.parse(r.tool_chain) : null,
+        createdAt: new Date(r.created_at * 1000).toISOString(),
+      }));
+
+      return reply.send({
+        file: serializeFile(file),
+        versions,
+      });
+    },
+  );
+
+  /**
+   * GET /api/v1/files/:id/download
+   *
+   * Stream the stored file back to the client as an attachment.
+   */
+  app.get(
+    "/api/v1/files/:id/download",
+    async (
+      request: FastifyRequest<{ Params: { id: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { id } = request.params;
+
+      const file = db
+        .select()
+        .from(schema.userFiles)
+        .where(eq(schema.userFiles.id, id))
+        .get();
+
+      if (!file) {
+        return reply.status(404).send({ error: "File not found" });
+      }
+
+      const filePath = getStoredFilePath(file.storedName);
+
+      const stream = createReadStream(filePath);
+      stream.on("error", () => {
+        reply.status(404).send({ error: "File not found on disk" });
+      });
+
+      return reply
+        .header("Content-Type", file.mimeType)
+        .header(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+        )
+        .send(stream);
+    },
+  );
+
+  /**
+   * GET /api/v1/files/:id/thumbnail
+   *
+   * Generate and return a 300px-wide JPEG thumbnail on the fly via Sharp.
+   */
+  app.get(
+    "/api/v1/files/:id/thumbnail",
+    async (
+      request: FastifyRequest<{ Params: { id: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { id } = request.params;
+
+      const file = db
+        .select()
+        .from(schema.userFiles)
+        .where(eq(schema.userFiles.id, id))
+        .get();
+
+      if (!file) {
+        return reply.status(404).send({ error: "File not found" });
+      }
+
+      const filePath = getStoredFilePath(file.storedName);
+
+      try {
+        const thumbnail = await sharp(filePath)
+          .resize(300, null, { withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+
+        return reply
+          .header("Content-Type", "image/jpeg")
+          .header("Cache-Control", "public, max-age=86400")
+          .send(thumbnail);
+      } catch {
+        return reply.status(422).send({ error: "Could not generate thumbnail" });
+      }
+    },
+  );
+
+  /**
+   * DELETE /api/v1/files
+   *
+   * Bulk delete. Body: { ids: string[] }
+   * For each id, deletes the entire version chain (all ancestors and descendants).
+   */
+  app.delete(
+    "/api/v1/files",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = request.body as { ids?: unknown } | null;
+
+      if (!Array.isArray(body?.ids) || body.ids.length === 0) {
+        return reply.status(400).send({ error: "ids must be a non-empty array" });
+      }
+
+      const ids = body.ids.filter((id): id is string => typeof id === "string");
+      if (ids.length === 0) {
+        return reply.status(400).send({ error: "ids must contain string values" });
+      }
+
+      let deletedCount = 0;
+
+      interface DeleteChainRow { id: string; stored_name: string }
+
+      for (const id of ids) {
+        // Collect all files in the chain using a recursive CTE
+        const chainRows = db.all<DeleteChainRow>(
+          sql`
+            WITH RECURSIVE chain(id, stored_name) AS (
+              -- Anchor: find the root of this chain
+              SELECT f.id, f.stored_name
+              FROM user_files f
+              WHERE f.id = (
+                WITH RECURSIVE ancestors(id, parent_id) AS (
+                  SELECT id, parent_id FROM user_files WHERE id = ${id}
+                  UNION ALL
+                  SELECT uf.id, uf.parent_id FROM user_files uf
+                  INNER JOIN ancestors a ON uf.id = a.parent_id
+                )
+                SELECT id FROM ancestors WHERE parent_id IS NULL LIMIT 1
+              )
+              UNION ALL
+              -- Recurse: all descendants
+              SELECT child.id, child.stored_name
+              FROM user_files child
+              INNER JOIN chain c ON child.parent_id = c.id
+            )
+            SELECT id, stored_name FROM chain
+          `,
+        );
+
+        for (const row of chainRows) {
+          await deleteStoredFile(row.stored_name);
+          db.delete(schema.userFiles)
+            .where(eq(schema.userFiles.id, row.id))
+            .run();
+          deletedCount++;
+        }
+      }
+
+      return reply.send({ deleted: deletedCount });
+    },
+  );
+
+  /**
+   * POST /api/v1/files/save-result
+   *
+   * Save the output of a tool as a new version linked to a parent file.
+   * Multipart fields:
+   *   file     — the processed image
+   *   parentId — id of the parent user file record
+   *   toolId   — the tool that produced this result
+   */
+  app.post(
+    "/api/v1/files/save-result",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = getAuthUser(request);
+      const userId = user?.id ?? null;
+
+      let fileBuffer: Buffer | null = null;
+      let filename = "result";
+      let parentId: string | null = null;
+      let toolId: string | null = null;
+
+      const parts = request.parts();
+      for await (const part of parts) {
+        if (part.type === "file") {
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) {
+            chunks.push(chunk);
+          }
+          fileBuffer = Buffer.concat(chunks);
+          filename = sanitizeFilename(part.filename ?? "result");
+        } else if (part.fieldname === "parentId") {
+          parentId = (part.value as string).trim() || null;
+        } else if (part.fieldname === "toolId") {
+          toolId = (part.value as string).trim() || null;
+        }
+      }
+
+      if (!fileBuffer || fileBuffer.length === 0) {
+        return reply.status(400).send({ error: "No file provided" });
+      }
+
+      if (!parentId) {
+        return reply.status(400).send({ error: "parentId is required" });
+      }
+
+      // Validate the image
+      const validation = await validateImageBuffer(fileBuffer);
+      if (!validation.valid) {
+        return reply.status(400).send({
+          error: `Invalid file: ${validation.reason}`,
+        });
+      }
+
+      // Look up the parent to compute the next version and carry forward the tool chain
+      const parent = db
+        .select()
+        .from(schema.userFiles)
+        .where(eq(schema.userFiles.id, parentId))
+        .get();
+
+      if (!parent) {
+        return reply.status(404).send({ error: "Parent file not found" });
+      }
+
+      const nextVersion = parent.version + 1;
+
+      // Build the tool chain: append the new toolId to the parent's chain
+      const existingChain: string[] = parent.toolChain
+        ? JSON.parse(parent.toolChain)
+        : [];
+      const newChain = toolId ? [...existingChain, toolId] : existingChain;
+
+      // Determine the original filename (preserve parent's name, update extension)
+      const ext = extname(filename) || extname(parent.originalName);
+      const baseName = parent.originalName.replace(/\.[^.]+$/, "");
+      const resultName = `${baseName}${ext}`;
+
+      const mimeType = formatToMime(validation.format) || extToMime(ext);
+
+      // Persist to disk
+      const storedName = await saveFile(fileBuffer, resultName);
+
+      // Create DB record
+      const id = randomUUID();
+      db.insert(schema.userFiles)
+        .values({
+          id,
+          userId,
+          originalName: resultName,
+          storedName,
+          mimeType,
+          size: fileBuffer.length,
+          width: validation.width,
+          height: validation.height,
+          version: nextVersion,
+          parentId,
+          toolChain: JSON.stringify(newChain),
+        })
+        .run();
+
+      const row = db
+        .select()
+        .from(schema.userFiles)
+        .where(eq(schema.userFiles.id, id))
+        .get();
+
+      return reply.status(201).send({ file: row ? serializeFile(row) : null });
+    },
+  );
+
+  app.log.info("User file routes registered");
+}
