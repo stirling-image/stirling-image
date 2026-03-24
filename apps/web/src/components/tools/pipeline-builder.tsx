@@ -15,6 +15,7 @@ import {
 import * as icons from "lucide-react";
 import { TOOLS } from "@stirling-image/shared";
 import { cn } from "@/lib/utils";
+import { PipelineStepSettings } from "./pipeline-step-settings";
 
 /** Tools that can be used as pipeline steps (excludes pipeline/batch/multi-file tools). */
 const PIPELINE_TOOLS = TOOLS.filter(
@@ -90,6 +91,13 @@ export function PipelineBuilder({
       const newSteps = [...steps];
       [newSteps[idx], newSteps[newIdx]] = [newSteps[newIdx], newSteps[idx]];
       onStepsChange(newSteps);
+    },
+    [steps, onStepsChange]
+  );
+
+  const updateStepSettings = useCallback(
+    (id: string, newSettings: Record<string, unknown>) => {
+      onStepsChange(steps.map((s) => (s.id === id ? { ...s, settings: newSettings } : s)));
     },
     [steps, onStepsChange]
   );
@@ -238,13 +246,15 @@ export function PipelineBuilder({
 
                 {/* Expanded settings */}
                 {isExpanded && (
-                  <div className="border-t border-border p-3 bg-muted/10">
-                    <p className="text-xs text-muted-foreground mb-2">
+                  <div className="border-t border-border p-3 bg-muted/10 space-y-3">
+                    <p className="text-xs text-muted-foreground">
                       {tool.description}
                     </p>
-                    <p className="text-xs text-muted-foreground italic">
-                      Default settings will be used. Configure via the API for advanced options.
-                    </p>
+                    <PipelineStepSettings
+                      toolId={step.toolId}
+                      settings={step.settings}
+                      onChange={(s) => updateStepSettings(step.id, s)}
+                    />
                   </div>
                 )}
               </div>
