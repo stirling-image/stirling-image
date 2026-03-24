@@ -3,10 +3,13 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
+import sharp from "sharp";
 import { createWorkspace } from "../lib/workspace.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import { autoOrient } from "../lib/auto-orient.js";
+import { db, schema } from "../db/index.js";
 
 export interface ToolRouteConfig<T> {
   /** Unique tool identifier, used as the URL path segment. */
@@ -64,6 +67,7 @@ export function createToolRoute<T>(
       let fileBuffer: Buffer | null = null;
       let filename = "image";
       let settingsRaw: string | null = null;
+      let fileId: string | null = null;
 
       // Parse multipart parts
       try {
@@ -82,6 +86,9 @@ export function createToolRoute<T>(
             // Field part
             if (part.fieldname === "settings") {
               settingsRaw = part.value as string;
+            }
+            if (part.fieldname === "fileId") {
+              fileId = part.value as string;
             }
           }
         }
@@ -143,11 +150,63 @@ export function createToolRoute<T>(
         const inputPath = join(workspacePath, "input", filename);
         await writeFile(inputPath, fileBuffer);
 
+        // Auto-save to persistent file store when a fileId is provided
+        let savedFileId: string | undefined;
+        if (fileId) {
+          try {
+            const { saveFile } = await import("../lib/file-storage.js");
+            const parent = db
+              .select()
+              .from(schema.userFiles)
+              .where(eq(schema.userFiles.id, fileId))
+              .get();
+            if (parent) {
+              const newVersion = parent.version + 1;
+              const parentChain: string[] = parent.toolChain
+                ? JSON.parse(parent.toolChain)
+                : [];
+              const newToolChain = [...parentChain, config.toolId];
+              const storedName = await saveFile(result.buffer, result.filename);
+              // Get image dimensions from the processed output
+              let width: number | null = null;
+              let height: number | null = null;
+              try {
+                const meta = await sharp(result.buffer).metadata();
+                width = meta.width ?? null;
+                height = meta.height ?? null;
+              } catch {
+                // dimensions are non-critical
+              }
+              const newId = randomUUID();
+              db.insert(schema.userFiles)
+                .values({
+                  id: newId,
+                  userId: parent.userId,
+                  originalName: result.filename,
+                  storedName,
+                  mimeType: result.contentType,
+                  size: result.buffer.length,
+                  width,
+                  height,
+                  version: newVersion,
+                  parentId: fileId,
+                  toolChain: JSON.stringify(newToolChain),
+                })
+                .run();
+              savedFileId = newId;
+            }
+          } catch (saveErr) {
+            // Non-fatal — tool processing already succeeded
+            request.log.warn({ saveErr, fileId }, "Failed to auto-save processed file");
+          }
+        }
+
         return reply.send({
           jobId,
           downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(result.filename)}`,
           originalSize: fileBuffer.length,
           processedSize: result.buffer.length,
+          savedFileId,
         });
       } catch (err) {
         // Catch Sharp / processing errors and return a clean API error
