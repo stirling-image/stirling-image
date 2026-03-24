@@ -8,6 +8,7 @@ export interface FileEntry {
   originalSize: number;
   status: "pending" | "processing" | "completed" | "failed";
   error: string | null;
+  serverFileId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,7 @@ function createEntry(file: File): FileEntry {
     originalSize: file.size,
     status: "pending",
     error: null,
+    serverFileId: undefined,
   };
 }
 

@@ -56,6 +56,13 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
     const file = new File([blob], details.originalName, { type: details.mimeType });
     setFiles([file]);
     navigate("/");
+    // Set serverFileId so tool processing creates a new version
+    setTimeout(() => {
+      const entries = useFileStore.getState().entries;
+      if (entries.length > 0) {
+        useFileStore.getState().updateEntry(0, { serverFileId: details.id });
+      }
+    }, 0);
   }
 
   if (!selectedFileId) {
@@ -63,7 +70,9 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
       <div
         className={cn(
           "flex flex-col items-center justify-center text-muted-foreground",
-          mobile ? "flex-1" : "w-72 shrink-0 border-l border-border",
+          mobile
+            ? "flex flex-col gap-4"
+            : "w-60 border-l border-border p-4 shrink-0 hidden lg:flex flex-col",
         )}
       >
         <FileImage className="h-12 w-12 mb-3 opacity-30" />
@@ -77,7 +86,9 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
       <div
         className={cn(
           "flex items-center justify-center",
-          mobile ? "flex-1" : "w-72 shrink-0 border-l border-border",
+          mobile
+            ? "flex flex-col gap-4"
+            : "w-60 border-l border-border p-4 shrink-0 hidden lg:flex flex-col",
         )}
       >
         <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -90,12 +101,14 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
   return (
     <div
       className={cn(
-        "flex flex-col overflow-y-auto",
-        mobile ? "flex-1" : "w-72 shrink-0 border-l border-border",
+        "overflow-y-auto",
+        mobile
+          ? "flex flex-col gap-4"
+          : "w-60 border-l border-border p-4 shrink-0 hidden lg:flex flex-col",
       )}
     >
       {/* Thumbnail */}
-      <div className="p-4 border-b border-border">
+      <div className={cn("border-b border-border", mobile ? "" : "pb-4")}>
         <img
           src={getFileThumbnailUrl(details.id)}
           alt={details.originalName}
@@ -104,7 +117,7 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
       </div>
 
       {/* Details card */}
-      <div className="flex-1 p-4">
+      <div className="flex-1">
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="bg-blue-500/10 border-b border-border px-3 py-2">
             <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400">File Details</h4>
@@ -135,7 +148,7 @@ export function FileDetails({ mobile = false }: FileDetailsProps) {
       </div>
 
       {/* Open File button */}
-      <div className="p-4 border-t border-border">
+      <div className={cn("border-t border-border", mobile ? "pt-3" : "pt-4")}>
         <button
           onClick={handleOpenFile}
           className="w-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"

@@ -10,6 +10,7 @@ interface ProcessResult {
   downloadUrl: string;
   originalSize: number;
   processedSize: number;
+  savedFileId?: string;
 }
 
 export interface ToolProgress {
@@ -128,6 +129,12 @@ export function useToolProcessor(toolId: string) {
         formData.append("clientJobId", clientJobId);
       }
 
+      // If this file came from the Files page, include its ID for version tracking
+      const currentEntry = useFileStore.getState().currentEntry;
+      if (currentEntry?.serverFileId) {
+        formData.append("fileId", currentEntry.serverFileId);
+      }
+
       // Use XHR for upload progress tracking
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
@@ -168,6 +175,13 @@ export function useToolProcessor(toolId: string) {
             setJobId(result.jobId);
             setProcessedUrl(result.downloadUrl);
             setSizes(result.originalSize, result.processedSize);
+            // Update serverFileId if a new version was saved
+            if (result.savedFileId) {
+              const state = useFileStore.getState();
+              if (state.entries[state.selectedIndex]) {
+                state.updateEntry(state.selectedIndex, { serverFileId: result.savedFileId });
+              }
+            }
           } catch {
             setError("Invalid response from server");
           }
