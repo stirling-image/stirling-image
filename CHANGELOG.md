@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.5.2...v0.6.0) (2026-03-24)
+
+
+### Features
+
+* extract auto-orient utility and expand test coverage ([8622c4a](https://github.com/siddharthksah/Stirling-Image/commit/8622c4a40245504372e75d3cd851535528639dea))
+
 ## [0.5.2](https://github.com/siddharthksah/Stirling-Image/compare/v0.5.1...v0.5.2) (2026-03-23)
 
 
