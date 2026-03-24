@@ -22,6 +22,20 @@
       "when": 1774357742003,
       "tag": "0002_pale_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1774598000000,
+      "tag": "0003_add_team_to_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1774372393588,
+      "tag": "0004_married_forgotten_one",
+      "breakpoints": true
     }
   ]
 }
