@@ -17,6 +17,7 @@ const envSchema = z.object({
   MAX_MEGAPIXELS: z.coerce.number().default(100),
   RATE_LIMIT_PER_MIN: z.coerce.number().default(100),
   DB_PATH: z.string().default("./data/stirling.db"),
+  FILES_STORAGE_PATH: z.string().default("./data/files"),
   WORKSPACE_PATH: z.string().default("./tmp/workspace"),
   DEFAULT_THEME: z.enum(["light", "dark"]).default("light"),
   DEFAULT_LOCALE: z.string().default("en"),
