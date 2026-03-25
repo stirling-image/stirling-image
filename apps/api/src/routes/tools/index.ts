@@ -1,10 +1,11 @@
+import { TOOLS } from "@stirling-image/shared";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import { db, schema } from "../../db/index.js";
 import { registerBarcodeRead } from "./barcode-read.js";
 import { registerBlurFaces } from "./blur-faces.js";
 import { registerBorder } from "./border.js";
-// Phase 3: Optimization extras
 import { registerBulkRename } from "./bulk-rename.js";
-// Phase 3: Layout & Composition
 import { registerCollage } from "./collage.js";
 import { registerColorAdjustments } from "./color-adjustments.js";
 import { registerColorPalette } from "./color-palette.js";
@@ -18,81 +19,119 @@ import { registerFavicon } from "./favicon.js";
 import { registerFindDuplicates } from "./find-duplicates.js";
 import { registerGifTools } from "./gif-tools.js";
 import { registerImageToPdf } from "./image-to-pdf.js";
-// Phase 3: Utilities
 import { registerInfo } from "./info.js";
 import { registerOcr } from "./ocr.js";
 import { registerQrGenerate } from "./qr-generate.js";
-// Phase 4: AI Tools
 import { registerRemoveBackground } from "./remove-background.js";
-// Phase 3: Adjustments extra
 import { registerReplaceColor } from "./replace-color.js";
 import { registerResize } from "./resize.js";
 import { registerRotate } from "./rotate.js";
 import { registerSmartCrop } from "./smart-crop.js";
 import { registerSplit } from "./split.js";
 import { registerStripMetadata } from "./strip-metadata.js";
-// Phase 3: Format & Conversion
 import { registerSvgToRaster } from "./svg-to-raster.js";
 import { registerTextOverlay } from "./text-overlay.js";
 import { registerUpscale } from "./upscale.js";
 import { registerVectorize } from "./vectorize.js";
 import { registerWatermarkImage } from "./watermark-image.js";
-// Phase 3: Watermark & Overlay
 import { registerWatermarkText } from "./watermark-text.js";
 
 /**
  * Registry that imports and registers all tool routes.
  * Each tool uses the createToolRoute factory from tool-factory.ts.
+ *
+ * Tools listed in the `disabledTools` setting or marked `experimental`
+ * (when `enableExperimentalTools` is off) are skipped at startup.
  */
 export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
-  // Phase 2: Core tools
-  registerResize(app);
-  registerCrop(app);
-  registerRotate(app);
-  registerConvert(app);
-  registerCompress(app);
-  registerStripMetadata(app);
-  registerColorAdjustments(app);
+  // Read disabled tools from settings
+  const disabledRow = db
+    .select()
+    .from(schema.settings)
+    .where(eq(schema.settings.key, "disabledTools"))
+    .get();
+  const disabledTools: string[] = disabledRow ? JSON.parse(disabledRow.value) : [];
 
-  // Phase 3: Watermark & Overlay
-  registerWatermarkText(app);
-  registerWatermarkImage(app);
-  registerTextOverlay(app);
-  registerCompose(app);
+  // Read experimental flag
+  const expRow = db
+    .select()
+    .from(schema.settings)
+    .where(eq(schema.settings.key, "enableExperimentalTools"))
+    .get();
+  const enableExperimental = expRow?.value === "true";
 
-  // Phase 3: Utilities
-  registerInfo(app);
-  registerCompare(app);
-  registerFindDuplicates(app);
-  registerColorPalette(app);
-  registerQrGenerate(app);
-  registerBarcodeRead(app);
+  // Get experimental tool IDs from shared constants
+  const experimentalToolIds = TOOLS.filter((t) => t.experimental).map((t) => t.id);
 
-  // Phase 3: Layout & Composition
-  registerCollage(app);
-  registerSplit(app);
-  registerBorder(app);
+  // Build skip set
+  const skipTools = new Set([...disabledTools, ...(enableExperimental ? [] : experimentalToolIds)]);
 
-  // Phase 3: Format & Conversion
-  registerSvgToRaster(app);
-  registerVectorize(app);
-  registerGifTools(app);
+  const toolRegistrations: Array<{
+    id: string;
+    register: (app: FastifyInstance) => void;
+  }> = [
+    // Essentials
+    { id: "resize", register: registerResize },
+    { id: "crop", register: registerCrop },
+    { id: "rotate", register: registerRotate },
+    { id: "convert", register: registerConvert },
+    { id: "compress", register: registerCompress },
+    { id: "strip-metadata", register: registerStripMetadata },
+    { id: "color-adjustments", register: registerColorAdjustments },
 
-  // Phase 3: Optimization extras
-  registerBulkRename(app);
-  registerFavicon(app);
-  registerImageToPdf(app);
+    // Watermark & Overlay
+    { id: "watermark-text", register: registerWatermarkText },
+    { id: "watermark-image", register: registerWatermarkImage },
+    { id: "text-overlay", register: registerTextOverlay },
+    { id: "compose", register: registerCompose },
 
-  // Phase 3: Adjustments extra
-  registerReplaceColor(app);
+    // Utilities
+    { id: "info", register: registerInfo },
+    { id: "compare", register: registerCompare },
+    { id: "find-duplicates", register: registerFindDuplicates },
+    { id: "color-palette", register: registerColorPalette },
+    { id: "qr-generate", register: registerQrGenerate },
+    { id: "barcode-read", register: registerBarcodeRead },
 
-  // Phase 4: AI Tools
-  registerRemoveBackground(app);
-  registerUpscale(app);
-  registerOcr(app);
-  registerBlurFaces(app);
-  registerEraseObject(app);
-  registerSmartCrop(app);
+    // Layout & Composition
+    { id: "collage", register: registerCollage },
+    { id: "split", register: registerSplit },
+    { id: "border", register: registerBorder },
 
-  app.log.info("Tool routes registered (32 tools, 35 endpoints)");
+    // Format & Conversion
+    { id: "svg-to-raster", register: registerSvgToRaster },
+    { id: "vectorize", register: registerVectorize },
+    { id: "gif-tools", register: registerGifTools },
+
+    // Optimization extras
+    { id: "bulk-rename", register: registerBulkRename },
+    { id: "favicon", register: registerFavicon },
+    { id: "image-to-pdf", register: registerImageToPdf },
+
+    // Adjustments extra
+    { id: "replace-color", register: registerReplaceColor },
+
+    // AI Tools
+    { id: "remove-background", register: registerRemoveBackground },
+    { id: "upscale", register: registerUpscale },
+    { id: "ocr", register: registerOcr },
+    { id: "blur-faces", register: registerBlurFaces },
+    { id: "erase-object", register: registerEraseObject },
+    { id: "smart-crop", register: registerSmartCrop },
+  ];
+
+  let skipped = 0;
+  for (const { id, register } of toolRegistrations) {
+    if (skipTools.has(id)) {
+      app.log.info(`Skipping disabled/experimental tool: ${id}`);
+      skipped++;
+      continue;
+    }
+    register(app);
+  }
+
+  const registered = toolRegistrations.length - skipped;
+  app.log.info(
+    `Tool routes registered (${registered}/${toolRegistrations.length} tools, ${skipped} skipped)`,
+  );
 }
