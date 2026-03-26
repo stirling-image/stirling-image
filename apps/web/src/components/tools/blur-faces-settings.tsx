@@ -69,11 +69,6 @@ export function BlurFacesSettings() {
         </div>
       </div>
 
-      {/* Info */}
-      <p className="text-[10px] text-muted-foreground">
-        Uses MediaPipe for face detection. Automatically detects and blurs all faces in the image.
-      </p>
-
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
 
@@ -91,7 +86,6 @@ export function BlurFacesSettings() {
           active={processing}
           phase={progress.phase === "idle" ? "uploading" : progress.phase}
           label="Blurring faces"
-          stage={progress.stage}
           percent={progress.percent}
           elapsed={progress.elapsed}
         />

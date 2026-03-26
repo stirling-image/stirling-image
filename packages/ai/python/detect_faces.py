@@ -1,4 +1,4 @@
-"""Face detection and blurring using MediaPipe."""
+"""Face detection and blurring using OpenCV."""
 import sys
 import json
 
@@ -17,70 +17,79 @@ def main():
     sensitivity = settings.get("sensitivity", 0.5)
 
     try:
-        emit_progress(10, "Loading face detection model")
+        emit_progress(10, "Preparing")
         from PIL import Image, ImageFilter
 
         img = Image.open(input_path).convert("RGB")
 
         try:
-            import mediapipe as mp
+            import cv2
             import numpy as np
 
-            emit_progress(20, "Model ready")
+            emit_progress(20, "Ready")
 
-            mp_face = mp.solutions.face_detection
+            # Load Haar cascade for face detection
+            haar_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            face_cascade = cv2.CascadeClassifier(haar_path)
 
-            with mp_face.FaceDetection(
-                min_detection_confidence=sensitivity
-            ) as detector:
-                img_array = np.array(img)
-                emit_progress(25, "Scanning for faces")
-                results = detector.process(img_array)
+            # Convert to grayscale for detection
+            img_array = np.array(img)
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
 
-                faces = []
-                emit_progress(50, f"Found {len(results.detections or [])} faces")
-                if results.detections:
-                    for i, detection in enumerate(results.detections):
-                        bbox = detection.location_data.relative_bounding_box
-                        x = int(bbox.xmin * img.width)
-                        y = int(bbox.ymin * img.height)
-                        w = int(bbox.width * img.width)
-                        h = int(bbox.height * img.height)
+            # Map sensitivity (0.1-0.9) to minNeighbors (8-2)
+            # Higher sensitivity = fewer required neighbors = more detections
+            min_neighbors = max(2, int(8 - sensitivity * 7))
 
-                        # Add some padding around the face
-                        pad = int(max(w, h) * 0.1)
-                        x1 = max(0, x - pad)
-                        y1 = max(0, y - pad)
-                        x2 = min(img.width, x + w + pad)
-                        y2 = min(img.height, y + h + pad)
+            emit_progress(25, "Scanning for faces")
+            faces_detected = face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=min_neighbors,
+                minSize=(30, 30),
+            )
 
-                        face_region = img.crop((x1, y1, x2, y2))
-                        blurred = face_region.filter(
-                            ImageFilter.GaussianBlur(blur_radius)
-                        )
-                        img.paste(blurred, (x1, y1))
-                        faces.append({"x": x, "y": y, "w": w, "h": h})
-                        emit_progress(50 + int((i + 1) / max(len(results.detections), 1) * 40), f"Blurring face {i + 1} of {len(results.detections)}")
+            faces = []
+            num_faces = len(faces_detected)
+            emit_progress(50, f"Found {num_faces} face{'s' if num_faces != 1 else ''}")
 
-                emit_progress(95, "Saving result")
-                img.save(output_path)
-                print(
-                    json.dumps(
-                        {
-                            "success": True,
-                            "facesDetected": len(faces),
-                            "faces": faces,
-                        }
+            if num_faces > 0:
+                for i, (x, y, w, h) in enumerate(faces_detected):
+                    # Add padding around the face
+                    pad = int(max(w, h) * 0.1)
+                    x1 = max(0, x - pad)
+                    y1 = max(0, y - pad)
+                    x2 = min(img.width, x + w + pad)
+                    y2 = min(img.height, y + h + pad)
+
+                    face_region = img.crop((x1, y1, x2, y2))
+                    blurred = face_region.filter(
+                        ImageFilter.GaussianBlur(blur_radius)
                     )
+                    img.paste(blurred, (x1, y1))
+                    faces.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h)})
+                    emit_progress(
+                        50 + int((i + 1) / num_faces * 40),
+                        f"Blurring face {i + 1} of {num_faces}",
+                    )
+
+            emit_progress(95, "Saving result")
+            img.save(output_path)
+            print(
+                json.dumps(
+                    {
+                        "success": True,
+                        "facesDetected": len(faces),
+                        "faces": faces,
+                    }
                 )
+            )
 
         except ImportError:
-            # MediaPipe not available — report error clearly
             print(
                 json.dumps(
                     {
                         "success": False,
-                        "error": "Face detection requires the mediapipe package. Install with: pip install mediapipe",
+                        "error": "Face detection requires OpenCV. Install with: pip install opencv-python-headless",
                     }
                 )
             )
