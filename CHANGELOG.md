@@ -1,3 +1,19 @@
+# [0.9.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.8.2...v0.9.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* **blur-faces:** switch from MediaPipe to OpenCV and auto-orient images ([dc10f90](https://github.com/siddharthksah/Stirling-Image/commit/dc10f905c62c662f1a40701c81874e5854ea33e6))
+* **docker:** add build layer caching for faster Docker rebuilds ([03ba30d](https://github.com/siddharthksah/Stirling-Image/commit/03ba30d8f01c5c2500641d934b08a875589bcd68))
+* **upscale:** auto-orient images before upscaling and improve UI ([8a6e665](https://github.com/siddharthksah/Stirling-Image/commit/8a6e665a4484bda1e4b93b520c393bb707a624aa))
+
+
+### Features
+
+* **adjustments:** add real-time live preview for all color tools ([b5c924e](https://github.com/siddharthksah/Stirling-Image/commit/b5c924e0fc7468c6364ef320958cea2e5ef18420))
+* **image-to-pdf:** add live PDF page preview with margin visualization ([cd666ea](https://github.com/siddharthksah/Stirling-Image/commit/cd666eaef0b13bcd9223439f0bbb5efd88b2f25e))
+* **rotate:** add editable angle input and fine-tune +/- buttons ([e1f04c2](https://github.com/siddharthksah/Stirling-Image/commit/e1f04c28a6b03c0503266c0e78e7a9161011d939))
+
 ## [0.8.2](https://github.com/siddharthksah/Stirling-Image/compare/v0.8.1...v0.8.2) (2026-03-25)
 
 
