@@ -67,17 +67,25 @@ const COLOR_TOOL_IDS = new Set([
 // Tools that don't need a file dropzone (they generate content or have custom UI)
 const NO_DROPZONE_TOOLS = new Set(["qr-generate"]);
 const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop", "rotate"]);
-const LIVE_PREVIEW_TOOLS = new Set(["rotate"]);
+const LIVE_PREVIEW_TOOLS = new Set([
+  "rotate",
+  "brightness-contrast",
+  "saturation",
+  "color-channels",
+  "color-effects",
+]);
 const NO_COMPARISON_TOOLS = new Set(["strip-metadata", "convert"]);
 const INTERACTIVE_CROP_TOOLS = new Set(["crop"]);
 
 function ToolSettingsPanel({
   toolId,
   onPreviewTransform,
+  onPreviewFilter,
   cropProps,
 }: {
   toolId: string;
   onPreviewTransform?: (t: PreviewTransform) => void;
+  onPreviewFilter?: (filter: string) => void;
   cropProps?: {
     cropState: {
       crop: Crop;
@@ -97,7 +105,8 @@ function ToolSettingsPanel({
   if (toolId === "convert") return <ConvertSettings />;
   if (toolId === "compress") return <CompressSettings />;
   if (toolId === "strip-metadata") return <StripMetadataSettings />;
-  if (COLOR_TOOL_IDS.has(toolId)) return <ColorSettings toolId={toolId} />;
+  if (COLOR_TOOL_IDS.has(toolId))
+    return <ColorSettings toolId={toolId} onPreviewFilter={onPreviewFilter} />;
   // Phase 3: Watermark & Overlay
   if (toolId === "watermark-text") return <WatermarkTextSettings />;
   if (toolId === "watermark-image") return <WatermarkImageSettings />;
@@ -229,6 +238,7 @@ export function ToolPage() {
   );
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(true);
   const [previewTransform, setPreviewTransform] = useState<PreviewTransform | null>(null);
+  const [previewFilter, setPreviewFilter] = useState<string>("");
 
   const [cropCrop, setCropCrop] = useState<Crop>({
     unit: "%",
@@ -364,6 +374,7 @@ export function ToolPage() {
                   onPreviewTransform={
                     LIVE_PREVIEW_TOOLS.has(tool.id) ? setPreviewTransform : undefined
                   }
+                  onPreviewFilter={LIVE_PREVIEW_TOOLS.has(tool.id) ? setPreviewFilter : undefined}
                   cropProps={
                     INTERACTIVE_CROP_TOOLS.has(tool.id)
                       ? {
@@ -465,6 +476,9 @@ export function ToolPage() {
                         cssFlipV: previewTransform.flipV,
                       }
                     : {})}
+                  {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewFilter
+                    ? { cssFilter: previewFilter }
+                    : {})}
                 />
               ) : (
                 <Dropzone onFiles={handleFiles} accept="image/*" multiple currentFiles={files} />
@@ -533,6 +547,7 @@ export function ToolPage() {
             <ToolSettingsPanel
               toolId={tool.id}
               onPreviewTransform={LIVE_PREVIEW_TOOLS.has(tool.id) ? setPreviewTransform : undefined}
+              onPreviewFilter={LIVE_PREVIEW_TOOLS.has(tool.id) ? setPreviewFilter : undefined}
               cropProps={
                 INTERACTIVE_CROP_TOOLS.has(tool.id)
                   ? {
@@ -647,6 +662,9 @@ export function ToolPage() {
                       cssFlipH: previewTransform.flipH,
                       cssFlipV: previewTransform.flipV,
                     }
+                  : {})}
+                {...(LIVE_PREVIEW_TOOLS.has(tool.id) && previewFilter
+                  ? { cssFilter: previewFilter }
                   : {})}
               />
             ) : (
