@@ -1,7 +1,7 @@
 import { TOOLS } from "@stirling-image/shared";
 import * as icons from "lucide-react";
 import { CheckCircle2, ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
 import { useParams } from "react-router-dom";
 import { BeforeAfterSlider } from "@/components/common/before-after-slider";
@@ -27,6 +27,8 @@ import { ConvertSettings } from "@/components/tools/convert-settings";
 import { CropCanvas } from "@/components/tools/crop-canvas";
 import { CropSettings } from "@/components/tools/crop-settings";
 import { EraseObjectSettings } from "@/components/tools/erase-object-settings";
+import type { EraserCanvasRef } from "@/components/tools/eraser-canvas";
+import { EraserCanvas } from "@/components/tools/eraser-canvas";
 import { FaviconSettings } from "@/components/tools/favicon-settings";
 import { FindDuplicatesSettings } from "@/components/tools/find-duplicates-settings";
 import { GifToolsSettings } from "@/components/tools/gif-tools-settings";
@@ -66,7 +68,7 @@ const COLOR_TOOL_IDS = new Set([
 
 // Tools that don't need a file dropzone (they generate content or have custom UI)
 const NO_DROPZONE_TOOLS = new Set(["qr-generate"]);
-const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop", "rotate"]);
+const SIDE_BY_SIDE_TOOLS = new Set(["resize", "crop", "rotate", "erase-object"]);
 const LIVE_PREVIEW_TOOLS = new Set([
   "rotate",
   "brightness-contrast",
@@ -76,12 +78,14 @@ const LIVE_PREVIEW_TOOLS = new Set([
 ]);
 const NO_COMPARISON_TOOLS = new Set(["strip-metadata", "convert"]);
 const INTERACTIVE_CROP_TOOLS = new Set(["crop"]);
+const INTERACTIVE_ERASER_TOOLS = new Set(["erase-object"]);
 
 function ToolSettingsPanel({
   toolId,
   onPreviewTransform,
   onPreviewFilter,
   cropProps,
+  eraserProps,
 }: {
   toolId: string;
   onPreviewTransform?: (t: PreviewTransform) => void;
@@ -96,6 +100,12 @@ function ToolSettingsPanel({
     onCropChange: (crop: Crop) => void;
     onAspectChange: (aspect: number | undefined) => void;
     onGridToggle: (show: boolean) => void;
+  };
+  eraserProps?: {
+    eraserRef: React.RefObject<EraserCanvasRef | null>;
+    hasStrokes: boolean;
+    brushSize: number;
+    onBrushSizeChange: (size: number) => void;
   };
 }) {
   // Phase 2: Core tools
@@ -138,7 +148,7 @@ function ToolSettingsPanel({
   if (toolId === "upscale") return <UpscaleSettings />;
   if (toolId === "ocr") return <OcrSettings />;
   if (toolId === "blur-faces") return <BlurFacesSettings />;
-  if (toolId === "erase-object") return <EraseObjectSettings />;
+  if (toolId === "erase-object" && eraserProps) return <EraseObjectSettings {...eraserProps} />;
   if (toolId === "smart-crop") return <SmartCropSettings />;
 
   return (
@@ -264,6 +274,11 @@ export function ToolPage() {
     [cropCrop, cropAspect, cropShowGrid, cropImgDimensions],
   );
 
+  // Eraser state
+  const eraserRef = useRef<EraserCanvasRef | null>(null);
+  const [eraserHasStrokes, setEraserHasStrokes] = useState(false);
+  const [eraserBrushSize, setEraserBrushSize] = useState(30);
+
   // Reset crop state when the image changes
   useEffect(() => {
     setCropCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
@@ -385,6 +400,16 @@ export function ToolPage() {
                         }
                       : undefined
                   }
+                  eraserProps={
+                    INTERACTIVE_ERASER_TOOLS.has(tool.id)
+                      ? {
+                          eraserRef,
+                          hasStrokes: eraserHasStrokes,
+                          brushSize: eraserBrushSize,
+                          onBrushSizeChange: setEraserBrushSize,
+                        }
+                      : undefined
+                  }
                 />
               </div>
 
@@ -437,6 +462,16 @@ export function ToolPage() {
                   imgDimensions={cropImgDimensions}
                   onCropChange={setCropCrop}
                   onImageLoad={setCropImgDimensions}
+                />
+              ) : INTERACTIVE_ERASER_TOOLS.has(tool.id) &&
+                hasFile &&
+                !hasProcessed &&
+                originalBlobUrl ? (
+                <EraserCanvas
+                  ref={eraserRef}
+                  imageSrc={originalBlobUrl}
+                  brushSize={eraserBrushSize}
+                  onStrokeChange={setEraserHasStrokes}
                 />
               ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
                 <SideBySideComparison
@@ -558,6 +593,16 @@ export function ToolPage() {
                     }
                   : undefined
               }
+              eraserProps={
+                INTERACTIVE_ERASER_TOOLS.has(tool.id)
+                  ? {
+                      eraserRef,
+                      hasStrokes: eraserHasStrokes,
+                      brushSize: eraserBrushSize,
+                      onBrushSizeChange: setEraserBrushSize,
+                    }
+                  : undefined
+              }
             />
           </div>
 
@@ -624,6 +669,16 @@ export function ToolPage() {
                 imgDimensions={cropImgDimensions}
                 onCropChange={setCropCrop}
                 onImageLoad={setCropImgDimensions}
+              />
+            ) : INTERACTIVE_ERASER_TOOLS.has(tool.id) &&
+              hasFile &&
+              !hasProcessed &&
+              originalBlobUrl ? (
+              <EraserCanvas
+                ref={eraserRef}
+                imageSrc={originalBlobUrl}
+                brushSize={eraserBrushSize}
+                onStrokeChange={setEraserHasStrokes}
               />
             ) : hasProcessed && originalBlobUrl && SIDE_BY_SIDE_TOOLS.has(tool.id) ? (
               <SideBySideComparison

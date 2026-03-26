@@ -1,39 +1,47 @@
-import { Download, Upload } from "lucide-react";
+import { Download, Redo, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useFileStore } from "@/stores/file-store";
+import type { EraserCanvasRef } from "./eraser-canvas";
 
 function getToken(): string {
   return localStorage.getItem("stirling-token") || "";
 }
 
-export function EraseObjectSettings() {
-  const { files, processing, error, setProcessing, setError } = useFileStore();
+interface EraseObjectSettingsProps {
+  eraserRef: React.RefObject<EraserCanvasRef | null>;
+  hasStrokes: boolean;
+  brushSize: number;
+  onBrushSizeChange: (size: number) => void;
+}
 
-  const [maskFile, setMaskFile] = useState<File | null>(null);
+export function EraseObjectSettings({
+  eraserRef,
+  hasStrokes,
+  brushSize,
+  onBrushSizeChange: setBrushSize,
+}: EraseObjectSettingsProps) {
+  const { files, processing, error, setProcessing, setError, setProcessedUrl, setSizes } =
+    useFileStore();
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [originalSize, setOriginalSize] = useState<number | null>(null);
   const [processedSize, setProcessedSize] = useState<number | null>(null);
   const [progressPhase, setProgressPhase] = useState<"idle" | "uploading" | "processing">("idle");
   const [progressPercent, setProgressPercent] = useState(0);
-  const [progressStage, setProgressStage] = useState<string | undefined>();
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleMaskSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected) setMaskFile(selected);
-  };
-
   const handleProcess = async () => {
-    if (files.length === 0 || !maskFile) return;
+    if (files.length === 0 || !eraserRef.current) return;
+
+    const maskBlob = await eraserRef.current.exportMask();
+    if (!maskBlob) return;
 
     setError(null);
     setDownloadUrl(null);
     setProcessing(true);
     setProgressPhase("uploading");
     setProgressPercent(0);
-    setProgressStage(undefined);
     setElapsed(0);
 
     const startTime = Date.now();
@@ -43,7 +51,6 @@ export function EraseObjectSettings() {
 
     const clientJobId = crypto.randomUUID();
 
-    // Open SSE for server-side progress
     const es = new EventSource(`/api/v1/jobs/${clientJobId}/progress`);
     es.onmessage = (event) => {
       try {
@@ -51,11 +58,12 @@ export function EraseObjectSettings() {
         if (data.type === "single" && typeof data.percent === "number") {
           setProgressPhase("processing");
           setProgressPercent(15 + (data.percent / 100) * 85);
-          setProgressStage(data.stage);
         }
       } catch {}
     };
     es.onerror = () => es.close();
+
+    const maskFile = new File([maskBlob], "mask.png", { type: "image/png" });
 
     const formData = new FormData();
     formData.append("file", files[0]);
@@ -71,7 +79,6 @@ export function EraseObjectSettings() {
     xhr.upload.onload = () => {
       setProgressPhase("processing");
       setProgressPercent(15);
-      setProgressStage("Starting...");
     };
     xhr.onload = () => {
       if (elapsedRef.current) clearInterval(elapsedRef.current);
@@ -82,6 +89,8 @@ export function EraseObjectSettings() {
           setDownloadUrl(data.downloadUrl);
           setOriginalSize(data.originalSize);
           setProcessedSize(data.processedSize);
+          setProcessedUrl(data.downloadUrl);
+          setSizes(data.originalSize, data.processedSize);
         } catch {
           setError("Invalid response");
         }
@@ -112,43 +121,57 @@ export function EraseObjectSettings() {
 
   return (
     <div className="space-y-4">
-      {/* Mask upload */}
+      {/* Brush size */}
       <div>
-        <label htmlFor="erase-object-mask" className="text-sm font-medium text-muted-foreground">
-          Mask Image
-        </label>
-        <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">
-          Upload a black &amp; white mask where white areas will be erased. Create the mask in any
-          image editor.
-        </p>
-        <label
-          htmlFor="erase-object-mask"
-          className="flex items-center gap-2 px-3 py-2 rounded border border-dashed border-border cursor-pointer hover:border-primary"
-        >
-          <Upload className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            {maskFile ? maskFile.name : "Select mask image..."}
-          </span>
-          <input
-            id="erase-object-mask"
-            type="file"
-            accept="image/*"
-            onChange={handleMaskSelect}
-            className="hidden"
-          />
-        </label>
+        <div className="flex justify-between items-center">
+          <label htmlFor="eraser-brush-size" className="text-xs text-muted-foreground">
+            Brush Size
+          </label>
+          <span className="text-xs font-mono text-foreground">{brushSize}px</span>
+        </div>
+        <input
+          id="eraser-brush-size"
+          type="range"
+          min={5}
+          max={100}
+          value={brushSize}
+          onChange={(e) => setBrushSize(Number(e.target.value))}
+          className="w-full mt-1"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+          <span>Fine</span>
+          <span>Wide</span>
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="p-2 rounded bg-muted text-[10px] text-muted-foreground space-y-1">
-        <p>How to create a mask:</p>
-        <ol className="list-decimal list-inside space-y-0.5">
-          <li>Open your image in any editor</li>
-          <li>Paint white over areas to erase</li>
-          <li>Keep the rest black</li>
-          <li>Export as PNG and upload here</li>
-        </ol>
-      </div>
+      {/* Clear / Undo */}
+      {hasStrokes && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => eraserRef.current?.undo()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 text-xs"
+          >
+            <Redo className="h-3.5 w-3.5" />
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={() => eraserRef.current?.clear()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 text-xs"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Hint */}
+      {hasFile && !hasStrokes && (
+        <p className="text-[10px] text-muted-foreground">
+          Paint over the objects you want to remove on the image.
+        </p>
+      )}
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -167,7 +190,6 @@ export function EraseObjectSettings() {
           active={processing}
           phase={progressPhase === "idle" ? "uploading" : progressPhase}
           label="Erasing object"
-          stage={progressStage}
           percent={progressPercent}
           elapsed={elapsed}
         />
@@ -175,7 +197,7 @@ export function EraseObjectSettings() {
         <button
           type="button"
           onClick={handleProcess}
-          disabled={!hasFile || !maskFile || processing}
+          disabled={!hasFile || !hasStrokes || processing}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           Erase Object
