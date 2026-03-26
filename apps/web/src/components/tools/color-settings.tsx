@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
@@ -10,9 +10,10 @@ type Effect = "none" | "grayscale" | "sepia" | "invert";
 interface ColorSettingsProps {
   /** The specific tool ID to use for processing */
   toolId: string;
+  onPreviewFilter?: (filter: string) => void;
 }
 
-export function ColorSettings({ toolId }: ColorSettingsProps) {
+export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
   const { files } = useFileStore();
   const {
     processFiles,
@@ -43,6 +44,31 @@ export function ColorSettings({ toolId }: ColorSettingsProps) {
 
   // Effects
   const [effect, setEffect] = useState<Effect>("none");
+
+  // Emit CSS filter for live preview
+  const hasChannelChanges = red !== 100 || green !== 100 || blue !== 100;
+  useEffect(() => {
+    if (!onPreviewFilter) return;
+    const parts: string[] = [];
+    if (brightness !== 0) parts.push(`brightness(${1 + brightness / 100})`);
+    if (contrast !== 0) parts.push(`contrast(${1 + contrast / 100})`);
+    if (saturation !== 0) parts.push(`saturate(${1 + saturation / 100})`);
+    if (hasChannelChanges) parts.push("url(#stirling-channel-filter)");
+    if (effect === "grayscale") parts.push("grayscale(1)");
+    if (effect === "sepia") parts.push("sepia(1)");
+    if (effect === "invert") parts.push("invert(1)");
+    onPreviewFilter(parts.join(" "));
+  }, [
+    brightness,
+    contrast,
+    saturation,
+    red,
+    green,
+    blue,
+    effect,
+    hasChannelChanges,
+    onPreviewFilter,
+  ]);
 
   const handleProcess = () => {
     const settings = {
@@ -84,6 +110,17 @@ export function ColorSettings({ toolId }: ColorSettingsProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Hidden SVG filter for color channel preview */}
+      {hasChannelChanges && (
+        <svg width="0" height="0" style={{ position: "absolute" }}>
+          <filter id="stirling-channel-filter" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values={`${red / 100} 0 0 0 0  0 ${green / 100} 0 0 0  0 0 ${blue / 100} 0 0  0 0 0 1 0`}
+            />
+          </filter>
+        </svg>
+      )}
       {/* Tabs */}
       <div className="flex gap-1">
         {tabs.map((t) => (

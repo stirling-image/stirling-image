@@ -9,6 +9,7 @@ interface ImageViewerProps {
   cssRotate?: number;
   cssFlipH?: boolean;
   cssFlipV?: boolean;
+  cssFilter?: string;
 }
 
 const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200, 300];
@@ -21,6 +22,7 @@ export function ImageViewer({
   cssRotate,
   cssFlipH,
   cssFlipV,
+  cssFilter,
 }: ImageViewerProps) {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
@@ -88,13 +90,15 @@ export function ImageViewer({
           objectFit: "contain" as const,
           ...(previewTransform && {
             transform: previewTransform,
-            transition: "transform 0.25s ease",
+            transition: "transform 0.25s ease, filter 0.15s ease",
           }),
+          ...(cssFilter && { filter: cssFilter, transition: "filter 0.15s ease" }),
         }
       : {
           transform: `scale(${zoom / 100})${previewTransform ? ` ${previewTransform}` : ""}`,
           transformOrigin: "center center",
-          ...(previewTransform && { transition: "transform 0.25s ease" }),
+          ...(previewTransform && { transition: "transform 0.25s ease, filter 0.15s ease" }),
+          ...(cssFilter && { filter: cssFilter, transition: "filter 0.15s ease" }),
         };
 
   return (
