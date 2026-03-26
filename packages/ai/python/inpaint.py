@@ -1,4 +1,4 @@
-"""Object erasing / inpainting using LaMa or simple fallback."""
+"""Object erasing / inpainting using OpenCV."""
 import sys
 import json
 
@@ -14,62 +14,51 @@ def main():
     output_path = sys.argv[3]
 
     try:
-        emit_progress(10, "Loading inpainting model")
+        emit_progress(10, "Preparing")
         from PIL import Image
 
         try:
-            # Try lama-cleaner if available
-            from lama_cleaner.model_manager import ModelManager
-            from lama_cleaner.schema import Config
+            import cv2
+            import numpy as np
 
-            emit_progress(20, "Model loaded")
+            emit_progress(20, "Ready")
 
             img = Image.open(input_path).convert("RGB")
             mask = Image.open(mask_path).convert("L")
 
             # Resize mask to match image if needed
-            emit_progress(25, "Analyzing mask")
+            emit_progress(30, "Analyzing mask")
             if mask.size != img.size:
                 mask = mask.resize(img.size, Image.NEAREST)
 
-            import numpy as np
-
-            img_array = np.array(img)
+            img_array = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             mask_array = np.array(mask)
 
-            model_manager = ModelManager(name="lama", device="cpu")
-            config = Config(
-                ldm_steps=25,
-                ldm_sampler="plms",
-                hd_strategy="Original",
-                hd_strategy_crop_margin=128,
-                hd_strategy_crop_trigger_size=800,
-                hd_strategy_resize_limit=800,
-            )
-            emit_progress(40, "Inpainting region")
-            result = model_manager(img_array, mask_array, config)
-            emit_progress(85, "Refining edges")
-            emit_progress(95, "Saving result")
-            Image.fromarray(result).save(output_path)
-            method = "lama"
+            # Threshold mask to binary (ensure clean white/black)
+            _, mask_binary = cv2.threshold(mask_array, 127, 255, cv2.THRESH_BINARY)
+
+            # Inpaint radius scales with image size for better results
+            inpaint_radius = max(3, min(img_array.shape[0], img_array.shape[1]) // 200)
+
+            emit_progress(50, "Erasing")
+            result = cv2.inpaint(img_array, mask_binary, inpaint_radius, cv2.INPAINT_TELEA)
+
+            emit_progress(90, "Saving")
+            result_rgb = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+            Image.fromarray(result_rgb).save(output_path)
+
+            print(json.dumps({"success": True, "method": "opencv-telea"}))
 
         except ImportError:
-            # LaMa not available — report error instead of silently copying
             print(
                 json.dumps(
                     {
                         "success": False,
-                        "error": "Object eraser requires the lama-cleaner package. Install with: pip install lama-cleaner",
+                        "error": "Object eraser requires OpenCV. Install with: pip install opencv-python-headless",
                     }
                 )
             )
             sys.exit(1)
-        except Exception as e:
-            # LaMa installed but processing failed — still report error
-            print(json.dumps({"success": False, "error": f"Inpainting failed: {str(e)}"}))
-            sys.exit(1)
-
-        print(json.dumps({"success": True, "method": method}))
 
     except ImportError:
         print(
