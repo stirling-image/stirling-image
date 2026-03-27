@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.12.1...v0.13.0) (2026-03-27)
+
+
+### Features
+
+* **docs:** add gem logo to GitHub Pages nav bar and home hero ([f0b8162](https://github.com/siddharthksah/Stirling-Image/commit/f0b8162955fa8f6b1891968163b4292b279f1ea1))
+
 ## [0.12.1](https://github.com/siddharthksah/Stirling-Image/compare/v0.12.0...v0.12.1) (2026-03-27)
 
 
