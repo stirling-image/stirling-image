@@ -2,28 +2,28 @@
 
 The API server runs on port 1349 by default and serves all endpoints under `/api`.
 
-::: tip Interactive API Reference
-When your Stirling Image instance is running, visit [`/api/docs`](http://localhost:1349/api/docs) for an interactive API reference with full endpoint documentation, request schemas, and response examples.
+::: tip Full API Reference
+When your Stirling Image instance is running, visit [`/api/docs`](http://localhost:1349/api/docs) for the complete interactive API reference with all 67 endpoints, request/response schemas, and examples.
 :::
 
 ::: info LLM-friendly docs
 Need to feed these docs to an AI assistant? Use [`/llms.txt`](/Stirling-Image/llms.txt) for an index or [`/llms-full.txt`](/Stirling-Image/llms-full.txt) for the complete documentation in a single file. On a running instance, these are also available at `/llms.txt` and `/llms-full.txt`.
 :::
 
-The reference below covers the key endpoints. For the complete specification, see the interactive docs.
+This page covers the basics of using the API. For per-endpoint details (every parameter, schema, and response), see the interactive docs at `/api/docs`.
 
 ## Authentication
 
-Requests can be authenticated in two ways:
+Two methods:
 
-1. **Session cookie** -- Log in via `POST /api/auth/login` and the server sets a session cookie.
-2. **API key** -- Pass an `Authorization: Bearer si_...` header with an API key.
+1. **Session token** -- `POST /api/auth/login` with `{ "username", "password" }`. Returns a `token`. Pass as `Authorization: Bearer <token>`.
+2. **API key** -- Generate via Settings UI or `POST /api/v1/api-keys`. Prefixed with `si_`. Pass as `Authorization: Bearer si_...`.
 
-Some endpoints (health check, login, API docs) are public and don't require authentication.
+Public endpoints (no auth required): health check, login, API docs, downloads, job progress.
 
-## Tools
+## Using a tool
 
-### Execute a tool
+Every tool follows the same pattern:
 
 ```
 POST /api/v1/tools/:toolId
@@ -31,10 +31,8 @@ Content-Type: multipart/form-data
 ```
 
 Send a multipart request with:
-- `file` -- The image file
+- `file` -- the image
 - `settings` -- JSON string with tool-specific options
-
-Response:
 
 ```json
 {
@@ -45,251 +43,64 @@ Response:
 }
 ```
 
-### Available tool IDs
+### Tool IDs
 
-**Image operations:** `resize`, `crop`, `rotate`, `flip`, `convert`, `compress`, `strip-metadata`, `border`
+| Category | Tools |
+|----------|-------|
+| **Essentials** | `resize`, `crop`, `rotate`, `convert`, `compress` |
+| **Optimization** | `strip-metadata`, `bulk-rename`, `image-to-pdf`, `favicon` |
+| **Adjustments** | `brightness-contrast`, `saturation`, `color-channels`, `color-effects`, `replace-color` |
+| **AI** | `remove-background`, `upscale`, `erase-object`, `ocr`, `blur-faces`, `smart-crop` |
+| **Watermark** | `watermark-text`, `watermark-image`, `text-overlay`, `compose` |
+| **Utilities** | `info`, `compare`, `find-duplicates`, `color-palette`, `qr-generate`, `barcode-read` |
+| **Layout** | `collage`, `split`, `border` |
+| **Format** | `svg-to-raster`, `vectorize`, `gif-tools` |
 
-**Color:** `color-adjustments`, `grayscale`, `sepia`, `invert`, `color-palette`, `replace-color`
+Each tool's specific settings are documented in the [interactive API reference](http://localhost:1349/api/docs).
 
-**Text and codes:** `watermark-text`, `watermark-image`, `text-overlay`, `qr-generate`, `barcode-read`, `ocr`
-
-**Composition:** `compose`, `collage`, `split`, `image-to-pdf`
-
-**Analysis:** `info`, `compare`, `find-duplicates`
-
-**Conversion:** `svg-to-raster`, `vectorize`, `favicon`, `gif-tools`
-
-**AI-powered:** `remove-background`, `upscale`, `blur-faces`, `erase-object`, `smart-crop`
-
-**Utility:** `bulk-rename`
-
-### Batch processing
+## Batch processing
 
 ```
 POST /api/v1/tools/:toolId/batch
-Content-Type: multipart/form-data
 ```
 
-Send multiple files with the same settings. Returns a ZIP file containing all processed images. The response includes an `X-Job-Id` header you can use to track progress.
-
-## File management
-
-### Upload files
-
-```
-POST /api/v1/upload
-Content-Type: multipart/form-data
-```
-
-Upload one or more images. Returns file identifiers for use with other endpoints.
-
-### Download results
-
-```
-GET /api/v1/download/:jobId/:filename
-```
-
-Download a processed image by job ID and filename.
+Send multiple files with the same settings. Returns a ZIP. Use the `X-Job-Id` header to track progress.
 
 ## Pipelines
 
-Pipelines chain multiple tools together. The output of each step becomes the input for the next.
-
-### Execute a pipeline
+Chain tools into reusable workflows.
 
 ```
-POST /api/v1/pipeline/execute
-Content-Type: multipart/form-data
+POST /api/v1/pipeline/execute   -- Run a pipeline (multipart: file + steps JSON)
+POST /api/v1/pipeline/save      -- Save a named pipeline
+GET  /api/v1/pipeline/list      -- List saved pipelines
+DELETE /api/v1/pipeline/:id     -- Delete a pipeline
 ```
 
-Body fields:
-- `file` -- The input image
-- `steps` -- JSON array of `{ "toolId": "resize", "settings": { ... } }` objects
-
-Response includes `jobId`, `downloadUrl`, and details about each completed step.
-
-### Save a pipeline
-
-```
-POST /api/v1/pipeline/save
-Content-Type: application/json
-```
+Example steps:
 
 ```json
-{
-  "name": "Thumbnail generator",
-  "description": "Resize and compress for web thumbnails",
-  "steps": [
-    { "toolId": "resize", "settings": { "width": 200, "height": 200, "fit": "cover" } },
-    { "toolId": "compress", "settings": { "quality": 80 } },
-    { "toolId": "convert", "settings": { "format": "webp" } }
-  ]
-}
+[
+  { "toolId": "resize", "settings": { "width": 200, "height": 200, "fit": "cover" } },
+  { "toolId": "compress", "settings": { "quality": 80 } },
+  { "toolId": "convert", "settings": { "format": "webp" } }
+]
 ```
 
-### List saved pipelines
+## Progress tracking (SSE)
 
-```
-GET /api/v1/pipeline/list
-```
-
-### Delete a pipeline
-
-```
-DELETE /api/v1/pipeline/:id
-```
-
-## Progress tracking
-
-For long-running jobs (AI operations, batch processing), you can track progress via Server-Sent Events.
+For long-running jobs (AI tools, batch processing):
 
 ```
 GET /api/v1/jobs/:jobId/progress
 ```
 
-The stream emits `JobProgress` objects:
-
-```json
-{
-  "status": "processing",
-  "progress": 45,
-  "completedFiles": ["image1.jpg", "image2.jpg"],
-  "failedFiles": [],
-  "errors": []
-}
-```
-
-The connection closes automatically 5 seconds after the job completes.
-
-## API keys
-
-### Generate a key
-
-```
-POST /api/v1/api-keys
-Content-Type: application/json
-```
-
-```json
-{ "name": "My integration" }
-```
-
-Returns the raw key (prefixed with `si_`). This is the only time the full key is shown.
-
-### List keys
-
-```
-GET /api/v1/api-keys
-```
-
-Returns key metadata (name, prefix, creation date) but not the full key.
-
-### Delete a key
-
-```
-DELETE /api/v1/api-keys/:id
-```
-
-## Settings
-
-### Get all settings
-
-```
-GET /api/v1/settings
-```
-
-### Update settings
-
-```
-PUT /api/v1/settings
-Content-Type: application/json
-```
-
-Admin only. Accepts a JSON object of key-value pairs.
-
-## Auth endpoints
-
-### Login
-
-```
-POST /api/auth/login
-Content-Type: application/json
-```
-
-```json
-{ "username": "admin", "password": "admin" }
-```
-
-Returns a session token and sets a cookie.
-
-### Get current session
-
-```
-GET /api/auth/session
-```
-
-### Change password
-
-```
-POST /api/auth/change-password
-Content-Type: application/json
-```
-
-```json
-{ "currentPassword": "old", "newPassword": "new" }
-```
-
-### List users (admin)
-
-```
-GET /api/auth/users
-```
-
-### Create user (admin)
-
-```
-POST /api/auth/register
-Content-Type: application/json
-```
-
-```json
-{ "username": "newuser", "password": "pass", "role": "user" }
-```
-
-### Delete user (admin)
-
-```
-DELETE /api/auth/users/:id
-```
-
-## Health check
-
-```
-GET /api/v1/health
-```
-
-Returns `200 OK` if the server is running. Used by Docker's health check.
-
-## Rate limiting
-
-All endpoints are rate-limited to `RATE_LIMIT_PER_MIN` requests per minute per IP (default: 100). When exceeded, the server returns `429 Too Many Requests`.
+Returns a Server-Sent Events stream with `{ status, progress, completedFiles, failedFiles }`.
 
 ## Error responses
 
-Errors follow a consistent format:
-
 ```json
-{
-  "statusCode": 400,
-  "error": "Bad Request",
-  "message": "Invalid image format"
-}
+{ "statusCode": 400, "error": "Bad Request", "message": "Invalid image format" }
 ```
 
-Common status codes:
-- `400` -- Invalid input (bad format, missing required fields)
-- `401` -- Not authenticated
-- `403` -- Not authorized (e.g., non-admin trying admin endpoints)
-- `413` -- File too large (exceeds `MAX_UPLOAD_SIZE_MB`)
-- `429` -- Rate limited
-- `500` -- Server error
+Status codes: `400` invalid input, `401` not authenticated, `403` not authorized, `413` file too large, `429` rate limited, `500` server error.
