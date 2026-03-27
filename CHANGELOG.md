@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/siddharthksah/Stirling-Image/compare/v0.13.0...v0.13.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* **docs:** remove hero logo from home page ([64c0ec8](https://github.com/siddharthksah/Stirling-Image/commit/64c0ec895f82b09e50d5ecf2b85f759f0a481232))
+
 # [0.13.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.12.1...v0.13.0) (2026-03-27)
 
 
