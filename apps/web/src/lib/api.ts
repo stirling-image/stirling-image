@@ -1,10 +1,22 @@
 const API_BASE = "/api";
 
+async function throwWithMessage(res: Response): Promise<never> {
+  let msg = `API error: ${res.status}`;
+  try {
+    const body = await res.json();
+    if (body.error) msg = body.error;
+    else if (body.message) msg = body.message;
+  } catch {
+    // response wasn't JSON — use the default message
+  }
+  throw new Error(msg);
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) await throwWithMessage(res);
   return res.json();
 }
 
@@ -17,7 +29,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) await throwWithMessage(res);
   return res.json();
 }
 
@@ -30,7 +42,7 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) await throwWithMessage(res);
   return res.json();
 }
 
@@ -41,7 +53,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
       Authorization: `Bearer ${getToken()}`,
     },
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) await throwWithMessage(res);
   return res.json();
 }
 

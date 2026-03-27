@@ -369,26 +369,32 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const role = body.role === "admin" ? "admin" : "user";
 
-    // Look up Default team ID
-    const defaultTeam = db
-      .select()
-      .from(schema.teams)
-      .where(eq(schema.teams.name, "Default"))
-      .get();
-    const teamId = (body as { team?: string }).team || defaultTeam?.id || "default-team-00000000";
+    // Resolve team — frontend sends team name (e.g. "Default"), not ID
+    const requestedTeam = (body as { team?: string }).team;
+    let team: string;
 
-    // If a specific team was provided, validate it exists
-    if ((body as { team?: string }).team) {
-      const teamExists = db
+    if (requestedTeam) {
+      // Look up by name first, then fall back to ID
+      const teamByName = db
         .select()
         .from(schema.teams)
-        .where(eq(schema.teams.id, (body as { team?: string }).team ?? ""))
+        .where(eq(schema.teams.name, requestedTeam))
         .get();
-      if (!teamExists)
+      const teamById = teamByName
+        ? null
+        : db.select().from(schema.teams).where(eq(schema.teams.id, requestedTeam)).get();
+      const found = teamByName || teamById;
+      if (!found)
         return reply.status(400).send({ error: "Team not found", code: "VALIDATION_ERROR" });
+      team = found.id;
+    } else {
+      const defaultTeam = db
+        .select()
+        .from(schema.teams)
+        .where(eq(schema.teams.name, "Default"))
+        .get();
+      team = defaultTeam?.id || "default-team-00000000";
     }
-
-    const team = teamId;
 
     // Check for duplicate username first (so 409 takes priority over limit)
     const existing = db
