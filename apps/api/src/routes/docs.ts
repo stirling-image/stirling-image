@@ -17,9 +17,7 @@ export async function docsRoutes(app: FastifyInstance): Promise<void> {
   await app.register(scalarPlugin, {
     routePrefix: "/api/docs",
     configuration: {
-      spec: {
-        content: specContent,
-      },
+      content: specContent,
       theme: "default",
       customCss: `
         :root {
