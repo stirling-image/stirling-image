@@ -397,12 +397,7 @@ function SystemSection() {
           onChange={(e) => updateSetting("defaultLocale", e.target.value)}
           className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground"
         >
-          <option value="en">English (en)</option>
-          <option value="es">Spanish (es)</option>
-          <option value="fr">French (fr)</option>
-          <option value="de">German (de)</option>
-          <option value="zh">Chinese (zh)</option>
-          <option value="ja">Japanese (ja)</option>
+          <option value="en">English</option>
         </select>
       </SettingRow>
 
@@ -418,32 +413,6 @@ function SystemSection() {
           min={1}
           max={100}
         />
-      </SettingRow>
-
-      <SettingRow
-        label="Enable Experimental Tools"
-        description="Show tools that are still in development. These may be unstable."
-      >
-        <button
-          type="button"
-          onClick={() =>
-            updateSetting(
-              "enableExperimentalTools",
-              settings.enableExperimentalTools === "true" ? "false" : "true",
-            )
-          }
-          className={cn(
-            "w-11 h-6 rounded-full transition-colors relative",
-            settings.enableExperimentalTools === "true" ? "bg-primary" : "bg-muted-foreground/30",
-          )}
-        >
-          <span
-            className={cn(
-              "block w-4 h-4 rounded-full bg-white absolute top-1 transition-transform",
-              settings.enableExperimentalTools === "true" ? "translate-x-6" : "translate-x-1",
-            )}
-          />
-        </button>
       </SettingRow>
 
       <div className="pt-4 border-t border-border">

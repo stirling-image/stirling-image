@@ -1,74 +1,7 @@
-import { Globe, Play, ShieldOff, Stamp, Trash2, User, Workflow, Zap } from "lucide-react";
+import { Play, Trash2, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PipelineBuilder, type PipelineStep } from "@/components/tools/pipeline-builder";
-import { cn } from "@/lib/utils";
-
-/** Pipeline template definition. */
-interface PipelineTemplate {
-  name: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  steps: Array<{ toolId: string; settings: Record<string, unknown> }>;
-}
-
-const TEMPLATES: PipelineTemplate[] = [
-  {
-    name: "Social Media Ready",
-    description: "Resize 1080x1080, compress 200KB, strip metadata, convert to WebP",
-    icon: Globe,
-    color: "bg-blue-500/10 text-blue-500",
-    steps: [
-      { toolId: "resize", settings: { width: 1080, height: 1080, fit: "cover" } },
-      { toolId: "compress", settings: { quality: 80 } },
-      { toolId: "strip-metadata", settings: {} },
-      { toolId: "convert", settings: { format: "webp" } },
-    ],
-  },
-  {
-    name: "Privacy Clean",
-    description: "Strip all metadata and convert to JPG",
-    icon: ShieldOff,
-    color: "bg-green-500/10 text-green-500",
-    steps: [
-      { toolId: "strip-metadata", settings: {} },
-      { toolId: "convert", settings: { format: "jpg" } },
-    ],
-  },
-  {
-    name: "Web Optimization",
-    description: "Resize to 1920px, convert to WebP, compress to 80% quality",
-    icon: Zap,
-    color: "bg-yellow-500/10 text-yellow-500",
-    steps: [
-      { toolId: "resize", settings: { width: 1920, fit: "inside" } },
-      { toolId: "convert", settings: { format: "webp" } },
-      { toolId: "compress", settings: { quality: 80 } },
-    ],
-  },
-  {
-    name: "Profile Picture",
-    description: "Resize to 400x400 and compress",
-    icon: User,
-    color: "bg-purple-500/10 text-purple-500",
-    steps: [
-      { toolId: "resize", settings: { width: 400, height: 400, fit: "cover" } },
-      { toolId: "compress", settings: { quality: 85 } },
-    ],
-  },
-  {
-    name: "Watermark Batch",
-    description: "Add text watermark, strip metadata, and compress",
-    icon: Stamp,
-    color: "bg-red-500/10 text-red-500",
-    steps: [
-      { toolId: "watermark-text", settings: { text: "SAMPLE", opacity: 0.3 } },
-      { toolId: "strip-metadata", settings: {} },
-      { toolId: "compress", settings: { quality: 85 } },
-    ],
-  },
-];
 
 interface SavedPipeline {
   id: string;
@@ -200,17 +133,6 @@ export function AutomatePage() {
     [steps],
   );
 
-  // Load template into builder
-  const loadTemplate = useCallback((template: PipelineTemplate) => {
-    const newSteps: PipelineStep[] = template.steps.map((s) => ({
-      id: crypto.randomUUID(),
-      toolId: s.toolId,
-      settings: { ...s.settings },
-    }));
-    setSteps(newSteps);
-    setExecutionResult(null);
-  }, []);
-
   // Load saved pipeline into builder
   const loadSaved = useCallback((pipeline: SavedPipeline) => {
     const newSteps: PipelineStep[] = pipeline.steps.map((s) => ({
@@ -225,35 +147,9 @@ export function AutomatePage() {
   return (
     <AppLayout showToolPanel={false}>
       <div className="flex h-full w-full overflow-hidden">
-        {/* Left sidebar: templates + saved */}
-        <div className="w-72 border-r border-border overflow-y-auto p-4 space-y-6 shrink-0 hidden md:block">
-          {/* Templates */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-3">
-              Templates
-            </h3>
-            <div className="space-y-2">
-              {TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.name}
-                  type="button"
-                  onClick={() => loadTemplate(tpl)}
-                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className={cn("p-1.5 rounded-md", tpl.color)}>
-                      <tpl.icon className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{tpl.name}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Saved automations */}
-          {savedPipelines.length > 0 && (
+        {/* Left sidebar: saved automations */}
+        {savedPipelines.length > 0 && (
+          <div className="w-72 border-r border-border overflow-y-auto p-4 space-y-6 shrink-0 hidden md:block">
             <div>
               <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-3">
                 Saved Automations
@@ -293,8 +189,8 @@ export function AutomatePage() {
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Main builder area */}
         <div className="flex-1 overflow-y-auto p-6">

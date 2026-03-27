@@ -4,6 +4,7 @@ import * as icons from "lucide-react";
 import { Eye, EyeOff, FileImage, LayoutGrid, List, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { GemLogo } from "@/components/common/gem-logo";
 import { apiGet } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +64,11 @@ export function FullscreenGridPage() {
       {/* Top bar */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
-          <Link to="/" className="text-lg font-bold text-foreground shrink-0">
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-lg font-bold text-foreground shrink-0"
+          >
+            <GemLogo className="h-6 w-6 text-primary" />
             Stirling <span className="text-primary">Image</span>
           </Link>
 
