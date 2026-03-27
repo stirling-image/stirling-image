@@ -585,6 +585,8 @@ const PUBLIC_PATHS = [
   "/api/v1/download/",
   "/api/v1/jobs/",
   "/api/v1/settings/logo",
+  "/api/docs",
+  "/api/v1/openapi.yaml",
 ];
 
 function isPublicRoute(url: string): boolean {
