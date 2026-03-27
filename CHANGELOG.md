@@ -1,3 +1,10 @@
+## [0.11.1](https://github.com/siddharthksah/Stirling-Image/compare/v0.11.0...v0.11.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* **docs:** ignore localhost dead links in VitePress build ([78269d4](https://github.com/siddharthksah/Stirling-Image/commit/78269d499c914d5d68c4455475a1608f4af2a075))
+
 # [0.11.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.10.0...v0.11.0) (2026-03-27)
 
 
