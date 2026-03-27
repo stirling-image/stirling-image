@@ -11,6 +11,7 @@ export default defineConfig({
   head: [
     ["meta", { name: "theme-color", content: "#3b82f6" }],
     ["link", { rel: "icon", type: "image/svg+xml", href: "/Stirling-Image/favicon.svg" }],
+    ["link", { rel: "llms-txt", href: "/Stirling-Image/llms.txt" }],
   ],
 
   themeConfig: {
@@ -48,7 +49,9 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the MIT License.",
+      message:
+        'Released under the MIT License. · <a href="/Stirling-Image/llms.txt" style="opacity:0.7">llms.txt</a> · <a href="/Stirling-Image/llms-full.txt" style="opacity:0.7">llms-full.txt</a>',
+      copyright: 'AI-friendly docs available at <a href="/Stirling-Image/llms-full.txt">/llms-full.txt</a>',
     },
 
     editLink: {
