@@ -1,3 +1,10 @@
+## [0.17.1](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.0...v0.17.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* add remove-background settings to pipeline step configurator ([ae5ac81](https://github.com/siddharthksah/Stirling-Image/commit/ae5ac8134689e211f17534f3064995597b6337c8))
+
 # [0.17.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.16.4...v0.17.0) (2026-03-28)
 
 
