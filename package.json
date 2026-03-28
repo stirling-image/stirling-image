@@ -1,6 +1,6 @@
 {
   "name": "stirling-image",
-  "version": "0.17.5",
+  "version": "0.17.6",
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {

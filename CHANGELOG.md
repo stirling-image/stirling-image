@@ -1,3 +1,11 @@
+## [0.17.6](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.5...v0.17.6) (2026-03-28)
+
+
+### Bug Fixes
+
+* resolve pipeline step race condition and infinite re-render loop ([e0177d4](https://github.com/siddharthksah/Stirling-Image/commit/e0177d405ef043a64f0b3a885e98169312be1fac))
+* show checkerboard behind transparent images in before/after slider ([73741e6](https://github.com/siddharthksah/Stirling-Image/commit/73741e6efbdee53396810a2bb11eaf9597e4aa32))
+
 ## [0.17.5](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.4...v0.17.5) (2026-03-28)
 
 
