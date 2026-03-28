@@ -4,7 +4,7 @@
 
 <h1 align="center">Stirling Image</h1>
 
-<p align="center">Open-source, self-hosted image processing. One Docker container, no cloud dependencies.</p>
+<p align="center">Stirling-PDF but for images. 36+ tools and local AI in a single Docker container.</p>
 
 <p align="center">
   <a href="https://github.com/siddharthksah/Stirling-Image/pkgs/container/stirling-image"><img src="https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker" alt="Docker"></a>
@@ -15,15 +15,17 @@
 
 ![Stirling Image - Dashboard](images/dashboard.png)
 
-## What it does
+## Key Features
 
-Resize, crop, compress, convert, watermark, OCR, remove backgrounds, upscale, erase objects, blur faces, and more. 33+ tools in total, all running locally on your hardware.
+- **36+ image tools** - Resize, crop, compress, convert, watermark, color adjust, and more
+- **Local AI** - Remove backgrounds, upscale images, erase objects, blur faces, extract text (OCR). All running on your hardware with pre-downloaded models, no internet required
+- **Pipelines** - Chain tools into reusable workflows. Batch process up to 200 images at once
+- **REST API** - Every tool available via API. Interactive docs included at `/api/docs`
+- **Single container** - One `docker run`, no Redis, no Postgres, no external services
+- **Multi-arch** - Runs on AMD64 and ARM64 (Intel, Apple Silicon, Raspberry Pi)
+- **Your data stays yours** - No telemetry, no tracking, no external calls. Images never leave your machine
 
-You can chain tools into reusable pipelines and batch process up to 200 images at once. Every tool is also available through a REST API with Swagger docs.
-
-No telemetry, no tracking, no external calls. Your images never leave your machine.
-
-## Quick start
+## Quick Start
 
 ```bash
 docker run -d -p 1349:1349 -v stirling-data:/data ghcr.io/siddharthksah/stirling-image:latest
@@ -44,20 +46,16 @@ For Docker Compose, persistent storage, and other setup options, see the [Gettin
 
 ## Documentation
 
-- [Getting started](https://siddharthksah.github.io/Stirling-Image/guide/getting-started)
+- [Getting Started](https://siddharthksah.github.io/Stirling-Image/guide/getting-started)
 - [Configuration](https://siddharthksah.github.io/Stirling-Image/guide/configuration)
 - [REST API](https://siddharthksah.github.io/Stirling-Image/api/rest)
 - [Architecture](https://siddharthksah.github.io/Stirling-Image/guide/architecture)
-- [Developer guide](https://siddharthksah.github.io/Stirling-Image/guide/developer)
-- [Translation guide](https://siddharthksah.github.io/Stirling-Image/guide/translations)
+- [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer)
+- [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations)
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-For development setup, see the [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer).
-
-For adding translations, see the [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations).
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, the [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer) for setup, and the [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations) for adding languages.
 
 ## Support
 
