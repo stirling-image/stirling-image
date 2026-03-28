@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.14.2...v0.15.0) (2026-03-28)
+
+
+### Features
+
+* add forced password change page on first login ([e0900a8](https://github.com/siddharthksah/Stirling-Image/commit/e0900a877643c75266aeed5ac29501458ef0dcda))
+
 ## [0.14.2](https://github.com/siddharthksah/Stirling-Image/compare/v0.14.1...v0.14.2) (2026-03-28)
 
 
