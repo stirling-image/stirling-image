@@ -1,38 +1,28 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-export function BorderSettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("border");
+export interface BorderControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function BorderControls({ onChange }: BorderControlsProps) {
   const [borderWidth, setBorderWidth] = useState(10);
   const [borderColor, setBorderColor] = useState("#000000");
   const [cornerRadius, setCornerRadius] = useState(0);
   const [padding, setPadding] = useState(0);
   const [shadowBlur, setShadowBlur] = useState(0);
 
-  const handleProcess = () => {
-    const settings = { borderWidth, borderColor, cornerRadius, padding, shadowBlur };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({ borderWidth, borderColor, cornerRadius, padding, shadowBlur });
+  }, [borderWidth, borderColor, cornerRadius, padding, shadowBlur]);
 
   return (
     <div className="space-y-4">
@@ -120,6 +110,38 @@ export function BorderSettings() {
           className="w-full mt-1"
         />
       </div>
+    </div>
+  );
+}
+
+export function BorderSettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("border");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <BorderControls onChange={setSettings} />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

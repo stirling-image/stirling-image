@@ -1,5 +1,5 @@
 import { AlertTriangle, ChevronDown, ChevronRight, Download, Loader2, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
@@ -172,16 +172,139 @@ function MetadataGrid({
   );
 }
 
-export function StripMetadataSettings() {
-  const { entries, selectedIndex, files } = useFileStore();
-  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
-    useToolProcessor("strip-metadata");
+interface StripMetadataControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+  /** Passed from parent to preserve field-count badges in checkbox labels */
+  metadata?: MetadataResult | null;
+  hasExif?: boolean;
+  hasGps?: boolean;
+}
 
+export function StripMetadataControls({
+  onChange,
+  metadata,
+  hasExif,
+  hasGps,
+}: StripMetadataControlsProps) {
   const [stripAll, setStripAll] = useState(true);
   const [stripExif, setStripExif] = useState(false);
   const [stripGps, setStripGps] = useState(false);
   const [stripIcc, setStripIcc] = useState(false);
   const [stripXmp, setStripXmp] = useState(false);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Report settings on change
+  useEffect(() => {
+    onChangeRef.current?.({ stripAll, stripExif, stripGps, stripIcc, stripXmp });
+  }, [stripAll, stripExif, stripGps, stripIcc, stripXmp]);
+
+  const handleStripAllChange = (checked: boolean) => {
+    setStripAll(checked);
+    if (checked) {
+      setStripExif(false);
+      setStripGps(false);
+      setStripIcc(false);
+      setStripXmp(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Strip All */}
+      <label className="flex items-center gap-2 text-sm text-foreground font-medium">
+        <input
+          type="checkbox"
+          checked={stripAll}
+          onChange={(e) => handleStripAllChange(e.target.checked)}
+          className="rounded"
+        />
+        Strip All Metadata
+      </label>
+
+      <div className="border-t border-border" />
+
+      {/* Individual options */}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Or select specific metadata:</p>
+
+        <label
+          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
+        >
+          <input
+            type="checkbox"
+            checked={stripExif}
+            onChange={(e) => setStripExif(e.target.checked)}
+            disabled={stripAll}
+            className="rounded"
+          />
+          Strip EXIF (camera info, date, exposure)
+          {hasExif && !stripAll && (
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              {Object.keys(metadata?.exif ?? {}).filter((k) => !SKIP_KEYS.has(k)).length} fields
+            </span>
+          )}
+        </label>
+
+        <label
+          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
+        >
+          <input
+            type="checkbox"
+            checked={stripGps}
+            onChange={(e) => setStripGps(e.target.checked)}
+            disabled={stripAll}
+            className="rounded"
+          />
+          Strip GPS (location data)
+          {hasGps && !stripAll && (
+            <span className="ml-auto text-[10px] text-amber-500">location found</span>
+          )}
+        </label>
+
+        <label
+          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
+        >
+          <input
+            type="checkbox"
+            checked={stripIcc}
+            onChange={(e) => setStripIcc(e.target.checked)}
+            disabled={stripAll}
+            className="rounded"
+          />
+          Strip ICC (color profile)
+        </label>
+
+        <label
+          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
+        >
+          <input
+            type="checkbox"
+            checked={stripXmp}
+            onChange={(e) => setStripXmp(e.target.checked)}
+            disabled={stripAll}
+            className="rounded"
+          />
+          Strip XMP (extensible metadata)
+        </label>
+      </div>
+    </>
+  );
+}
+
+export function StripMetadataSettings() {
+  const { entries, selectedIndex, files } = useFileStore();
+  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
+    useToolProcessor("strip-metadata");
+
+  const [stripSettings, setStripSettings] = useState<Record<string, unknown>>({
+    stripAll: true,
+    stripExif: false,
+    stripGps: false,
+    stripIcc: false,
+    stripXmp: false,
+  });
 
   // Per-file metadata cache (from feature branch)
   const [metadataCache, setMetadataCache] = useState<Map<string, MetadataResult>>(new Map());
@@ -241,18 +364,8 @@ export function StripMetadataSettings() {
     return () => controller.abort();
   }, [currentFile, fileKey, metadataCache]);
 
-  const handleStripAllChange = (checked: boolean) => {
-    setStripAll(checked);
-    if (checked) {
-      setStripExif(false);
-      setStripGps(false);
-      setStripIcc(false);
-      setStripXmp(false);
-    }
-  };
-
   const handleProcess = () => {
-    processFiles(files, { stripAll, stripExif, stripGps, stripIcc, stripXmp });
+    processFiles(files, stripSettings);
   };
 
   const hasFile = files.length > 0;
@@ -359,83 +472,12 @@ export function StripMetadataSettings() {
 
       {hasFile && hasAnyMetadata && <div className="border-t border-border" />}
 
-      {/* Strip All */}
-      <label className="flex items-center gap-2 text-sm text-foreground font-medium">
-        <input
-          type="checkbox"
-          checked={stripAll}
-          onChange={(e) => handleStripAllChange(e.target.checked)}
-          className="rounded"
-        />
-        Strip All Metadata
-      </label>
-
-      <div className="border-t border-border" />
-
-      {/* Individual options */}
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">Or select specific metadata:</p>
-
-        <label
-          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
-        >
-          <input
-            type="checkbox"
-            checked={stripExif}
-            onChange={(e) => setStripExif(e.target.checked)}
-            disabled={stripAll}
-            className="rounded"
-          />
-          Strip EXIF (camera info, date, exposure)
-          {hasExif && !stripAll && (
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              {Object.keys(metadata?.exif ?? {}).filter((k) => !SKIP_KEYS.has(k)).length} fields
-            </span>
-          )}
-        </label>
-
-        <label
-          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
-        >
-          <input
-            type="checkbox"
-            checked={stripGps}
-            onChange={(e) => setStripGps(e.target.checked)}
-            disabled={stripAll}
-            className="rounded"
-          />
-          Strip GPS (location data)
-          {hasGps && !stripAll && (
-            <span className="ml-auto text-[10px] text-amber-500">location found</span>
-          )}
-        </label>
-
-        <label
-          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
-        >
-          <input
-            type="checkbox"
-            checked={stripIcc}
-            onChange={(e) => setStripIcc(e.target.checked)}
-            disabled={stripAll}
-            className="rounded"
-          />
-          Strip ICC (color profile)
-        </label>
-
-        <label
-          className={`flex items-center gap-2 text-sm ${stripAll ? "text-muted-foreground" : "text-foreground"}`}
-        >
-          <input
-            type="checkbox"
-            checked={stripXmp}
-            onChange={(e) => setStripXmp(e.target.checked)}
-            disabled={stripAll}
-            className="rounded"
-          />
-          Strip XMP (extensible metadata)
-        </label>
-      </div>
+      <StripMetadataControls
+        onChange={setStripSettings}
+        metadata={metadata}
+        hasExif={!!hasExif}
+        hasGps={!!hasGps}
+      />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

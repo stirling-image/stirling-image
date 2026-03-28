@@ -1,6 +1,6 @@
 import { SOCIAL_MEDIA_PRESETS } from "@stirling-image/shared";
 import { Download, Link, Unlink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
@@ -17,11 +17,11 @@ const FIT_LABELS: Record<FitMode, string> = {
 // Group presets by platform
 const platforms = [...new Set(SOCIAL_MEDIA_PRESETS.map((p) => p.platform))];
 
-export function ResizeSettings() {
-  const { files } = useFileStore();
-  const { processFiles, processAllFiles, processing, error, downloadUrl, progress } =
-    useToolProcessor("resize");
+export interface ResizeControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function ResizeControls({ onChange }: ResizeControlsProps) {
   const [tab, setTab] = useState<ResizeTab>("custom");
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [width, setWidth] = useState<string>("");
@@ -30,6 +30,24 @@ export function ResizeSettings() {
   const [fit, setFit] = useState<FitMode>("cover");
   const [lockAspect, setLockAspect] = useState(true);
   const [withoutEnlargement, setWithoutEnlargement] = useState(false);
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
+    const settings: Record<string, unknown> = {};
+    if (tab === "scale") {
+      settings.percentage = Number(percentage);
+    } else {
+      if (width) settings.width = Number(width);
+      if (height) settings.height = Number(height);
+      settings.fit = tab === "presets" ? "cover" : fit;
+      settings.withoutEnlargement = withoutEnlargement;
+    }
+    onChangeRef.current?.(settings);
+  }, [tab, width, height, percentage, fit, withoutEnlargement]);
 
   const handlePreset = (preset: (typeof SOCIAL_MEDIA_PRESETS)[number]) => {
     const key = `${preset.platform}-${preset.name}`;
@@ -44,41 +62,11 @@ export function ResizeSettings() {
     }
   };
 
-  const handleProcess = () => {
-    const settings: Record<string, unknown> = {};
-
-    if (tab === "scale") {
-      settings.percentage = Number(percentage);
-    } else {
-      if (width) settings.width = Number(width);
-      if (height) settings.height = Number(height);
-      settings.fit = tab === "presets" ? "cover" : fit;
-      settings.withoutEnlargement = withoutEnlargement;
-    }
-
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
-
-  const hasFile = files.length > 0;
-  const canProcess =
-    hasFile &&
-    !processing &&
-    (tab === "scale" ? Number(percentage) > 0 : Boolean(width) || Boolean(height));
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (canProcess) handleProcess();
-  };
-
   const tabClass = (t: ResizeTab) =>
     `flex-1 text-xs py-1.5 rounded ${tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {/* Tab selector */}
       <div>
         <div className="flex gap-1">
@@ -243,6 +231,42 @@ export function ResizeSettings() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function ResizeSettings() {
+  const { files } = useFileStore();
+  const { processFiles, processAllFiles, processing, error, downloadUrl, progress } =
+    useToolProcessor("resize");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+  const tab = settings.percentage !== undefined ? "scale" : "other";
+  const canProcess =
+    hasFile &&
+    !processing &&
+    (tab === "scale"
+      ? Number(settings.percentage) > 0
+      : Boolean(settings.width) || Boolean(settings.height));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (canProcess) handleProcess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <ResizeControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

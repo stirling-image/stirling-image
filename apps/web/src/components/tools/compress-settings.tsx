@@ -1,52 +1,35 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 type CompressMode = "quality" | "targetSize";
 
-export function CompressSettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("compress");
+export interface CompressControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function CompressControls({ onChange }: CompressControlsProps) {
   const [mode, setMode] = useState<CompressMode>("quality");
   const [quality, setQuality] = useState(75);
   const [targetSizeKb, setTargetSizeKb] = useState("");
 
-  const handleProcess = () => {
-    const settings: Record<string, unknown> = { mode };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
     if (mode === "quality") {
-      settings.quality = quality;
+      onChangeRef.current?.({ mode, quality });
     } else {
-      settings.targetSizeKb = Number(targetSizeKb);
+      onChangeRef.current?.({ mode, targetSizeKb: Number(targetSizeKb) });
     }
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
-
-  const hasFile = files.length > 0;
-  const canProcess = mode === "quality" || (mode === "targetSize" && Number(targetSizeKb) > 0);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hasFile && canProcess && !processing) handleProcess();
-  };
+  }, [mode, quality, targetSizeKb]);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {/* Mode toggle */}
       <div>
         <p className="text-sm font-medium text-muted-foreground">Compression Mode</p>
@@ -106,6 +89,45 @@ export function CompressSettings() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+export function CompressSettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("compress");
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+  const canProcess =
+    settings.mode === "quality" ||
+    (settings.mode === "targetSize" && Number(settings.targetSizeKb) > 0);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hasFile && canProcess && !processing) handleProcess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <CompressControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

@@ -1,5 +1,5 @@
 import { ArrowLeftRight, Download, Grid3x3 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
@@ -309,5 +309,93 @@ export function CropSettings({
         </a>
       )}
     </form>
+  );
+}
+
+// ── Pipeline-only crop controls (numeric inputs, no canvas) ──────────
+
+export interface CropControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
+
+export function CropControls({ onChange }: CropControlsProps) {
+  const [left, setLeft] = useState(0);
+  const [top, setTop] = useState(0);
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
+    onChangeRef.current?.({
+      left,
+      top,
+      width: width ? Number(width) : undefined,
+      height: height ? Number(height) : undefined,
+    });
+  }, [left, top, width, height]);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label htmlFor="pipeline-crop-left" className="text-xs text-muted-foreground">
+            Left offset (px)
+          </label>
+          <input
+            id="pipeline-crop-left"
+            type="number"
+            value={left}
+            onChange={(e) => setLeft(Number(e.target.value))}
+            min={0}
+            className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+          />
+        </div>
+        <div>
+          <label htmlFor="pipeline-crop-top" className="text-xs text-muted-foreground">
+            Top offset (px)
+          </label>
+          <input
+            id="pipeline-crop-top"
+            type="number"
+            value={top}
+            onChange={(e) => setTop(Number(e.target.value))}
+            min={0}
+            className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+          />
+        </div>
+        <div>
+          <label htmlFor="pipeline-crop-width" className="text-xs text-muted-foreground">
+            Width (px)
+          </label>
+          <input
+            id="pipeline-crop-width"
+            type="number"
+            value={width}
+            onChange={(e) => setWidth(e.target.value)}
+            min={1}
+            placeholder="Required"
+            className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+          />
+        </div>
+        <div>
+          <label htmlFor="pipeline-crop-height" className="text-xs text-muted-foreground">
+            Height (px)
+          </label>
+          <input
+            id="pipeline-crop-height"
+            type="number"
+            value={height}
+            onChange={(e) => setHeight(e.target.value)}
+            min={1}
+            placeholder="Required"
+            className="w-full mt-0.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+          />
+        </div>
+      </div>
+    </div>
   );
 }

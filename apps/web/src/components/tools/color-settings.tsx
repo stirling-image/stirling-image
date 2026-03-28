@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
@@ -7,25 +7,13 @@ import { useFileStore } from "@/stores/file-store";
 type Tab = "basic" | "channels" | "effects";
 type Effect = "none" | "grayscale" | "sepia" | "invert";
 
-interface ColorSettingsProps {
-  /** The specific tool ID to use for processing */
+interface ColorControlsProps {
   toolId: string;
+  onChange?: (settings: Record<string, unknown>) => void;
   onPreviewFilter?: (filter: string) => void;
 }
 
-export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor(toolId);
-
+export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorControlsProps) {
   const [tab, setTab] = useState<Tab>(() => {
     if (toolId === "color-channels") return "channels";
     if (toolId === "color-effects") return "effects";
@@ -44,6 +32,14 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
 
   // Effects
   const [effect, setEffect] = useState<Effect>("none");
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Report settings on change
+  useEffect(() => {
+    onChangeRef.current?.({ brightness, contrast, saturation, red, green, blue, effect });
+  }, [brightness, contrast, saturation, red, green, blue, effect]);
 
   // Emit CSS filter for live preview
   const hasChannelChanges = red !== 100 || green !== 100 || blue !== 100;
@@ -70,24 +66,6 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
     onPreviewFilter,
   ]);
 
-  const handleProcess = () => {
-    const settings = {
-      brightness,
-      contrast,
-      saturation,
-      red,
-      green,
-      blue,
-      effect,
-    };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
-
-  const hasFile = files.length > 0;
   const hasChanges =
     brightness !== 0 ||
     contrast !== 0 ||
@@ -103,13 +81,8 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
     { id: "effects", label: "Effects" },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hasFile && hasChanges && !processing) handleProcess();
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <>
       {/* Hidden SVG filter for color channel preview */}
       {hasChannelChanges && (
         <svg width="0" height="0" style={{ position: "absolute" }}>
@@ -235,6 +208,65 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
           Reset All
         </button>
       )}
+    </>
+  );
+}
+
+interface ColorSettingsProps {
+  /** The specific tool ID to use for processing */
+  toolId: string;
+  onPreviewFilter?: (filter: string) => void;
+}
+
+export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor(toolId);
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    red: 100,
+    green: 100,
+    blue: 100,
+    effect: "none",
+  });
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+  const hasChanges =
+    settings.brightness !== 0 ||
+    settings.contrast !== 0 ||
+    settings.saturation !== 0 ||
+    settings.red !== 100 ||
+    settings.green !== 100 ||
+    settings.blue !== 100 ||
+    settings.effect !== "none";
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hasFile && hasChanges && !processing) handleProcess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <ColorControls toolId={toolId} onChange={setSettings} onPreviewFilter={onPreviewFilter} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

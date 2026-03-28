@@ -1,67 +1,37 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 const OUTPUT_FORMATS = ["jpg", "png", "webp", "avif", "tiff", "gif"] as const;
-const LOSSY_FORMATS = new Set(["jpg", "webp", "avif"]);
+const LOSSY_FORMATS = ["jpg", "jpeg", "webp", "avif"];
 
-export function ConvertSettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("convert");
+export interface ConvertControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function ConvertControls({ onChange }: ConvertControlsProps) {
   const [format, setFormat] = useState<string>("png");
   const [quality, setQuality] = useState(85);
 
-  // Detect source format from filename
-  const sourceFile = files[0];
-  const sourceExt = sourceFile
-    ? sourceFile.name.split(".").pop()?.toLowerCase() || "unknown"
-    : "none";
+  const isLossy = LOSSY_FORMATS.includes(format);
 
-  const isLossy = LOSSY_FORMATS.has(format);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const handleProcess = () => {
+  useEffect(() => {
     const settings: Record<string, unknown> = { format };
     if (isLossy) {
       settings.quality = quality;
     }
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
-
-  const hasFile = files.length > 0;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hasFile && !processing) handleProcess();
-  };
+    onChangeRef.current?.(settings);
+  }, [format, quality, isLossy]);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Source format */}
-      {hasFile && (
-        <div>
-          <p className="text-xs text-muted-foreground">Source Format</p>
-          <div className="mt-0.5 px-2 py-1.5 rounded bg-muted text-sm text-foreground uppercase font-mono">
-            {sourceExt}
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-4">
       {/* Target format */}
       <div>
         <label htmlFor="convert-target-format" className="text-xs text-muted-foreground">
@@ -101,6 +71,58 @@ export function ConvertSettings() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+export function ConvertSettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("convert");
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  // Detect source format from filename
+  const sourceFile = files[0];
+  const sourceExt = sourceFile
+    ? sourceFile.name.split(".").pop()?.toLowerCase() || "unknown"
+    : "none";
+
+  const hasFile = files.length > 0;
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hasFile && !processing) handleProcess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Source format */}
+      {hasFile && (
+        <div>
+          <p className="text-xs text-muted-foreground">Source Format</p>
+          <div className="mt-0.5 px-2 py-1.5 rounded bg-muted text-sm text-foreground uppercase font-mono">
+            {sourceExt}
+          </div>
+        </div>
+      )}
+
+      <ConvertControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

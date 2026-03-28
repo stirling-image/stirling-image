@@ -10,14 +10,13 @@ export interface PreviewTransform {
   flipV: boolean;
 }
 
-interface RotateSettingsProps {
+export interface RotateControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
   onPreviewTransform?: (transform: PreviewTransform) => void;
+  resetSignal?: number;
 }
 
-export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
-  const { files } = useFileStore();
-  const { processFiles, processAllFiles, processing, error, progress } = useToolProcessor("rotate");
-
+export function RotateControls({ onChange, onPreviewTransform, resetSignal }: RotateControlsProps) {
   // Quick rotation in 90° steps: 0, 90, 180, 270
   const [rotation, setRotation] = useState(0);
   // Fine straighten adjustment: -45 to +45
@@ -27,22 +26,31 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
 
   const totalAngle = rotation + straighten;
 
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  // Report settings on change
+  useEffect(() => {
+    const backendAngle = ((totalAngle % 360) + 360) % 360;
+    onChangeRef.current?.({ angle: backendAngle, horizontal: flipH, vertical: flipV });
+  }, [totalAngle, flipH, flipV]);
+
   // Emit preview transform on every change
   useEffect(() => {
     onPreviewTransform?.({ rotate: totalAngle, flipH, flipV });
   }, [totalAngle, flipH, flipV, onPreviewTransform]);
 
-  // Reset controls after successful processing
-  const prevProcessing = useRef(processing);
+  // Reset controls when resetSignal increments
   useEffect(() => {
-    if (prevProcessing.current && !processing && !error) {
+    if (resetSignal !== undefined && resetSignal > 0) {
       setRotation(0);
       setStraighten(0);
       setFlipH(false);
       setFlipV(false);
     }
-    prevProcessing.current = processing;
-  }, [processing, error]);
+  }, [resetSignal]);
 
   // Display angle normalized to 0-359
   const displayAngle = ((totalAngle % 360) + 360) % 360;
@@ -68,27 +76,7 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
     }
   };
 
-  const handleProcess = () => {
-    const backendAngle = ((totalAngle % 360) + 360) % 360;
-    const settings = {
-      angle: backendAngle,
-      horizontal: flipH,
-      vertical: flipV,
-    };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
-
-  const hasFile = files.length > 0;
   const hasChanges = totalAngle !== 0 || flipH || flipV;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hasFile && hasChanges && !processing) handleProcess();
-  };
 
   const handleReset = () => {
     setRotation(0);
@@ -98,7 +86,7 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {/* Quick rotate */}
       <div>
         <p className="text-xs text-muted-foreground">Rotate</p>
@@ -232,6 +220,56 @@ export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
           Reset all changes
         </button>
       )}
+    </div>
+  );
+}
+
+interface RotateSettingsProps {
+  onPreviewTransform?: (transform: PreviewTransform) => void;
+}
+
+export function RotateSettings({ onPreviewTransform }: RotateSettingsProps) {
+  const { files } = useFileStore();
+  const { processFiles, processAllFiles, processing, error, progress } = useToolProcessor("rotate");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+  const [resetSignal, setResetSignal] = useState(0);
+
+  // Reset controls after successful processing
+  const prevProcessing = useRef(processing);
+  useEffect(() => {
+    if (prevProcessing.current && !processing && !error) {
+      setResetSignal((s) => s + 1);
+    }
+    prevProcessing.current = processing;
+  }, [processing, error]);
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+  const hasChanges =
+    (settings.angle !== undefined && settings.angle !== 0) ||
+    settings.horizontal === true ||
+    settings.vertical === true;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hasFile && hasChanges && !processing) handleProcess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <RotateControls
+        onChange={setSettings}
+        onPreviewTransform={onPreviewTransform}
+        resetSignal={resetSignal}
+      />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

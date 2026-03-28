@@ -1,25 +1,25 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-export function BlurFacesSettings() {
-  const { files } = useFileStore();
-  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
-    useToolProcessor("blur-faces");
+export interface BlurFacesControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function BlurFacesControls({ onChange }: BlurFacesControlsProps) {
   const [blurRadius, setBlurRadius] = useState(30);
   const [sensitivity, setSensitivity] = useState(50);
 
-  const handleProcess = () => {
-    processFiles(files, {
-      blurRadius,
-      sensitivity: sensitivity / 100,
-    });
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({ blurRadius, sensitivity: sensitivity / 100 });
+  }, [blurRadius, sensitivity]);
 
   return (
     <div className="space-y-4">
@@ -68,6 +68,25 @@ export function BlurFacesSettings() {
           <span>Fewer false positives</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function BlurFacesSettings() {
+  const { files } = useFileStore();
+  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
+    useToolProcessor("blur-faces");
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    processFiles(files, settings);
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <BlurFacesControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}

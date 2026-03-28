@@ -1,37 +1,27 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-export function ReplaceColorSettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("replace-color");
+export interface ReplaceColorControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function ReplaceColorControls({ onChange }: ReplaceColorControlsProps) {
   const [sourceColor, setSourceColor] = useState("#FF0000");
   const [targetColor, setTargetColor] = useState("#00FF00");
   const [makeTransparent, setMakeTransparent] = useState(false);
   const [tolerance, setTolerance] = useState(30);
 
-  const handleProcess = () => {
-    const settings = { sourceColor, targetColor, makeTransparent, tolerance };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({ sourceColor, targetColor, makeTransparent, tolerance });
+  }, [sourceColor, targetColor, makeTransparent, tolerance]);
 
   return (
     <div className="space-y-4">
@@ -100,6 +90,38 @@ export function ReplaceColorSettings() {
           <span>Wide range</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ReplaceColorSettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("replace-color");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <ReplaceColorControls onChange={setSettings} />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

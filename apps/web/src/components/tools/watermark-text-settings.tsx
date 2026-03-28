@@ -1,24 +1,16 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 type Position = "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "tiled";
 
-export function WatermarkTextSettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("watermark-text");
+export interface WatermarkTextControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function WatermarkTextControls({ onChange }: WatermarkTextControlsProps) {
   const [text, setText] = useState("Sample Watermark");
   const [fontSize, setFontSize] = useState(48);
   const [color, setColor] = useState("#000000");
@@ -26,16 +18,14 @@ export function WatermarkTextSettings() {
   const [position, setPosition] = useState<Position>("center");
   const [rotation, setRotation] = useState(0);
 
-  const handleProcess = () => {
-    const settings = { text, fontSize, color, opacity, position, rotation };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({ text, fontSize, color, opacity, position, rotation });
+  }, [text, fontSize, color, opacity, position, rotation]);
 
   return (
     <div className="space-y-4">
@@ -138,6 +128,38 @@ export function WatermarkTextSettings() {
           className="w-full mt-1"
         />
       </div>
+    </div>
+  );
+}
+
+export function WatermarkTextSettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("watermark-text");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <WatermarkTextControls onChange={setSettings} />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
@@ -162,7 +184,7 @@ export function WatermarkTextSettings() {
           type="button"
           data-testid="watermark-text-submit"
           onClick={handleProcess}
-          disabled={!hasFile || processing || !text}
+          disabled={!hasFile || processing || !settings.text}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {files.length > 1 ? `Apply Watermark (${files.length} files)` : "Apply Watermark"}

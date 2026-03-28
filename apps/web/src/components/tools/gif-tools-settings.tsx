@@ -1,33 +1,35 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-export function GifToolsSettings() {
-  const { files } = useFileStore();
-  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
-    useToolProcessor("gif-tools");
+export interface GifToolsControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function GifToolsControls({ onChange }: GifToolsControlsProps) {
   const [mode, setMode] = useState<"resize" | "extract">("resize");
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [extractFrame, setExtractFrame] = useState("0");
   const [optimize, setOptimize] = useState(false);
 
-  const handleProcess = () => {
-    const settings: Record<string, unknown> = {};
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
     if (mode === "extract") {
-      settings.extractFrame = Number(extractFrame);
+      onChangeRef.current?.({ extractFrame: Number(extractFrame) });
     } else {
+      const settings: Record<string, unknown> = { optimize };
       if (width) settings.width = Number(width);
       if (height) settings.height = Number(height);
-      settings.optimize = optimize;
+      onChangeRef.current?.(settings);
     }
-    processFiles(files, settings);
-  };
-
-  const hasFile = files.length > 0;
+  }, [mode, width, height, extractFrame, optimize]);
 
   return (
     <div className="space-y-4">
@@ -112,6 +114,25 @@ export function GifToolsSettings() {
           <p className="text-[10px] text-muted-foreground mt-0.5">Frame 0 is the first frame</p>
         </div>
       )}
+    </div>
+  );
+}
+
+export function GifToolsSettings() {
+  const { files } = useFileStore();
+  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
+    useToolProcessor("gif-tools");
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    processFiles(files, settings);
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <GifToolsControls onChange={setSettings} />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

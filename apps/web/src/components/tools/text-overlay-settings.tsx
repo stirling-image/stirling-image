@@ -1,22 +1,14 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-export function TextOverlaySettings() {
-  const { files } = useFileStore();
-  const {
-    processFiles,
-    processAllFiles,
-    processing,
-    error,
-    downloadUrl,
-    originalSize,
-    processedSize,
-    progress,
-  } = useToolProcessor("text-overlay");
+export interface TextOverlayControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function TextOverlayControls({ onChange }: TextOverlayControlsProps) {
   const [text, setText] = useState("Your Text Here");
   const [fontSize, setFontSize] = useState(48);
   const [color, setColor] = useState("#FFFFFF");
@@ -25,16 +17,22 @@ export function TextOverlaySettings() {
   const [backgroundColor, setBackgroundColor] = useState("#000000");
   const [shadow, setShadow] = useState(true);
 
-  const handleProcess = () => {
-    const settings = { text, fontSize, color, position, backgroundBox, backgroundColor, shadow };
-    if (files.length > 1) {
-      processAllFiles(files, settings);
-    } else {
-      processFiles(files, settings);
-    }
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({
+      text,
+      fontSize,
+      color,
+      position,
+      backgroundBox,
+      backgroundColor,
+      shadow,
+    });
+  }, [text, fontSize, color, position, backgroundBox, backgroundColor, shadow]);
 
   return (
     <div className="space-y-4">
@@ -132,6 +130,38 @@ export function TextOverlaySettings() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+export function TextOverlaySettings() {
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("text-overlay");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
+    }
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <TextOverlayControls onChange={setSettings} />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
@@ -156,7 +186,7 @@ export function TextOverlaySettings() {
           type="button"
           data-testid="text-overlay-submit"
           onClick={handleProcess}
-          disabled={!hasFile || processing || !text}
+          disabled={!hasFile || processing || !settings.text}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {files.length > 1 ? `Apply Overlay (${files.length} files)` : "Apply Overlay"}

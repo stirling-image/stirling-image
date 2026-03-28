@@ -1,23 +1,26 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 const QUICK_SCALES = [2, 3, 4, 6, 8];
 
-export function UpscaleSettings() {
-  const { files } = useFileStore();
-  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
-    useToolProcessor("upscale");
+export interface UpscaleControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function UpscaleControls({ onChange }: UpscaleControlsProps) {
   const [scale, setScale] = useState(2);
 
-  const handleProcess = () => {
-    processFiles(files, { scale });
-  };
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const hasFile = files.length > 0;
+  useEffect(() => {
+    onChangeRef.current?.({ scale });
+  }, [scale]);
 
   return (
     <div className="space-y-4">
@@ -53,6 +56,25 @@ export function UpscaleSettings() {
           className="w-full mt-2"
         />
       </div>
+    </div>
+  );
+}
+
+export function UpscaleSettings() {
+  const { files } = useFileStore();
+  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
+    useToolProcessor("upscale");
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    processFiles(files, settings);
+  };
+
+  const hasFile = files.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <UpscaleControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -82,7 +104,7 @@ export function UpscaleSettings() {
           disabled={!hasFile || processing}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {`Upscale ${scale}x`}
+          {`Upscale ${(settings.scale as number) ?? 2}x`}
         </button>
       )}
 

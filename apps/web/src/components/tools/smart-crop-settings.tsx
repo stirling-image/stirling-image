@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
@@ -13,14 +13,23 @@ const ASPECT_PRESETS = [
   { label: "Custom", w: 0, h: 0 },
 ];
 
-export function SmartCropSettings() {
-  const { files } = useFileStore();
-  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
-    useToolProcessor("smart-crop");
+export interface SmartCropControlsProps {
+  onChange?: (settings: Record<string, unknown>) => void;
+}
 
+export function SmartCropControls({ onChange }: SmartCropControlsProps) {
   const [width, setWidth] = useState("1080");
   const [height, setHeight] = useState("1080");
   const [preset, setPreset] = useState("1:1 Square");
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
+    onChangeRef.current?.({ width: Number(width), height: Number(height) });
+  }, [width, height]);
 
   const handlePreset = (label: string) => {
     setPreset(label);
@@ -30,17 +39,6 @@ export function SmartCropSettings() {
       setHeight(String(p.h));
     }
   };
-
-  const handleProcess = () => {
-    const w = Number(width);
-    const h = Number(height);
-    if (w > 0 && h > 0) {
-      processFiles(files, { width: w, height: h });
-    }
-  };
-
-  const hasFile = files.length > 0;
-  const canProcess = Number(width) > 0 && Number(height) > 0;
 
   return (
     <div className="space-y-4">
@@ -104,6 +102,31 @@ export function SmartCropSettings() {
         Uses entropy-based attention detection to find the most interesting region of the image and
         crops to it.
       </p>
+    </div>
+  );
+}
+
+export function SmartCropSettings() {
+  const { files } = useFileStore();
+  const { processFiles, processing, error, downloadUrl, originalSize, processedSize, progress } =
+    useToolProcessor("smart-crop");
+
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+
+  const handleProcess = () => {
+    const w = Number(settings.width);
+    const h = Number(settings.height);
+    if (w > 0 && h > 0) {
+      processFiles(files, { width: w, height: h });
+    }
+  };
+
+  const hasFile = files.length > 0;
+  const canProcess = Number(settings.width) > 0 && Number(settings.height) > 0;
+
+  return (
+    <div className="space-y-4">
+      <SmartCropControls onChange={setSettings} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
