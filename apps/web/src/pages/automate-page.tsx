@@ -26,6 +26,7 @@ export function AutomatePage() {
     processedSize: number;
     stepsCompleted: number;
   } | null>(null);
+  const [executionError, setExecutionError] = useState<string | null>(null);
 
   // Load saved pipelines
   const loadPipelines = useCallback(async () => {
@@ -96,6 +97,7 @@ export function AutomatePage() {
     async (file: File) => {
       setExecuting(true);
       setExecutionResult(null);
+      setExecutionError(null);
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -123,9 +125,12 @@ export function AutomatePage() {
             processedSize: data.processedSize,
             stepsCompleted: data.stepsCompleted,
           });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setExecutionError(data.error || `Pipeline failed with status ${res.status}`);
         }
       } catch {
-        // Error handling
+        setExecutionError("Connection error. Please try again.");
       } finally {
         setExecuting(false);
       }
@@ -215,6 +220,7 @@ export function AutomatePage() {
               saving={saving}
               executing={executing}
               executionResult={executionResult}
+              executionError={executionError}
             />
           </div>
         </div>

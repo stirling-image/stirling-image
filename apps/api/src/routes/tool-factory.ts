@@ -49,6 +49,14 @@ export function getToolConfig(toolId: string): AnyToolRouteConfig | undefined {
 }
 
 /**
+ * Return the IDs of all tools registered via createToolRoute().
+ * These are the tools that can be used in pipelines and batch processing.
+ */
+export function getRegisteredToolIds(): string[] {
+  return [...toolRegistry.keys()];
+}
+
+/**
  * Factory that registers a POST /api/v1/tools/:toolId route.
  *
  * The route accepts multipart with:

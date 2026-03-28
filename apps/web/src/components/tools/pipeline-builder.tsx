@@ -42,6 +42,7 @@ interface PipelineBuilderProps {
     processedSize: number;
     stepsCompleted: number;
   } | null;
+  executionError?: string | null;
 }
 
 export function PipelineBuilder({
@@ -52,6 +53,7 @@ export function PipelineBuilder({
   saving = false,
   executing = false,
   executionResult = null,
+  executionError = null,
 }: PipelineBuilderProps) {
   const [showToolPicker, setShowToolPicker] = useState(false);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export function PipelineBuilder({
   const [file, setFile] = useState<File | null>(null);
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
   const [experimentalEnabled, setExperimentalEnabled] = useState(false);
+  const [pipelineToolIds, setPipelineToolIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     apiGet<{ settings: Record<string, string> }>("/v1/settings")
@@ -71,15 +74,22 @@ export function PipelineBuilder({
         setExperimentalEnabled(data.settings.enableExperimentalTools === "true");
       })
       .catch(() => {});
+
+    // Fetch which tools actually support pipeline execution
+    apiGet<{ toolIds: string[] }>("/v1/pipeline/tools")
+      .then((data) => setPipelineToolIds(data.toolIds))
+      .catch(() => {});
   }, []);
 
   const PIPELINE_TOOLS = useMemo(() => {
     return PIPELINE_TOOLS_BASE.filter((t) => {
       if (disabledTools.includes(t.id)) return false;
       if (t.experimental && !experimentalEnabled) return false;
+      // Only show tools that are registered in the pipeline-compatible tool registry
+      if (pipelineToolIds && !pipelineToolIds.includes(t.id)) return false;
       return true;
     });
-  }, [disabledTools, experimentalEnabled]);
+  }, [disabledTools, experimentalEnabled, pipelineToolIds]);
 
   const addStep = useCallback(
     (toolId: string) => {
@@ -324,6 +334,16 @@ export function PipelineBuilder({
           <Plus className="h-4 w-4" />
           Add Step
         </button>
+      )}
+
+      {/* Execution error */}
+      {executionError && (
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+          <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+            <icons.AlertCircle className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-medium">{executionError}</span>
+          </div>
+        </div>
       )}
 
       {/* Execution result */}

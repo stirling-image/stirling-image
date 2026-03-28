@@ -17,7 +17,7 @@ import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import { createWorkspace } from "../lib/workspace.js";
 import { requireAuth } from "../plugins/auth.js";
-import { getToolConfig } from "./tool-factory.js";
+import { getRegisteredToolIds, getToolConfig } from "./tool-factory.js";
 
 /** Schema for a single pipeline step. */
 const pipelineStepSchema = z.object({
@@ -311,6 +311,16 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
       return reply.send({ ok: true });
     },
   );
+
+  /**
+   * GET /api/v1/pipeline/tools
+   *
+   * Returns the IDs of tools that can be used as pipeline steps.
+   * Only tools registered via createToolRoute() support pipeline execution.
+   */
+  app.get("/api/v1/pipeline/tools", async (_request: FastifyRequest, reply: FastifyReply) => {
+    return reply.send({ toolIds: getRegisteredToolIds() });
+  });
 
   app.log.info("Pipeline routes registered");
 }
