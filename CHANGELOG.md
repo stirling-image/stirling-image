@@ -1,3 +1,10 @@
+## [0.17.3](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.2...v0.17.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* clear search when adding a step from the tool picker ([ae2e63f](https://github.com/siddharthksah/Stirling-Image/commit/ae2e63f7fc4af3556539eee577b253c0616cbd0f))
+
 ## [0.17.2](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.1...v0.17.2) (2026-03-28)
 
 
