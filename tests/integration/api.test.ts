@@ -1164,7 +1164,7 @@ describe("Health & Config", () => {
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.status).toBe("healthy");
+      expect(body.status).toBe("ok");
       expect(body.version).toBeDefined();
       expect(body.uptime).toBeUndefined();
       expect(body.database).toBeUndefined();
@@ -1205,6 +1205,29 @@ describe("Health & Config", () => {
         url: "/api/v1/admin/health",
       });
       expect(res.statusCode).toBe(401);
+    });
+
+    it("returns 403 for authenticated non-admin user", async () => {
+      // Create a regular user and log in as them
+      await app.inject({
+        method: "POST",
+        url: "/api/auth/register",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { username: "health_nonadmin", password: "Password1234", role: "user" },
+      });
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { username: "health_nonadmin", password: "Password1234" },
+      });
+      const userToken = JSON.parse(loginRes.body).token;
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/admin/health",
+        headers: { authorization: `Bearer ${userToken}` },
+      });
+      expect(res.statusCode).toBe(403);
     });
   });
 

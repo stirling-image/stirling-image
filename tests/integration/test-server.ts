@@ -116,19 +116,10 @@ export async function buildTestApp(): Promise<TestApp> {
   await docsRoutes(app);
 
   // Public health check (minimal - no internal details)
-  app.get("/api/v1/health", async () => {
-    let dbOk = false;
-    try {
-      db.select().from(schema.settings).limit(1).all();
-      dbOk = true;
-    } catch {
-      /* db unreachable */
-    }
-    return {
-      status: dbOk ? "healthy" : "degraded",
-      version: APP_VERSION,
-    };
-  });
+  app.get("/api/v1/health", async () => ({
+    status: "ok",
+    version: APP_VERSION,
+  }));
 
   // Admin health check (full diagnostics)
   app.get("/api/v1/admin/health", async (request, reply) => {
