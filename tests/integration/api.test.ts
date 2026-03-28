@@ -1420,6 +1420,30 @@ describe("Settings", () => {
       expect(body.code).toBe("VALIDATION_ERROR");
     });
 
+    it("does not partially write entries when a later entry contains HTML tags", async () => {
+      const cleanKey = `atomicity_test_clean_${Date.now()}`;
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/settings",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          [cleanKey]: "safe_value",
+          "<script>xss</script>": "evil",
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.code).toBe("VALIDATION_ERROR");
+
+      // The clean entry must NOT have been written
+      const getRes = await app.inject({
+        method: "GET",
+        url: `/api/v1/settings/${cleanKey}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(getRes.statusCode).toBe(404);
+    });
+
     it("allows normal setting values without HTML", async () => {
       const res = await app.inject({
         method: "PUT",

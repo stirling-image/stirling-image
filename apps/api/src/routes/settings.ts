@@ -43,8 +43,8 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const now = new Date();
-    let updatedCount = 0;
+    // Pass 1: validate all entries before writing any
+    const entries: Array<{ key: string; strValue: string }> = [];
 
     for (const [key, value] of Object.entries(body)) {
       if (typeof key !== "string" || key.length === 0) continue;
@@ -58,6 +58,13 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
+      entries.push({ key, strValue });
+    }
+
+    // Pass 2: write all entries now that all have passed validation
+    const now = new Date();
+
+    for (const { key, strValue } of entries) {
       // Upsert: insert or update on conflict
       const existing = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
 
@@ -69,11 +76,9 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
       } else {
         db.insert(schema.settings).values({ key, value: strValue }).run();
       }
-
-      updatedCount++;
     }
 
-    return reply.send({ ok: true, updatedCount });
+    return reply.send({ ok: true, updatedCount: entries.length });
   });
 
   // GET /api/v1/settings/:key — Get a specific setting
