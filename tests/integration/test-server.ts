@@ -29,7 +29,12 @@ import Fastify from "fastify";
 import { env } from "../../apps/api/src/config.js";
 import { db, schema } from "../../apps/api/src/db/index.js";
 import { runMigrations } from "../../apps/api/src/db/migrate.js";
-import { authMiddleware, authRoutes, ensureDefaultAdmin } from "../../apps/api/src/plugins/auth.js";
+import {
+  authMiddleware,
+  authRoutes,
+  ensureDefaultAdmin,
+  requireAdmin,
+} from "../../apps/api/src/plugins/auth.js";
 import { registerUpload } from "../../apps/api/src/plugins/upload.js";
 import { apiKeyRoutes } from "../../apps/api/src/routes/api-keys.js";
 import { registerBatchRoutes } from "../../apps/api/src/routes/batch.js";
@@ -110,15 +115,43 @@ export async function buildTestApp(): Promise<TestApp> {
   // API docs (Scalar)
   await docsRoutes(app);
 
-  // Health check
-  app.get("/api/v1/health", async () => ({
-    status: "healthy",
-    version: APP_VERSION,
-    uptime: process.uptime().toFixed(0) + "s",
-    storage: { mode: env.STORAGE_MODE, available: "N/A" },
-    queue: { active: 0, pending: 0 },
-    ai: {},
-  }));
+  // Public health check (minimal - no internal details)
+  app.get("/api/v1/health", async () => {
+    let dbOk = false;
+    try {
+      db.select().from(schema.settings).limit(1).all();
+      dbOk = true;
+    } catch {
+      /* db unreachable */
+    }
+    return {
+      status: dbOk ? "healthy" : "degraded",
+      version: APP_VERSION,
+    };
+  });
+
+  // Admin health check (full diagnostics)
+  app.get("/api/v1/admin/health", async (request, reply) => {
+    const admin = requireAdmin(request, reply);
+    if (!admin) return;
+
+    let dbOk = false;
+    try {
+      db.select().from(schema.settings).limit(1).all();
+      dbOk = true;
+    } catch {
+      /* db unreachable */
+    }
+    return {
+      status: dbOk ? "healthy" : "degraded",
+      version: APP_VERSION,
+      uptime: `${process.uptime().toFixed(0)}s`,
+      storage: { mode: env.STORAGE_MODE, available: "N/A" },
+      database: dbOk ? "ok" : "error",
+      queue: { active: 0, pending: 0 },
+      ai: {},
+    };
+  });
 
   // Public config endpoint
   app.get("/api/v1/config/auth", async () => ({

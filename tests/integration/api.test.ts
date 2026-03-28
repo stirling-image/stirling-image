@@ -1157,7 +1157,7 @@ describe("Tool processing", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 describe("Health & Config", () => {
   describe("GET /api/v1/health", () => {
-    it("returns healthy status without auth", async () => {
+    it("returns only status and version without auth", async () => {
       const res = await app.inject({
         method: "GET",
         url: "/api/v1/health",
@@ -1166,7 +1166,10 @@ describe("Health & Config", () => {
       const body = JSON.parse(res.body);
       expect(body.status).toBe("healthy");
       expect(body.version).toBeDefined();
-      expect(body.uptime).toBeDefined();
+      expect(body.uptime).toBeUndefined();
+      expect(body.database).toBeUndefined();
+      expect(body.storage).toBeUndefined();
+      expect(body.queue).toBeUndefined();
     });
 
     it("also works with auth", async () => {
@@ -1176,6 +1179,32 @@ describe("Health & Config", () => {
         headers: { authorization: `Bearer ${adminToken}` },
       });
       expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe("GET /api/v1/admin/health", () => {
+    it("returns full diagnostics for admin", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/admin/health",
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.status).toBe("healthy");
+      expect(body.version).toBeDefined();
+      expect(body.uptime).toBeDefined();
+      expect(body.database).toBe("ok");
+      expect(body.storage).toBeDefined();
+      expect(body.queue).toBeDefined();
+    });
+
+    it("rejects unauthenticated requests", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/admin/health",
+      });
+      expect(res.statusCode).toBe(401);
     });
   });
 

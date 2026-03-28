@@ -6,7 +6,7 @@ import { env } from "./config.js";
 import { db, schema } from "./db/index.js";
 import { runMigrations } from "./db/migrate.js";
 import { startCleanupCron } from "./lib/cleanup.js";
-import { authMiddleware, authRoutes, ensureDefaultAdmin } from "./plugins/auth.js";
+import { authMiddleware, authRoutes, ensureDefaultAdmin, requireAdmin } from "./plugins/auth.js";
 import { registerStatic } from "./plugins/static.js";
 import { registerUpload } from "./plugins/upload.js";
 import { apiKeyRoutes } from "./routes/api-keys.js";
@@ -103,8 +103,26 @@ await teamsRoutes(app);
 // API docs (Scalar)
 await docsRoutes(app);
 
-// Health check
+// Public health check (minimal - no internal details)
 app.get("/api/v1/health", async () => {
+  let dbOk = false;
+  try {
+    db.select().from(schema.settings).limit(1).all();
+    dbOk = true;
+  } catch {
+    /* db unreachable */
+  }
+  return {
+    status: dbOk ? "healthy" : "degraded",
+    version: APP_VERSION,
+  };
+});
+
+// Admin health check (full diagnostics)
+app.get("/api/v1/admin/health", async (request, reply) => {
+  const admin = requireAdmin(request, reply);
+  if (!admin) return;
+
   let dbOk = false;
   try {
     db.select().from(schema.settings).limit(1).all();
