@@ -11,6 +11,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db, schema } from "../db/index.js";
 import { requireAdmin, requireAuth } from "../plugins/auth.js";
 
+const HTML_TAG_PATTERN = /<[a-z/!][^>]*>/i;
+
 export async function settingsRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/settings — Get all settings as a key-value object
   app.get("/api/v1/settings", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -48,6 +50,13 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
       if (typeof key !== "string" || key.length === 0) continue;
 
       const strValue = typeof value === "string" ? value : JSON.stringify(value);
+
+      if (HTML_TAG_PATTERN.test(key) || HTML_TAG_PATTERN.test(strValue)) {
+        return reply.status(400).send({
+          error: "Settings keys and values must not contain HTML tags",
+          code: "VALIDATION_ERROR",
+        });
+      }
 
       // Upsert: insert or update on conflict
       const existing = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();

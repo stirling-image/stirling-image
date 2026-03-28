@@ -1395,6 +1395,42 @@ describe("Settings", () => {
       });
       expect(JSON.parse(res.body).value).toBe("updated");
     });
+
+    it("rejects HTML tags in setting values", async () => {
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/settings",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { app_name: "<script>alert('xss')</script>" },
+      });
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("rejects HTML tags in setting keys", async () => {
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/settings",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { "<img src=x onerror=alert(1)>": "test" },
+      });
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("allows normal setting values without HTML", async () => {
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/settings",
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { app_name: "My App (v2.0) - Production" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.ok).toBe(true);
+    });
   });
 
   describe("GET /api/v1/settings/:key", () => {
