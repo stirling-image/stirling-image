@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/siddharthksah/Stirling-Image/compare/v0.14.0...v0.14.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* handle migration race condition in concurrent test workers ([d576ab1](https://github.com/siddharthksah/Stirling-Image/commit/d576ab1dfb1e9d2aa739c681c1f83d6fef3f7d22))
+
 # [0.14.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.13.1...v0.14.0) (2026-03-28)
 
 
