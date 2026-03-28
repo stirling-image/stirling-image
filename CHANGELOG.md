@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.16.4...v0.17.0) (2026-03-28)
+
+
+### Features
+
+* make AI tools pipeline-compatible and add search to tool picker ([2d46b09](https://github.com/siddharthksah/Stirling-Image/commit/2d46b096fa80e43f7a59e213ac884b5d1d30b586))
+
 ## [0.16.4](https://github.com/siddharthksah/Stirling-Image/compare/v0.16.3...v0.16.4) (2026-03-28)
 
 
