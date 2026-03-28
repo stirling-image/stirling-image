@@ -3,7 +3,7 @@ info:
   title: Stirling Image API
   version: 0.9.0
   description: |
-    REST API for Stirling Image, a self-hosted image processing platform with 33+ tools.
+    REST API for Stirling Image, a self-hosted image processing platform with 30+ tools.
 
     ## Authentication
 

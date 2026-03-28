@@ -14,7 +14,7 @@ hero:
       link: /api/rest
 
 features:
-  - title: 33+ tools
+  - title: 30+ tools
     details: Resize, crop, compress, convert, watermark, OCR, background removal, upscaling, face blurring, and more.
   - title: Runs locally
     details: Single Docker container. Your images stay on your server, nothing gets sent to external services.

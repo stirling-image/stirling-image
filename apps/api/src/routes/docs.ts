@@ -39,7 +39,7 @@ function generateLlmsTxt(spec: OpenAPISpec): string {
   lines.push(`# ${spec.info.title}`);
   lines.push("");
   lines.push(
-    "> Self-hosted image processing API with 33+ tools. Resize, compress, convert, remove backgrounds, upscale, run OCR, and more.",
+    "> Self-hosted image processing API with 30+ tools. Resize, compress, convert, remove backgrounds, upscale, run OCR, and more.",
   );
   lines.push("");
   lines.push("## Docs");

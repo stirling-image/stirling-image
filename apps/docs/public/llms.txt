@@ -1,6 +1,6 @@
 # Stirling Image
 
-> Self-hosted, open-source image processing platform with 33+ tools. Runs in a single Docker container.
+> Self-hosted, open-source image processing platform with 30+ tools. Runs in a single Docker container.
 
 ## Docs
 
