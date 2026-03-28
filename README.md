@@ -4,7 +4,7 @@
 
 <h1 align="center">Stirling Image</h1>
 
-<p align="center">Stirling-PDF but for images. 36+ tools and local AI in a single Docker container.</p>
+<p align="center">Stirling-PDF but for images. 30+ tools and local AI in a single Docker container.</p>
 
 <p align="center">
   <a href="https://github.com/siddharthksah/Stirling-Image/pkgs/container/stirling-image"><img src="https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker" alt="Docker"></a>
@@ -17,7 +17,7 @@
 
 ## Key Features
 
-- **36+ image tools** - Resize, crop, compress, convert, watermark, color adjust, and more
+- **30+ image tools** - Resize, crop, compress, convert, watermark, color adjust, and more
 - **Local AI** - Remove backgrounds, upscale images, erase objects, blur faces, extract text (OCR). All running on your hardware with pre-downloaded models, no internet required
 - **Pipelines** - Chain tools into reusable workflows. Batch process up to 200 images at once
 - **REST API** - Every tool available via API. Interactive docs included at `/api/docs`
