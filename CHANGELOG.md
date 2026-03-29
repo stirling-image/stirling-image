@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.7...v0.18.0) (2026-03-29)
+
+
+### Features
+
+* add worker threads, persistent Python sidecar, graceful shutdown, and architectural improvements ([1274cc1](https://github.com/siddharthksah/Stirling-Image/commit/1274cc103fa2f0f934e9e2322c6034533ab62ec4))
+
 ## [0.17.7](https://github.com/siddharthksah/Stirling-Image/compare/v0.17.6...v0.17.7) (2026-03-28)
 
 
