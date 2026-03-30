@@ -16,7 +16,7 @@ info:
     Endpoints marked with a lock icon require authentication. Admin-only endpoints are noted in their description.
   license:
     name: MIT
-    url: https://github.com/siddharthksah/Stirling-Image/blob/main/LICENSE
+    url: https://github.com/stirling-image/stirling-image/blob/main/LICENSE
 
 servers:
   - url: /

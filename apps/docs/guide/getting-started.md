@@ -9,7 +9,7 @@ docker run -d \
   --name stirling-image \
   -p 1349:1349 \
   -v stirling-data:/data \
-  siddharth123sk/stirling-image:latest
+  stirlingimage/stirling-image:latest
 ```
 
 Open `http://localhost:1349` in your browser. Log in with `admin` / `admin`.
@@ -21,7 +21,7 @@ Create a `docker-compose.yml`:
 ```yaml
 services:
   stirling-image:
-    image: siddharth123sk/stirling-image:latest
+    image: stirlingimage/stirling-image:latest
     container_name: stirling-image
     ports:
       - "1349:1349"
@@ -50,8 +50,8 @@ See [Configuration](./configuration) for the full list of environment variables.
 Requirements: Node.js 22+, pnpm 9+, Python 3.10+
 
 ```bash
-git clone https://github.com/siddharthksah/Stirling-Image.git
-cd Stirling-Image
+git clone https://github.com/stirling-image/stirling-image.git
+cd stirling-image
 pnpm install
 ```
 

@@ -83,7 +83,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            siddharth123sk/stirling-image
+            stirlingimage/stirling-image
             ghcr.io/${{ github.repository }}
           tags: |
             type=semver,pattern={{version}},value=v${{ needs.release.outputs.new_version }}

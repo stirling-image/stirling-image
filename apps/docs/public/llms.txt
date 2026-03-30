@@ -4,15 +4,15 @@
 
 ## Docs
 
-- [Getting Started](https://siddharthksah.github.io/Stirling-Image/guide/getting-started): Docker setup, build from source
-- [Architecture](https://siddharthksah.github.io/Stirling-Image/guide/architecture): Monorepo structure, request flow, packages
-- [Configuration](https://siddharthksah.github.io/Stirling-Image/guide/configuration): Environment variables, Docker volumes
-- [Database](https://siddharthksah.github.io/Stirling-Image/guide/database): SQLite schema, tables, migrations
-- [Deployment](https://siddharthksah.github.io/Stirling-Image/guide/deployment): Docker Compose, reverse proxy, CI/CD
-- [REST API](https://siddharthksah.github.io/Stirling-Image/api/rest): All API endpoints, auth, tools, pipelines, batch
-- [Image Engine](https://siddharthksah.github.io/Stirling-Image/api/image-engine): Sharp-based operations (resize, crop, rotate, convert, compress, color)
-- [AI Engine](https://siddharthksah.github.io/Stirling-Image/api/ai): Python ML models (rembg, RealESRGAN, PaddleOCR, MediaPipe, LaMa)
-- [Full Documentation (LLM-friendly)](https://siddharthksah.github.io/Stirling-Image/llms-full.txt): All docs in a single plain-text file
+- [Getting Started](https://stirling-image.github.io/stirling-image/guide/getting-started): Docker setup, build from source
+- [Architecture](https://stirling-image.github.io/stirling-image/guide/architecture): Monorepo structure, request flow, packages
+- [Configuration](https://stirling-image.github.io/stirling-image/guide/configuration): Environment variables, Docker volumes
+- [Database](https://stirling-image.github.io/stirling-image/guide/database): SQLite schema, tables, migrations
+- [Deployment](https://stirling-image.github.io/stirling-image/guide/deployment): Docker Compose, reverse proxy, CI/CD
+- [REST API](https://stirling-image.github.io/stirling-image/api/rest): All API endpoints, auth, tools, pipelines, batch
+- [Image Engine](https://stirling-image.github.io/stirling-image/api/image-engine): Sharp-based operations (resize, crop, rotate, convert, compress, color)
+- [AI Engine](https://stirling-image.github.io/stirling-image/api/ai): Python ML models (rembg, RealESRGAN, PaddleOCR, MediaPipe, LaMa)
+- [Full Documentation (LLM-friendly)](https://stirling-image.github.io/stirling-image/llms-full.txt): All docs in a single plain-text file
 
 ## API Quick Reference
 
@@ -26,5 +26,5 @@
 
 ## Source
 
-- [GitHub](https://github.com/siddharthksah/Stirling-Image)
+- [GitHub](https://github.com/stirling-image/stirling-image)
 - License: MIT

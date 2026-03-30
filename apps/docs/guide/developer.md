@@ -14,8 +14,8 @@ Python 3.10+ is only needed if you are working on the AI/ML sidecar (background 
 ## Setup
 
 ```bash
-git clone https://github.com/siddharthksah/Stirling-Image.git
-cd Stirling-Image
+git clone https://github.com/stirling-image/stirling-image.git
+cd stirling-image
 pnpm install
 pnpm dev
 ```

@@ -57,7 +57,7 @@ All configuration is done through environment variables. Every variable has a se
 ```yaml
 services:
   stirling-image:
-    image: siddharth123sk/stirling-image:latest
+    image: stirlingimage/stirling-image:latest
     ports:
       - "1349:1349"
     volumes:
