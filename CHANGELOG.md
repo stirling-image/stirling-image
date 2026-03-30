@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/stirling-image/stirling-image/compare/v1.0.0...v1.0.1) (2026-03-30)
+
+
+### Bug Fixes
+
+* allow SVG files in the convert tool ([034281b](https://github.com/stirling-image/stirling-image/commit/034281b1d4b19487ec0f900c3173465e0faf2510))
+
 # 1.0.0 (2026-03-30)
 
 
