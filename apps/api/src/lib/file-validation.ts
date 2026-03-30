@@ -1,8 +1,18 @@
 import sharp from "sharp";
 import { env } from "../config.js";
+import { isSvgBuffer } from "./svg-sanitize.js";
 
 /** Formats we accept as input. */
-const SUPPORTED_INPUT_FORMATS = new Set(["jpeg", "png", "webp", "gif", "tiff", "bmp", "avif"]);
+const SUPPORTED_INPUT_FORMATS = new Set([
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "tiff",
+  "bmp",
+  "avif",
+  "svg",
+]);
 
 interface MagicEntry {
   bytes: number[];
@@ -56,8 +66,8 @@ export async function validateImageBuffer(
     return { valid: false, reason: "File contains no image data" };
   }
 
-  // 2. Magic byte detection
-  const detectedFormat = detectMagicBytes(buffer);
+  // 2. Format detection (magic bytes for raster, text check for SVG)
+  const detectedFormat = detectMagicBytes(buffer) || (isSvgBuffer(buffer) ? "svg" : null);
   if (!detectedFormat) {
     return { valid: false, reason: "Unrecognized image format" };
   }
@@ -72,7 +82,8 @@ export async function validateImageBuffer(
 
   // 4. Dimensions check via sharp metadata
   try {
-    const metadata = await sharp(buffer).metadata();
+    const sharpOpts = detectedFormat === "svg" ? { density: 72 } : undefined;
+    const metadata = await sharp(buffer, sharpOpts).metadata();
     const width = metadata.width ?? 0;
     const height = metadata.height ?? 0;
     const megapixels = (width * height) / 1_000_000;

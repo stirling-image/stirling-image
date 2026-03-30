@@ -10,6 +10,7 @@ import { autoOrient } from "../lib/auto-orient.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import type { WorkerInput, WorkerOutput } from "../lib/image-worker.js";
+import { sanitizeSvg } from "../lib/svg-sanitize.js";
 import { getWorkerPool } from "../lib/worker-pool.js";
 import { createWorkspace } from "../lib/workspace.js";
 
@@ -144,6 +145,18 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         return reply.status(400).send({ error: `Invalid image: ${validation.reason}` });
       }
 
+      // Sanitize SVG input to prevent XXE, SSRF, and script injection
+      const isSvg = validation.format === "svg";
+      if (isSvg) {
+        try {
+          fileBuffer = sanitizeSvg(fileBuffer);
+        } catch (err) {
+          return reply.status(400).send({
+            error: err instanceof Error ? err.message : "Invalid SVG",
+          });
+        }
+      }
+
       // Parse and validate settings
       let settings: T;
       try {
@@ -179,6 +192,7 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
               inputBuffer: fileBuffer,
               settings,
               filename,
+              inputFormat: validation.format,
             };
             const workerResult: WorkerOutput = await pool.run(workerInput);
             result = {
@@ -192,12 +206,12 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
               { workerErr, toolId: config.toolId },
               "Worker processing failed, falling back to main thread",
             );
-            const processBuffer = await autoOrient(fileBuffer);
+            const processBuffer = isSvg ? fileBuffer : await autoOrient(fileBuffer);
             result = await config.process(processBuffer, settings, filename);
           }
         } else {
           // AI tools: always main thread (they use Python bridge)
-          const processBuffer = await autoOrient(fileBuffer);
+          const processBuffer = isSvg ? fileBuffer : await autoOrient(fileBuffer);
           result = await config.process(processBuffer, settings, filename);
         }
 

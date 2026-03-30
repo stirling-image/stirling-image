@@ -3,6 +3,7 @@ import { convert } from "@stirling-image/image-engine";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { isSvgBuffer } from "../../lib/svg-sanitize.js";
 import { createToolRoute } from "../tool-factory.js";
 
 const FORMAT_CONTENT_TYPES: Record<string, string> = {
@@ -24,7 +25,8 @@ export function registerConvert(app: FastifyInstance) {
     toolId: "convert",
     settingsSchema,
     process: async (inputBuffer, settings, filename) => {
-      const image = sharp(inputBuffer);
+      const sharpOpts = isSvgBuffer(inputBuffer) ? { density: 300 } : undefined;
+      const image = sharp(inputBuffer, sharpOpts);
       const result = await convert(image, settings);
       const buffer = await result.toBuffer();
 

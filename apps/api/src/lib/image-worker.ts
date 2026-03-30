@@ -13,6 +13,7 @@ export interface WorkerInput {
   inputBuffer: Buffer;
   settings: unknown;
   filename: string;
+  inputFormat?: string;
 }
 
 export interface WorkerOutput {
@@ -50,7 +51,8 @@ export default async function processInWorker(input: WorkerInput): Promise<Worke
     throw new Error(`Tool "${input.toolId}" not found in worker registry`);
   }
 
-  const oriented = await autoOrient(Buffer.from(input.inputBuffer));
+  const buf = Buffer.from(input.inputBuffer);
+  const oriented = input.inputFormat === "svg" ? buf : await autoOrient(buf);
   const result = await config.process(oriented, input.settings, input.filename);
 
   return {
