@@ -99,7 +99,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <a
-                href="https://github.com/siddharthksah/Stirling-Image"
+                href="https://github.com/stirling-image/stirling-image"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -108,7 +108,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
-                href="https://github.com/siddharthksah/Stirling-Image/issues"
+                href="https://github.com/stirling-image/stirling-image/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -117,7 +117,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
-                href="https://siddharthksah.github.io/Stirling-Image/"
+                href="https://stirling-image.github.io/stirling-image/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"

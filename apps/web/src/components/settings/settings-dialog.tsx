@@ -1718,7 +1718,7 @@ function AboutSection() {
         <h4 className="text-sm font-medium text-foreground">Links</h4>
         <div className="flex flex-col gap-1.5">
           <a
-            href="https://github.com/siddharthksah/Stirling-Image"
+            href="https://github.com/stirling-image/stirling-image"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
@@ -1726,7 +1726,7 @@ function AboutSection() {
             GitHub Repository
           </a>
           <a
-            href="https://siddharthksah.github.io/Stirling-Image/"
+            href="https://stirling-image.github.io/stirling-image/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"

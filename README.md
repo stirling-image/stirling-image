@@ -7,10 +7,10 @@
 <p align="center">Stirling-PDF but for images. 30+ tools and local AI in a single Docker container.</p>
 
 <p align="center">
-  <a href="https://hub.docker.com/r/siddharth123sk/stirling-image"><img src="https://img.shields.io/badge/Docker-Hub-blue?logo=docker" alt="Docker"></a>
-  <a href="https://github.com/siddharthksah/Stirling-Image/actions"><img src="https://img.shields.io/github/actions/workflow/status/siddharthksah/Stirling-Image/ci.yml?label=CI" alt="CI"></a>
-  <a href="https://github.com/siddharthksah/Stirling-Image/blob/main/LICENSE"><img src="https://img.shields.io/github/license/siddharthksah/Stirling-Image" alt="License"></a>
-  <a href="https://github.com/siddharthksah/Stirling-Image/stargazers"><img src="https://img.shields.io/github/stars/siddharthksah/Stirling-Image?style=social" alt="Stars"></a>
+  <a href="https://hub.docker.com/r/stirlingimage/stirling-image"><img src="https://img.shields.io/badge/Docker-Hub-blue?logo=docker" alt="Docker"></a>
+  <a href="https://github.com/stirling-image/stirling-image/actions"><img src="https://img.shields.io/github/actions/workflow/status/stirling-image/stirling-image/ci.yml?label=CI" alt="CI"></a>
+  <a href="https://github.com/stirling-image/stirling-image/blob/main/LICENSE"><img src="https://img.shields.io/github/license/stirling-image/stirling-image" alt="License"></a>
+  <a href="https://github.com/stirling-image/stirling-image/stargazers"><img src="https://img.shields.io/github/stars/stirling-image/stirling-image?style=social" alt="Stars"></a>
 </p>
 
 ![Stirling Image - Dashboard](images/dashboard.png)
@@ -28,7 +28,7 @@
 ## Quick Start
 
 ```bash
-docker run -d -p 1349:1349 -v stirling-data:/data siddharth123sk/stirling-image:latest
+docker run -d -p 1349:1349 -v stirling-data:/data stirlingimage/stirling-image:latest
 ```
 
 Open http://localhost:1349 in your browser.
@@ -42,28 +42,28 @@ Open http://localhost:1349 in your browser.
 
 You will be asked to change your password on first login. This is enforced for all new accounts and cannot be skipped in production.
 
-For Docker Compose, persistent storage, and other setup options, see the [Getting Started Guide](https://siddharthksah.github.io/Stirling-Image/guide/getting-started).
+For Docker Compose, persistent storage, and other setup options, see the [Getting Started Guide](https://stirling-image.github.io/stirling-image/guide/getting-started).
 
 ## Documentation
 
-- [Getting Started](https://siddharthksah.github.io/Stirling-Image/guide/getting-started)
-- [Configuration](https://siddharthksah.github.io/Stirling-Image/guide/configuration)
-- [REST API](https://siddharthksah.github.io/Stirling-Image/api/rest)
-- [Architecture](https://siddharthksah.github.io/Stirling-Image/guide/architecture)
-- [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer)
-- [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations)
+- [Getting Started](https://stirling-image.github.io/stirling-image/guide/getting-started)
+- [Configuration](https://stirling-image.github.io/stirling-image/guide/configuration)
+- [REST API](https://stirling-image.github.io/stirling-image/api/rest)
+- [Architecture](https://stirling-image.github.io/stirling-image/guide/architecture)
+- [Developer Guide](https://stirling-image.github.io/stirling-image/guide/developer)
+- [Translation Guide](https://stirling-image.github.io/stirling-image/guide/translations)
 
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, the [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer) for setup, and the [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations) for adding languages.
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, the [Developer Guide](https://stirling-image.github.io/stirling-image/guide/developer) for setup, and the [Translation Guide](https://stirling-image.github.io/stirling-image/guide/translations) for adding languages.
 
 ## Support
 
-Bug reports and feature requests: [GitHub Issues](https://github.com/siddharthksah/Stirling-Image/issues)
+Bug reports and feature requests: [GitHub Issues](https://github.com/stirling-image/stirling-image/issues)
 
 <p align="center">
-  <a href="https://github.com/sponsors/siddharthksah"><img src="https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=github-sponsors" alt="GitHub Sponsors"></a>
-  <a href="https://ko-fi.com/siddharthksah"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Ko--fi-FF5E5B?logo=ko-fi" alt="Ko-fi"></a>
+  <a href="https://github.com/sponsors/stirling-image"><img src="https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=github-sponsors" alt="GitHub Sponsors"></a>
+  <a href="https://ko-fi.com/stirling-image"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Ko--fi-FF5E5B?logo=ko-fi" alt="Ko-fi"></a>
 </p>
 
 ## License

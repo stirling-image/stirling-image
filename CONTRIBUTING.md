@@ -40,11 +40,11 @@ Example: `feat: add HEIC to PNG conversion support`
 
 ## Development setup
 
-Full instructions are in the [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer). The short version:
+Full instructions are in the [Developer Guide](https://stirling-image.github.io/stirling-image/guide/developer). The short version:
 
 ```bash
-git clone https://github.com/siddharthksah/Stirling-Image.git
-cd Stirling-Image
+git clone https://github.com/stirling-image/stirling-image.git
+cd stirling-image
 pnpm install
 pnpm dev        # starts both frontend and backend
 ```
@@ -70,11 +70,11 @@ Tools follow a consistent pattern. You will need to touch three places:
 2. **Frontend settings component** in `apps/web/src/components/tools/` with the tool's UI controls.
 3. **i18n entry** in `packages/shared/src/i18n/en.ts` with the tool's name and description.
 
-See the [Developer Guide](https://siddharthksah.github.io/Stirling-Image/guide/developer) for a walkthrough.
+See the [Developer Guide](https://stirling-image.github.io/stirling-image/guide/developer) for a walkthrough.
 
 ## Translations
 
-We currently ship English only, but the i18n system is designed for easy extension. If you want to add a language, see the [Translation Guide](https://siddharthksah.github.io/Stirling-Image/guide/translations).
+We currently ship English only, but the i18n system is designed for easy extension. If you want to add a language, see the [Translation Guide](https://stirling-image.github.io/stirling-image/guide/translations).
 
 ## Code style
 

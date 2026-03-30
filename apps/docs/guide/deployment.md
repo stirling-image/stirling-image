@@ -7,7 +7,7 @@ Stirling Image ships as a single Docker container. The frontend, API, and Python
 ```yaml
 services:
   stirling-image:
-    image: siddharth123sk/stirling-image:latest
+    image: stirlingimage/stirling-image:latest
     container_name: stirling-image
     ports:
       - "1349:1349"
@@ -110,7 +110,7 @@ Set `client_max_body_size` to match your `MAX_UPLOAD_SIZE_MB` value.
 
 The GitHub repository has two workflows:
 
-- **release.yml** -- On release, builds multi-arch Docker images (amd64 + arm64) and pushes to both Docker Hub (`siddharth123sk/stirling-image`) and GitHub Container Registry (`ghcr.io/siddharthksah/stirling-image`).
+- **release.yml** -- On release, builds multi-arch Docker images (amd64 + arm64) and pushes to both Docker Hub (`stirlingimage/stirling-image`) and GitHub Container Registry (`ghcr.io/stirling-image/stirling-image`).
 - **deploy-docs.yml** -- Builds this documentation site and deploys it to GitHub Pages.
 
 Both run automatically. No manual steps needed after merging to `main`.

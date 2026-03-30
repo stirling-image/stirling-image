@@ -3,15 +3,15 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Stirling Image",
   description: "Documentation for Stirling Image, a self-hosted image processing suite.",
-  base: "/Stirling-Image/",
+  base: "/stirling-image/",
   srcDir: ".",
   outDir: "./.vitepress/dist",
   ignoreDeadLinks: [/localhost/],
 
   head: [
     ["meta", { name: "theme-color", content: "#3b82f6" }],
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/Stirling-Image/favicon.svg" }],
-    ["link", { rel: "llms-txt", href: "/Stirling-Image/llms.txt" }],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/stirling-image/favicon.svg" }],
+    ["link", { rel: "llms-txt", href: "/stirling-image/llms.txt" }],
   ],
 
   themeConfig: {
@@ -46,7 +46,7 @@ export default defineConfig({
       },
     ],
 
-    socialLinks: [{ icon: "github", link: "https://github.com/siddharthksah/Stirling-Image" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/stirling-image/stirling-image" }],
 
     search: {
       provider: "local",
@@ -55,11 +55,11 @@ export default defineConfig({
     footer: {
       message: "Released under the MIT License.",
       copyright:
-        'AI-friendly docs available at <a href="/Stirling-Image/llms.txt">/llms.txt</a> · <a href="/Stirling-Image/llms-full.txt">/llms-full.txt</a>',
+        'AI-friendly docs available at <a href="/stirling-image/llms.txt">/llms.txt</a> · <a href="/stirling-image/llms-full.txt">/llms-full.txt</a>',
     },
 
     editLink: {
-      pattern: "https://github.com/siddharthksah/Stirling-Image/edit/main/apps/docs/:path",
+      pattern: "https://github.com/stirling-image/stirling-image/edit/main/apps/docs/:path",
       text: "Edit this page on GitHub",
     },
   },
