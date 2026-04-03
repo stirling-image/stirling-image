@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     libgl1 libglib2.0-0 \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Create Python venv and install ML packages
@@ -143,15 +144,18 @@ ENV PORT=1349 \
     MAX_MEGAPIXELS=100 \
     RATE_LIMIT_PER_MIN=100
 
-# Run as non-root user for security
+# Create non-root user for runtime
 RUN groupadd -r stirling && useradd -r -g stirling -d /app -s /sbin/nologin stirling
 RUN chown -R stirling:stirling /app /data /tmp/workspace /opt/venv
-USER stirling
+
+# Entrypoint fixes volume permissions then drops to stirling via gosu
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 1349
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:1349/api/v1/health || exit 1
 
-# Use tsx to run TypeScript source directly (handles workspace package resolution)
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["npx", "tsx", "apps/api/src/index.ts"]
