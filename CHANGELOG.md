@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/stirling-image/stirling-image/compare/v1.3.0...v1.3.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* default theme to light instead of following system preference ([018fcce](https://github.com/stirling-image/stirling-image/commit/018fcce84cd2bf4c7b49f1eff9eda5bc078d19d3))
+
 # [1.3.0](https://github.com/stirling-image/stirling-image/compare/v1.2.1...v1.3.0) (2026-04-04)
 
 
