@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/stirling-image/stirling-image/compare/v1.5.1...v1.5.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* install HEVC codec plugins for CI HEIC tests ([24e7591](https://github.com/stirling-image/stirling-image/commit/24e7591b9af777b739e7cc0db80839b776074b6f))
+
 ## [1.5.1](https://github.com/stirling-image/stirling-image/compare/v1.5.0...v1.5.1) (2026-04-04)
 
 
