@@ -279,10 +279,44 @@ export function registerStripMetadata(app: FastifyInstance) {
     toolId: "strip-metadata",
     settingsSchema,
     process: async (inputBuffer, settings, filename) => {
+      const metadata = await sharp(inputBuffer).metadata();
+      const format = metadata.format ?? "png";
       const image = sharp(inputBuffer);
       const result = await stripMetadata(image, settings);
+
+      // Re-encode in the original format so we don't inflate the file.
+      // Sharp re-encodes from scratch, so we pick settings that stay close
+      // to the original size while still stripping metadata.
+      switch (format) {
+        case "jpeg":
+          result.jpeg({ quality: 90, mozjpeg: true });
+          break;
+        case "png":
+          result.png({ compressionLevel: 9 });
+          break;
+        case "webp":
+          result.webp({ quality: 85 });
+          break;
+        case "avif":
+          result.avif({ quality: 50 });
+          break;
+        case "tiff":
+          result.tiff({ compression: "lzw" });
+          break;
+        default:
+          break;
+      }
+
       const buffer = await result.toBuffer();
-      return { buffer, filename, contentType: "image/png" };
+      const mimeMap: Record<string, string> = {
+        jpeg: "image/jpeg",
+        png: "image/png",
+        webp: "image/webp",
+        avif: "image/avif",
+        tiff: "image/tiff",
+        gif: "image/gif",
+      };
+      return { buffer, filename, contentType: mimeMap[format] ?? "image/png" };
     },
   });
 }

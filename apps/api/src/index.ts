@@ -109,7 +109,7 @@ await docsRoutes(app);
 
 // Public health check (minimal - no internal details)
 app.get("/api/v1/health", async () => ({
-  status: "ok",
+  status: "healthy",
   version: APP_VERSION,
 }));
 

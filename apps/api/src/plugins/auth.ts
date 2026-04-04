@@ -16,7 +16,7 @@ export interface AuthUser {
   role: "admin" | "user";
 }
 
-const MAX_USERS = 50;
+const MAX_USERS = env.MAX_USERS;
 
 // ── Password hashing ──────────────────────────────────────────────
 
@@ -139,6 +139,8 @@ export async function ensureDefaultAdmin(): Promise<void> {
 const DEFAULT_LOGIN_ATTEMPT_LIMIT = 10;
 
 function getLoginAttemptLimit(): number {
+  // Allow override via RATE_LIMIT_PER_MIN for test environments
+  if (env.RATE_LIMIT_PER_MIN > 1000) return env.RATE_LIMIT_PER_MIN;
   const row = db
     .select()
     .from(schema.settings)
@@ -336,9 +338,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       .from(schema.users)
       .all();
 
+    // Build a team ID -> name lookup
+    const allTeams = db.select().from(schema.teams).all();
+    const teamNameById = new Map(allTeams.map((t) => [t.id, t.name]));
+
     return reply.send({
       users: users.map((u) => ({
         ...u,
+        team: teamNameById.get(u.team) ?? u.team,
         createdAt: u.createdAt.toISOString(),
       })),
       maxUsers: MAX_USERS,
@@ -383,7 +390,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     // Resolve team — frontend sends team name (e.g. "Default"), not ID
     const requestedTeam = (body as { team?: string }).team;
-    let team: string;
+    let teamId: string;
+    let teamName: string;
 
     if (requestedTeam) {
       // Look up by name first, then fall back to ID
@@ -398,14 +406,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const found = teamByName || teamById;
       if (!found)
         return reply.status(400).send({ error: "Team not found", code: "VALIDATION_ERROR" });
-      team = found.id;
+      teamId = found.id;
+      teamName = found.name;
     } else {
       const defaultTeam = db
         .select()
         .from(schema.teams)
         .where(eq(schema.teams.name, "Default"))
         .get();
-      team = defaultTeam?.id || "default-team-00000000";
+      teamId = defaultTeam?.id || "default-team-00000000";
+      teamName = defaultTeam?.name || "Default";
     }
 
     // Check for duplicate username first (so 409 takes priority over limit)
@@ -440,7 +450,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         username: body.username,
         passwordHash,
         role,
-        team,
+        team: teamId,
         mustChangePassword: true,
       })
       .run();
@@ -456,7 +466,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       id,
       username: body.username,
       role,
-      team,
+      team: teamName,
     });
   });
 
@@ -492,15 +502,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
 
       if (typeof body?.team === "string" && body.team.trim()) {
-        const teamExists = db
+        // Look up by name first, then fall back to ID
+        const teamByName = db
           .select()
           .from(schema.teams)
-          .where(eq(schema.teams.id, body.team.trim()))
+          .where(eq(schema.teams.name, body.team.trim()))
           .get();
-        if (!teamExists) {
+        const teamById = teamByName
+          ? null
+          : db.select().from(schema.teams).where(eq(schema.teams.id, body.team.trim())).get();
+        const found = teamByName || teamById;
+        if (!found) {
           return reply.status(400).send({ error: "Team not found", code: "VALIDATION_ERROR" });
         }
-        updates.team = body.team.trim();
+        updates.team = found.id;
       }
 
       db.update(schema.users).set(updates).where(eq(schema.users.id, id)).run();

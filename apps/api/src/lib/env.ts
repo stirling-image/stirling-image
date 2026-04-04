@@ -27,6 +27,7 @@ const envSchema = z.object({
   DEFAULT_LOCALE: z.string().default("en"),
   APP_NAME: z.string().default("Stirling Image"),
   CORS_ORIGIN: z.string().default(""),
+  MAX_USERS: z.coerce.number().default(5),
 });
 
 export type Env = z.infer<typeof envSchema>;

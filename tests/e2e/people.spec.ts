@@ -39,11 +39,27 @@ async function cleanupTestUsers(token: string) {
   }
 }
 
+/** Ensure a team exists by name (create if missing). */
+async function ensureTeam(token: string, name: string) {
+  const res = await fetch(`${API}/api/v1/teams`, {
+    method: "POST",
+    headers: authJson(token),
+    body: JSON.stringify({ name }),
+  });
+  // 201 = created, 409 = already exists — both are fine
+  if (res.status !== 201 && res.status !== 409) {
+    throw new Error(`Failed to ensure team "${name}": ${res.status}`);
+  }
+}
+
 base.describe("People Management — API", () => {
   let token: string;
 
   base.beforeAll(async () => {
     token = await getAuthToken();
+    // Create teams used by the tests
+    await ensureTeam(token, "Engineering");
+    await ensureTeam(token, "Design");
   });
 
   base.beforeEach(async () => {
@@ -369,7 +385,8 @@ uiTest.describe("People Management — UI", () => {
       await addBtn.click();
       await expect(page.getByPlaceholder("Username")).toBeVisible();
       await expect(page.getByPlaceholder("Password")).toBeVisible();
-      await expect(page.getByPlaceholder("Team")).toBeVisible();
+      // Team is a <select> dropdown, not a text input with placeholder
+      await expect(page.locator("select").first()).toBeVisible();
       await expect(page.getByRole("button", { name: /create/i })).toBeVisible();
       await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
     }

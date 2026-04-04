@@ -55,23 +55,19 @@ test.describe("Full user session", () => {
     await uploadTestImage(page);
     await expect(page.getByText("Upload from computer")).not.toBeVisible();
 
-    // Click 90-degree right rotation preset (the CW icon button)
-    await page
-      .locator("button")
-      .filter({ hasText: /90.*right|right.*90|cw/i })
-      .first()
-      .click()
-      .catch(async () => {
-        // Fallback: click the second quick-rotate button (CW)
-        await page.locator("aside button, [class*='panel'] button").nth(1).click();
-      });
+    // Click the clockwise 90° rotation button and wait for state
+    await page.getByTestId("rotate-right").click();
+    await expect(page.locator("input[inputmode='numeric']")).toHaveValue("90", { timeout: 2000 });
 
-    // Click the process button (button text is "Rotate")
-    await page.getByRole("button", { name: "Rotate" }).click();
+    // Click the process button (button text is "Apply")
+    await page.getByTestId("rotate-submit").click();
     await waitForProcessing(page);
 
     // Verify result
-    const downloadBtn = page.getByRole("link", { name: /download/i }).first();
+    const downloadBtn = page
+      .getByRole("button", { name: /^download$/i })
+      .or(page.getByRole("link", { name: /download/i }))
+      .first();
     await expect(downloadBtn).toBeVisible({ timeout: 15_000 });
 
     const downloadPromise = page.waitForEvent("download");

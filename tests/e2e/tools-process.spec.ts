@@ -46,35 +46,33 @@ test.describe("Tool processing (core tools)", () => {
   test("rotate processes image", async ({ loggedInPage: page }) => {
     await page.goto("/rotate");
     await uploadTestImage(page);
-    // Click 90 Right first to set a rotation (CW button)
-    await page
-      .locator("button")
-      .filter({ hasText: /90.*right|right.*90|cw/i })
-      .first()
-      .click()
-      .catch(async () => {
-        // Fallback: the second quick-rotate button
-        const btns = page.locator("button").filter({ has: page.locator("svg") });
-        if ((await btns.count()) >= 2) await btns.nth(1).click();
-      });
-    await page.getByRole("button", { name: "Rotate" }).click();
+    // Click the clockwise 90° rotation button and wait for state to propagate
+    await page.getByTestId("rotate-right").click();
+    // Verify the angle input updated to 90
+    await expect(page.locator("input[inputmode='numeric']")).toHaveValue("90", { timeout: 2000 });
+    await page.getByTestId("rotate-submit").click();
     await waitForProcessing(page);
-    await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(
+      page
+        .getByRole("button", { name: /^download$/i })
+        .or(page.getByRole("link", { name: /download/i }))
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("crop processes image", async ({ loggedInPage: page }) => {
     await page.goto("/crop");
     await uploadTestImage(page);
-    // Crop needs valid dimensions - set small crop box
+    // Wait for image to load in the crop canvas
+    await page.waitForTimeout(1000);
+    // Click on the crop area to initialize a crop region, then use the preset
+    // or set dimensions via the number inputs once imgDimensions is available
     const widthInputs = page.locator("input[type='number']");
-    // Fill width and height for crop
     if ((await widthInputs.count()) >= 4) {
       await widthInputs.nth(2).fill("50");
       await widthInputs.nth(3).fill("50");
     }
-    await page.getByRole("button", { name: "Crop" }).click();
+    await page.getByTestId("crop-submit").click();
     await waitForProcessing(page);
     await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
       timeout: 15_000,
@@ -109,8 +107,8 @@ test.describe("Tool processing (core tools)", () => {
     await page.goto("/border");
     await uploadTestImage(page);
     // Default border width is 10px and color is #000000, should be valid
-    // Button text is "Add Border" in border-settings.tsx
-    await page.getByRole("button", { name: /add border/i }).click();
+    // Button text is "Apply Border" in border-settings.tsx
+    await page.getByRole("button", { name: /apply border/i }).click();
     await waitForProcessing(page);
     await expect(
       page

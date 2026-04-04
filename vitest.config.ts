@@ -31,6 +31,7 @@ export default defineConfig({
       MAX_UPLOAD_SIZE_MB: "10",
       MAX_BATCH_SIZE: "10",
       RATE_LIMIT_PER_MIN: "10000",
+      MAX_USERS: "50",
       MAX_MEGAPIXELS: "100",
       CONCURRENT_JOBS: "3",
       FILE_MAX_AGE_HOURS: "1",

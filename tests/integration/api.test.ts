@@ -1164,7 +1164,7 @@ describe("Health & Config", () => {
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.status).toBe("ok");
+      expect(body.status).toBe("healthy");
       expect(body.version).toBeDefined();
       expect(body.uptime).toBeUndefined();
       expect(body.database).toBeUndefined();
