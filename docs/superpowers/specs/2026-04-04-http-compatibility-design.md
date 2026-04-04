@@ -49,12 +49,27 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    return false;
+    // Fallback for non-secure contexts (HTTP on LAN)
+    // document.execCommand is deprecated but works in all current browsers
+    // and does not require a secure context
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
   }
 }
 ```
 
-Returns `true`/`false` so callers can decide whether to show a "Copied!" confirmation. On HTTP, the call fails silently and the UI does not show the confirmation. No behavior change for HTTPS/localhost users.
+Tries the Clipboard API first (works on HTTPS/localhost). Falls back to `document.execCommand("copy")` which is deprecated but works in all current browsers including non-secure contexts. This is the standard clipboard compatibility pattern used by GitHub, Stack Overflow, etc. Returns `true`/`false` so callers can decide whether to show a "Copied!" confirmation. Only returns `false` if both approaches fail.
 
 **4 call sites replaced** (`navigator.clipboard.writeText()` -> `copyToClipboard()`):
 
