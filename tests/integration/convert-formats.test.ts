@@ -15,7 +15,7 @@ import { buildTestApp, createMultipartPayload, loginAsAdmin, type TestApp } from
 const FIXTURES = join(__dirname, "..", "fixtures");
 
 // Output formats accepted by the convert tool
-const OUTPUT_FORMATS = ["jpg", "png", "webp", "avif", "tiff", "gif"] as const;
+const OUTPUT_FORMATS = ["jpg", "png", "webp", "avif", "tiff", "gif", "heic"] as const;
 
 // ---------------------------------------------------------------------------
 // Shared state
@@ -62,6 +62,11 @@ beforeAll(async () => {
     filename: "test.gif",
     contentType: "image/gif",
   };
+  inputs.heic = {
+    buffer: readFileSync(join(FIXTURES, "test-200x150.heic")),
+    filename: "test.heic",
+    contentType: "image/heic",
+  };
   inputs.svg = {
     buffer: readFileSync(join(FIXTURES, "test-100x100.svg")),
     filename: "test.svg",
@@ -77,7 +82,7 @@ afterAll(async () => {
 // Raster-to-raster conversions via /api/v1/tools/convert
 // ---------------------------------------------------------------------------
 describe("Format conversion matrix", () => {
-  const rasterInputs = ["png", "jpg", "webp", "avif", "tiff", "gif"];
+  const rasterInputs = ["png", "jpg", "webp", "avif", "tiff", "gif", "heic"];
 
   for (const inputFmt of rasterInputs) {
     for (const outputFmt of OUTPUT_FORMATS) {

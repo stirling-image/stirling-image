@@ -52,7 +52,7 @@ Change the image format.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `format` | string | Target format: `jpeg`, `png`, `webp`, `avif`, `tiff`, `gif` |
+| `format` | string | Target format: `jpeg`, `png`, `webp`, `avif`, `tiff`, `gif`, `heic` |
 | `quality` | number | Compression quality (1-100, applies to lossy formats) |
 
 ### compress
@@ -102,7 +102,7 @@ Adjust individual RGB color channels.
 
 The engine detects input formats automatically from file headers, not just file extensions. This means a `.jpg` file that is actually a PNG will be handled correctly.
 
-Supported input formats: JPEG, PNG, WebP, AVIF, TIFF, GIF, SVG, RAW (via libraw).
+Supported input formats: JPEG, PNG, WebP, AVIF, TIFF, GIF, HEIC/HEIF, SVG, RAW (via libraw).
 
 ## Metadata extraction
 

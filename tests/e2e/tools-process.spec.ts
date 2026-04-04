@@ -1,4 +1,4 @@
-import { expect, test, uploadTestImage, waitForProcessing } from "./helpers";
+import { expect, getTestHeicPath, test, uploadTestImage, waitForProcessing } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Test actual image processing for core tools. Upload an image, configure
@@ -156,6 +156,39 @@ test.describe("Tool processing (core tools)", () => {
     const textInput = page.locator("input[type='text'], textarea").first();
     await textInput.fill("Test Watermark");
     await page.getByRole("button", { name: /add watermark|apply watermark/i }).click();
+    await waitForProcessing(page);
+    await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("convert HEIC to JPG", async ({ loggedInPage: page }) => {
+    await page.goto("/convert");
+    const heicPath = getTestHeicPath();
+
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    await dropzone.click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(heicPath);
+    await page.waitForTimeout(500);
+
+    // Select JPG output format
+    await page.selectOption("#convert-target-format", "jpg");
+    await page.getByRole("button", { name: /convert/i }).click();
+    await waitForProcessing(page);
+    await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("convert PNG to HEIC", async ({ loggedInPage: page }) => {
+    await page.goto("/convert");
+    await uploadTestImage(page);
+
+    // Select HEIC output format
+    await page.selectOption("#convert-target-format", "heic");
+    await page.getByRole("button", { name: /convert/i }).click();
     await waitForProcessing(page);
     await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
       timeout: 15_000,

@@ -1,6 +1,11 @@
 import type { ConvertOptions, OutputFormat, Sharp } from "../types.js";
 
-const FORMAT_MAP: Record<OutputFormat, string> = {
+/**
+ * Maps user-facing format names to Sharp format strings.
+ * Note: HEIC is excluded because Sharp cannot encode HEVC.
+ * HEIC encoding is handled at the API route level via heif-enc.
+ */
+const FORMAT_MAP: Record<string, string> = {
   jpg: "jpeg",
   png: "png",
   webp: "webp",
