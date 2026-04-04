@@ -129,6 +129,15 @@ describe("validateImageBuffer", () => {
     }
   });
 
+  it("accepts a HEIC file with correct magic bytes", async () => {
+    const heicBuf = await readFile(join(FIXTURES, "test-200x150.heic"));
+    const result = await validateImageBuffer(heicBuf);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.format).toBe("heif");
+    }
+  });
+
   it("accepts a TIFF buffer (little-endian byte order)", async () => {
     // Minimal TIFF is complex; just verify magic bytes detection works
     // and sharp either parses or gives metadata error (not "unrecognized format")

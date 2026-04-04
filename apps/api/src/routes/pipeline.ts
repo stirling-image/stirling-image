@@ -15,6 +15,7 @@ import { z } from "zod";
 import { db, schema } from "../db/index.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { decodeHeic } from "../lib/heic-converter.js";
 import { createWorkspace } from "../lib/workspace.js";
 import { requireAuth } from "../plugins/auth.js";
 import { getRegisteredToolIds, getToolConfig } from "./tool-factory.js";
@@ -92,6 +93,18 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
       return reply.status(400).send({
         error: `Invalid image: ${validation.reason}`,
       });
+    }
+
+    // Decode HEIC/HEIF input via system heif-dec
+    if (validation.format === "heif") {
+      try {
+        fileBuffer = await decodeHeic(fileBuffer);
+      } catch (err) {
+        return reply.status(422).send({
+          error: "Failed to decode HEIC file. Ensure libheif-examples is installed.",
+          details: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     // Parse and validate the pipeline definition

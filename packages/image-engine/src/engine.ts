@@ -56,7 +56,7 @@ const OPERATION_MAP: Record<
   invert: (img) => invert(img),
 };
 
-const FORMAT_MAP: Record<OutputFormat, string> = {
+const FORMAT_MAP: Record<string, string> = {
   jpg: "jpeg",
   png: "png",
   webp: "webp",

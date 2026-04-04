@@ -72,7 +72,7 @@ Some things to try first:
 - Resize an image to specific dimensions or a percentage
 - Remove a background with the AI tool
 - Compress a photo before uploading it somewhere
-- Convert between formats (JPEG, PNG, WebP, AVIF, TIFF)
+- Convert between formats (JPEG, PNG, WebP, AVIF, TIFF, HEIC)
 - Batch process a folder of images through any tool
 - Save results to the Files page for later
 

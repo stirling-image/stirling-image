@@ -432,7 +432,7 @@ angle (number, degrees)
 direction: horizontal or vertical
 
 ### convert
-format (jpeg/png/webp/avif/tiff/gif), quality (1-100)
+format (jpeg/png/webp/avif/tiff/gif/heic), quality (1-100)
 
 ### compress
 quality (1-100), format (optional override)
@@ -449,7 +449,7 @@ grayscale, sepia, invert — no parameters
 ### Color channels
 red (-100 to 100), green (-100 to 100), blue (-100 to 100)
 
-Supported input formats: JPEG, PNG, WebP, AVIF, TIFF, GIF, SVG, RAW (via libraw)
+Supported input formats: JPEG, PNG, WebP, AVIF, TIFF, GIF, HEIC/HEIF, SVG, RAW (via libraw)
 
 ---
 

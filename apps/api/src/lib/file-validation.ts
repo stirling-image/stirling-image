@@ -11,6 +11,7 @@ const SUPPORTED_INPUT_FORMATS = new Set([
   "tiff",
   "bmp",
   "avif",
+  "heif",
   "svg",
 ]);
 
@@ -29,6 +30,7 @@ const MAGIC_BYTES: MagicEntry[] = [
   { bytes: [0x49, 0x49, 0x2a, 0x00], offset: 0, format: "tiff" },
   { bytes: [0x4d, 0x4d, 0x00, 0x2a], offset: 0, format: "tiff" },
   { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4, format: "avif" }, // ftyp box; verified below
+  { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4, format: "heif" }, // ftyp box; verified below
 ];
 
 export interface ValidationResult {
@@ -151,6 +153,12 @@ function detectMagicBytes(buffer: Buffer): string | null {
         if (buffer.length < 12) continue;
         const brand = buffer.slice(8, 12).toString("ascii");
         if (brand !== "avif" && brand !== "avis") continue;
+      }
+      // For ftyp, verify HEIF/HEIC brand at bytes 8-11
+      if (entry.format === "heif") {
+        if (buffer.length < 12) continue;
+        const brand = buffer.slice(8, 12).toString("ascii");
+        if (brand !== "heic" && brand !== "heix" && brand !== "mif1") continue;
       }
       return entry.format;
     }

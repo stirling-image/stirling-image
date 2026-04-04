@@ -15,6 +15,7 @@ import { env } from "../config.js";
 import { autoOrient } from "../lib/auto-orient.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { decodeHeic } from "../lib/heic-converter.js";
 import { type JobProgress, updateJobProgress } from "./progress.js";
 import { getToolConfig } from "./tool-factory.js";
 
@@ -187,8 +188,12 @@ export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
             }
 
             try {
-              const orientedBuffer = await autoOrient(file.buffer);
-              const result = await toolConfig.process(orientedBuffer, settings, file.filename);
+              let processBuffer = file.buffer;
+              if (validation.format === "heif") {
+                processBuffer = await decodeHeic(processBuffer);
+              }
+              processBuffer = await autoOrient(processBuffer);
+              const result = await toolConfig.process(processBuffer, settings, file.filename);
 
               const zipFilename = getUniqueName(result.filename);
               archive.append(result.buffer, { name: zipFilename });

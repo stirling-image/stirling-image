@@ -9,6 +9,7 @@ import { db, schema } from "../db/index.js";
 import { autoOrient } from "../lib/auto-orient.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { decodeHeic } from "../lib/heic-converter.js";
 import type { WorkerInput, WorkerOutput } from "../lib/image-worker.js";
 import { sanitizeSvg } from "../lib/svg-sanitize.js";
 import { getWorkerPool } from "../lib/worker-pool.js";
@@ -145,6 +146,20 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
       const validation = await validateImageBuffer(fileBuffer);
       if (!validation.valid) {
         return reply.status(400).send({ error: `Invalid image: ${validation.reason}` });
+      }
+
+      // Decode HEIC/HEIF input via system heif-dec (Sharp's bundled libheif
+      // lacks the HEVC decoder needed for iPhone photos)
+      const isHeif = validation.format === "heif";
+      if (isHeif) {
+        try {
+          fileBuffer = await decodeHeic(fileBuffer);
+        } catch (err) {
+          return reply.status(422).send({
+            error: "Failed to decode HEIC file. Ensure libheif-examples is installed.",
+            details: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
 
       // Sanitize SVG input to prevent XXE, SSRF, and script injection
