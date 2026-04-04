@@ -44,15 +44,17 @@ export interface AnyToolRouteConfig {
  */
 const toolRegistry = new Map<string, AnyToolRouteConfig>();
 
-/** Tools that use the Python bridge and should NOT be offloaded to workers. */
-const SKIP_WORKER_TOOLS = new Set([
-  "remove-background",
-  "upscale",
-  "ocr",
-  "blur-faces",
-  "erase-object",
-  "smart-crop",
-]);
+/**
+ * Worker threads are disabled for all tools.
+ *
+ * AI tools skip workers because they use the Python bridge.
+ * Sharp-based tools skip workers because they complete in milliseconds
+ * and the worker initialization (which imports the full tool registry
+ * and reads SQLite) can deadlock under Docker volume filesystems.
+ *
+ * The Piscina pool is kept in the codebase for potential future use
+ * with long-running CPU-bound operations.
+ */
 
 /**
  * Retrieve a registered tool config by its ID.
@@ -183,7 +185,7 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         // Offload to worker thread for non-AI tools.
         // Falls back to main-thread processing on any worker error.
         // Disabled in test environments where worker_threads can't load .ts files.
-        const useWorker = !SKIP_WORKER_TOOLS.has(config.toolId) && process.env.NODE_ENV !== "test";
+        const useWorker = false;
         if (useWorker) {
           try {
             const pool = getWorkerPool();
@@ -194,7 +196,9 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
               filename,
               inputFormat: validation.format,
             };
-            const workerResult: WorkerOutput = await pool.run(workerInput);
+            const workerResult: WorkerOutput = await pool.run(workerInput, {
+              signal: AbortSignal.timeout(30_000),
+            });
             result = {
               buffer: Buffer.from(workerResult.buffer),
               filename: workerResult.filename,
