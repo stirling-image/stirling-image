@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install libheif tools (for HEIC tests)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libheif-examples
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libheif-examples libheif-plugin-x265 libheif-plugin-libde265
 
       - uses: pnpm/action-setup@v4
 
