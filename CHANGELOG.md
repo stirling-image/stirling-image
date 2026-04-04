@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/stirling-image/stirling-image/compare/v1.4.0...v1.5.0) (2026-04-04)
+
+
+### Features
+
+* add HEIC/HEIF format support for input and output ([df1dc02](https://github.com/stirling-image/stirling-image/commit/df1dc029857f0fa614f63c2bc835f9502be046fb))
+
 # [1.4.0](https://github.com/stirling-image/stirling-image/compare/v1.3.1...v1.4.0) (2026-04-04)
 
 
