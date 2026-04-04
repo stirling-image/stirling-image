@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/stirling-image/stirling-image/compare/v1.3.1...v1.4.0) (2026-04-04)
+
+
+### Features
+
+* add "Crop to Content" mode to smart crop tool ([df479d3](https://github.com/stirling-image/stirling-image/commit/df479d3410a8b0d89c93f14ab6471c9dda2b0744)), closes [#7](https://github.com/stirling-image/stirling-image/issues/7)
+
 ## [1.3.1](https://github.com/stirling-image/stirling-image/compare/v1.3.0...v1.3.1) (2026-04-04)
 
 
