@@ -1,3 +1,10 @@
+## [1.7.2](https://github.com/stirling-image/stirling-image/compare/v1.7.1...v1.7.2) (2026-04-05)
+
+
+### Bug Fixes
+
+* use torch.cuda for GPU detection instead of onnxruntime providers ([7185bd5](https://github.com/stirling-image/stirling-image/commit/7185bd5ce373a42cd94e750765ee11d328fb34bb))
+
 ## [1.7.1](https://github.com/stirling-image/stirling-image/compare/v1.7.0...v1.7.1) (2026-04-05)
 
 
