@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/stirling-image/stirling-image/compare/v1.7.0...v1.7.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* prevent false GPU detection when CUDA image runs without GPU ([1efb163](https://github.com/stirling-image/stirling-image/commit/1efb163acd0271f956fb777955f8701460230def))
+
 # [1.7.0](https://github.com/stirling-image/stirling-image/compare/v1.6.0...v1.7.0) (2026-04-05)
 
 
