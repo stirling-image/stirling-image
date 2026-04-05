@@ -198,6 +198,12 @@ Build the full production image locally:
 docker build -f docker/Dockerfile -t stirling-image:latest .
 ```
 
+Build the lite image (no Python/AI, ~1.5 GB):
+
+```bash
+docker build --build-arg VARIANT=lite -f docker/Dockerfile -t stirling-image:lite .
+```
+
 Use BuildKit cache mounts for faster rebuilds:
 
 ```bash
