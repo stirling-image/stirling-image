@@ -14,6 +14,16 @@ docker run -d \
 
 Open `http://localhost:1349` in your browser. Log in with `admin` / `admin`.
 
+::: tip Lite image
+Don't need AI tools (background removal, upscaling, OCR, face blur, object eraser)? Use the lite image instead - 1.5 GB vs 11 GB:
+
+```bash
+stirlingimage/stirling-image:lite
+```
+
+All 27+ image processing tools work the same. See [Docker Tags](./docker-tags) for the full comparison.
+:::
+
 ## Run with Docker Compose
 
 Create a `docker-compose.yml`:

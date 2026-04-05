@@ -1,6 +1,15 @@
 # Deployment
 
-Stirling Image ships as a single Docker container. The frontend, API, and Python AI runtime all run inside one image. The image supports **linux/amd64** and **linux/arm64**, so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
+Stirling Image ships as a single Docker container. The image supports **linux/amd64** and **linux/arm64**, so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
+
+Two variants are available:
+
+| Variant | Tag | Size | What's included |
+|---------|-----|------|-----------------|
+| Full | `:latest` | ~11 GB | All tools + AI/ML (background removal, upscaling, OCR, face blur, object eraser) |
+| Lite | `:lite` | ~1.5 GB | All image processing tools, no AI/ML |
+
+See [Docker Tags](./docker-tags) for the full comparison, Docker Compose examples, and version pinning.
 
 ## Docker Compose (recommended)
 
@@ -57,7 +66,7 @@ Everything runs from a single process. The Fastify server handles API requests a
 - LaMa Cleaner (inpainting/object removal)
 - onnxruntime, opencv-python, Pillow, numpy
 
-Model weights are downloaded at build time, so the container works fully offline.
+Model weights are downloaded at build time, so the container works fully offline. The lite image (`:lite`) skips all Python packages and model downloads.
 
 ### Architecture notes
 
@@ -110,7 +119,7 @@ Set `client_max_body_size` to match your `MAX_UPLOAD_SIZE_MB` value.
 
 The GitHub repository has two workflows:
 
-- **release.yml** -- On release, builds multi-arch Docker images (amd64 + arm64) and pushes to both Docker Hub (`stirlingimage/stirling-image`) and GitHub Container Registry (`ghcr.io/stirling-image/stirling-image`).
+- **release.yml** -- On release, builds multi-arch Docker images (amd64 + arm64) for both the full and lite variants, and pushes to Docker Hub (`stirlingimage/stirling-image`) and GitHub Container Registry (`ghcr.io/stirling-image/stirling-image`).
 - **deploy-docs.yml** -- Builds this documentation site and deploys it to GitHub Pages.
 
 Both run automatically. No manual steps needed after merging to `main`.
