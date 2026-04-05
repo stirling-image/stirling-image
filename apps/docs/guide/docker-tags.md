@@ -45,18 +45,32 @@ Same tools as the full image, but built with GPU-accelerated Python packages (on
 
 Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) on the host. Linux amd64 only.
 
-### What gets faster with GPU
+### Benchmarks
 
-| Tool | CPU | GPU (RTX 4070) | Speedup |
-|------|-----|----------------|---------|
-| Background removal | 2.4s | 0.9s | 2.7x |
-| Upscale 2x | 350ms | 310ms | ~1.1x |
-| Upscale 4x | 910ms | 310ms | ~3x |
-| OCR (PaddleOCR) | 137ms | 94ms | ~1.5x |
+Tested on an NVIDIA RTX 4070 (12 GB VRAM) with a 572x1024 JPEG portrait. Both images ran on the same machine. "Warm" means the model is already loaded in memory (second request onward).
 
-Benchmarked with a 572x1024 JPEG portrait. Larger images show bigger speedups, especially for upscaling.
+#### Warm performance
 
-Non-AI tools (resize, crop, convert, etc.) are unaffected since they use Sharp (CPU-based).
+| Tool | CPU | GPU | Speedup |
+|------|-----|-----|---------|
+| Background removal (u2net) | 2,415ms | 879ms | 2.7x |
+| Background removal (isnet) | 2,457ms | 1,137ms | 2.2x |
+| Upscale 2x | 350ms | 309ms | 1.1x |
+| Upscale 4x | 910ms | 310ms | 2.9x |
+| OCR (PaddleOCR) | 137ms | 94ms | 1.5x |
+| Face blur | 139ms | 122ms | 1.1x |
+
+#### Cold start (first request after container start)
+
+| Tool | CPU | GPU | Speedup |
+|------|-----|-----|---------|
+| Background removal | 22,286ms | 4,792ms | 4.7x |
+| Upscale 2x | 3,957ms | 2,318ms | 1.7x |
+| OCR (PaddleOCR) | 1,469ms | 1,090ms | 1.3x |
+
+Cold start includes loading the model into memory. GPU cold starts are faster because CUDA parallelizes the model loading.
+
+Larger images show bigger speedups, especially for upscaling. Non-AI tools (resize, crop, convert, etc.) are unaffected since they use Sharp (CPU-based).
 
 ### GPU health check
 

@@ -2,12 +2,13 @@
 
 Stirling Image ships as a single Docker container. The image supports **linux/amd64** and **linux/arm64**, so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
 
-Two variants are available:
+Three variants are available:
 
 | Variant | Tag | Size | What's included |
 |---------|-----|------|-----------------|
 | Full | `:latest` | ~11 GB | All tools + AI/ML (background removal, upscaling, OCR, face blur, object eraser) |
 | Lite | `:lite` | ~1.5 GB | All image processing tools, no AI/ML |
+| CUDA | `:cuda` | ~14 GB | Full + GPU-accelerated AI (NVIDIA only, amd64) |
 
 See [Docker Tags](./docker-tags) for the full comparison, Docker Compose examples, and version pinning.
 
