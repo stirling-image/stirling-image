@@ -24,6 +24,16 @@ stirlingimage/stirling-image:lite
 All 27+ image processing tools work the same. See [Docker Tags](./docker-tags) for the full comparison.
 :::
 
+::: tip GPU acceleration
+Have an NVIDIA GPU? The CUDA image auto-detects your GPU and accelerates background removal (2.7x), upscaling (3x), and OCR (1.5x):
+
+```bash
+docker run -d --gpus all -p 1349:1349 -v stirling-data:/data stirlingimage/stirling-image:cuda
+```
+
+Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Falls back to CPU if no GPU is found. See [Docker Tags](./docker-tags) for details and benchmarks.
+:::
+
 ## Run with Docker Compose
 
 Create a `docker-compose.yml`:

@@ -45,6 +45,12 @@ Don't need AI tools? The lite image is 1.5 GB instead of 11 GB:
 docker run -d -p 1349:1349 -v stirling-data:/data stirlingimage/stirling-image:lite
 ```
 
+Have an NVIDIA GPU? The CUDA image accelerates background removal, upscaling, and OCR:
+
+```bash
+docker run -d -p 1349:1349 --gpus all -v stirling-data:/data stirlingimage/stirling-image:cuda
+```
+
 Open http://localhost:1349 in your browser.
 
 **Default credentials:**
@@ -56,7 +62,7 @@ Open http://localhost:1349 in your browser.
 
 You will be asked to change your password on first login. This is enforced for all new accounts and cannot be skipped in production.
 
-For Docker Compose, persistent storage, and other setup options, see the [Getting Started Guide](https://stirling-image.github.io/stirling-image/guide/getting-started). For details on the full vs lite image, see [Docker Tags](https://stirling-image.github.io/stirling-image/guide/docker-tags).
+For Docker Compose, persistent storage, and other setup options, see the [Getting Started Guide](https://stirling-image.github.io/stirling-image/guide/getting-started). For details on all image variants (full, lite, cuda), see [Docker Tags](https://stirling-image.github.io/stirling-image/guide/docker-tags).
 
 ## Documentation
 
