@@ -6,14 +6,18 @@ interface AuthState {
   authEnabled: boolean;
   isAuthenticated: boolean;
   mustChangePassword: boolean;
+  role: string | null;
+  permissions: string[];
 }
 
-export function useAuth(): AuthState {
+export function useAuth() {
   const [state, setState] = useState<AuthState>({
     loading: true,
     authEnabled: false,
     isAuthenticated: false,
     mustChangePassword: false,
+    role: null,
+    permissions: [],
   });
 
   useEffect(() => {
@@ -29,6 +33,21 @@ export function useAuth(): AuthState {
             authEnabled: false,
             isAuthenticated: true,
             mustChangePassword: false,
+            role: "admin",
+            permissions: [
+              "tools:use",
+              "files:own",
+              "files:all",
+              "apikeys:own",
+              "apikeys:all",
+              "pipelines:own",
+              "pipelines:all",
+              "settings:read",
+              "settings:write",
+              "users:manage",
+              "teams:manage",
+              "branding:manage",
+            ],
           });
           return;
         }
@@ -41,6 +60,8 @@ export function useAuth(): AuthState {
             authEnabled: true,
             isAuthenticated: false,
             mustChangePassword: false,
+            role: null,
+            permissions: [],
           });
           return;
         }
@@ -57,6 +78,8 @@ export function useAuth(): AuthState {
             authEnabled: true,
             isAuthenticated: true,
             mustChangePassword: mustChange,
+            role: session.user?.role ?? null,
+            permissions: session.user?.permissions ?? [],
           });
         } else {
           localStorage.removeItem("stirling-token");
@@ -65,6 +88,8 @@ export function useAuth(): AuthState {
             authEnabled: true,
             isAuthenticated: false,
             mustChangePassword: false,
+            role: null,
+            permissions: [],
           });
         }
       } catch {
@@ -74,6 +99,21 @@ export function useAuth(): AuthState {
           authEnabled: false,
           isAuthenticated: true,
           mustChangePassword: false,
+          role: "admin",
+          permissions: [
+            "tools:use",
+            "files:own",
+            "files:all",
+            "apikeys:own",
+            "apikeys:all",
+            "pipelines:own",
+            "pipelines:all",
+            "settings:read",
+            "settings:write",
+            "users:manage",
+            "teams:manage",
+            "branding:manage",
+          ],
         });
       }
     }
@@ -81,5 +121,7 @@ export function useAuth(): AuthState {
     checkAuth();
   }, []);
 
-  return state;
+  const hasPermission = (permission: string) => state.permissions.includes(permission);
+
+  return { ...state, hasPermission };
 }
