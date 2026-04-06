@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { removeBackground } from "@stirling-image/ai";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
@@ -56,6 +57,10 @@ export function registerRemoveBackground(app: FastifyInstance) {
 
       try {
         const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+
+        // Auto-orient to fix EXIF rotation before processing
+        fileBuffer = await autoOrient(fileBuffer);
+
         request.log.info(
           { toolId: "remove-background", imageSize: fileBuffer.length, model: settings.model },
           "Starting background removal",
@@ -126,9 +131,10 @@ export function registerRemoveBackground(app: FastifyInstance) {
     }),
     process: async (inputBuffer, settings, filename) => {
       const s = settings as { model?: string; backgroundColor?: string };
+      const orientedBuffer = await autoOrient(inputBuffer);
       const jobId = randomUUID();
       const workspacePath = await createWorkspace(jobId);
-      const resultBuffer = await removeBackground(inputBuffer, join(workspacePath, "output"), {
+      const resultBuffer = await removeBackground(orientedBuffer, join(workspacePath, "output"), {
         model: s.model,
         backgroundColor: s.backgroundColor,
       });
