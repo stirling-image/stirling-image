@@ -2706,7 +2706,7 @@ describe("Batch processing", () => {
       expect(res.headers["content-type"]).toBe("application/zip");
     });
 
-    it("batch includes X-File-Order header", async () => {
+    it("batch includes X-File-Results header", async () => {
       const { body: payload, contentType } = createMultipartPayload([
         { name: "file", filename: "first.png", contentType: "image/png", content: PNG_1x1 },
         { name: "file", filename: "second.png", contentType: "image/png", content: PNG_200x150 },
@@ -2723,7 +2723,10 @@ describe("Batch processing", () => {
         payload,
       });
       expect(res.statusCode).toBe(200);
-      expect(res.headers["x-file-order"]).toBeDefined();
+      expect(res.headers["x-file-results"]).toBeDefined();
+      const parsed = JSON.parse(res.headers["x-file-results"] as string);
+      expect(parsed["0"]).toBeDefined();
+      expect(parsed["1"]).toBeDefined();
     });
 
     it("returns ZIP with content-disposition attachment header", async () => {
@@ -2787,6 +2790,59 @@ describe("Batch processing", () => {
       expect(res.statusCode).toBe(200);
       expect(res.headers["content-type"]).toBe("application/zip");
     });
+
+    it("batch returns X-File-Results header with index-to-filename mapping", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "first.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "file", filename: "second.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+
+      const fileResults = res.headers["x-file-results"];
+      expect(fileResults).toBeDefined();
+      const parsed = JSON.parse(fileResults as string);
+      expect(parsed["0"]).toBeDefined();
+      expect(parsed["1"]).toBeDefined();
+      expect(typeof parsed["0"]).toBe("string");
+      expect(typeof parsed["1"]).toBe("string");
+    });
+
+    it("batch X-File-Results entries contain original filename stems in order", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "aaa.png", contentType: "image/png", content: PNG_1x1 },
+        { name: "file", filename: "bbb.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "file", filename: "ccc.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+        { name: "settings", content: JSON.stringify({ width: 50 }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/resize/batch",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(200);
+
+      const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+      const names = [fileResults["0"], fileResults["1"], fileResults["2"]];
+      expect(names[0]).toContain("aaa");
+      expect(names[1]).toContain("bbb");
+      expect(names[2]).toContain("ccc");
+    });
   });
 
   describe("Batch rejects incompatible tools", () => {
@@ -2812,6 +2868,230 @@ describe("Batch processing", () => {
         expect(JSON.parse(res.body).error).toContain("not found");
       });
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SMART CROP FORMAT PRESERVATION
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Smart crop format preservation", () => {
+  it("preserves JPEG format for JPEG input in content mode", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("preserves PNG format for PNG input", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "image.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.png/);
+  });
+
+  it("preserves WebP format for WebP input", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "image.webp", contentType: "image/webp", content: WEBP_50x50 },
+      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.webp/);
+  });
+
+  it("preserves JPEG format in attention mode", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ mode: "attention", width: 50, height: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("accepts quality setting without error", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "content", threshold: 30, quality: 50 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CROP FORMAT PRESERVATION
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Crop format preservation", () => {
+  it("preserves JPEG format for JPEG input", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ left: 0, top: 0, width: 50, height: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: body.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("jpeg");
+  });
+
+  it("preserves PNG format for PNG input", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "image.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ left: 0, top: 0, width: 50, height: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: body.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("png");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COLOR ADJUSTMENTS FORMAT PRESERVATION
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Color adjustments format preservation", () => {
+  it("preserves JPEG format for JPEG input via brightness-contrast", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ brightness: 10 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/brightness-contrast",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: body.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("jpeg");
+  });
+
+  it("preserves PNG format for PNG input via saturation", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "image.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ saturation: 20 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/saturation",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: body.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("png");
   });
 });
 

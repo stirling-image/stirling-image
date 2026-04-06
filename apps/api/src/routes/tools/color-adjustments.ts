@@ -10,6 +10,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createToolRoute } from "../tool-factory.js";
 
 const settingsSchema = z.object({
@@ -29,7 +30,6 @@ const settingsSchema = z.object({
  * Serves tool IDs: brightness-contrast, saturation, color-channels, color-effects
  */
 export function registerColorAdjustments(app: FastifyInstance) {
-  // Register the same handler under all four color-related tool IDs
   const toolIds = ["brightness-contrast", "saturation", "color-channels", "color-effects"];
 
   for (const toolId of toolIds) {
@@ -37,28 +37,25 @@ export function registerColorAdjustments(app: FastifyInstance) {
       toolId,
       settingsSchema,
       process: async (inputBuffer, settings, filename) => {
+        const outputFormat = await resolveOutputFormat(inputBuffer, filename);
         let image = sharp(inputBuffer);
 
-        // Apply brightness
         if (settings.brightness !== 0) {
           image = await adjustBrightness(image, {
             value: settings.brightness,
           });
         }
 
-        // Apply contrast
         if (settings.contrast !== 0) {
           image = await adjustContrast(image, { value: settings.contrast });
         }
 
-        // Apply saturation
         if (settings.saturation !== 0) {
           image = await adjustSaturation(image, {
             value: settings.saturation,
           });
         }
 
-        // Apply color channels (only if not default 100/100/100)
         if (settings.red !== 100 || settings.green !== 100 || settings.blue !== 100) {
           image = await colorChannels(image, {
             red: settings.red,
@@ -67,7 +64,6 @@ export function registerColorAdjustments(app: FastifyInstance) {
           });
         }
 
-        // Apply effect
         switch (settings.effect) {
           case "grayscale":
             image = await grayscale(image);
@@ -80,8 +76,10 @@ export function registerColorAdjustments(app: FastifyInstance) {
             break;
         }
 
-        const buffer = await image.toBuffer();
-        return { buffer, filename, contentType: "image/png" };
+        const buffer = await image
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
+          .toBuffer();
+        return { buffer, filename, contentType: outputFormat.contentType };
       },
     });
   }

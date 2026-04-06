@@ -1,18 +1,18 @@
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createToolRoute } from "../tool-factory.js";
 
 const settingsSchema = z.object({
   mode: z.enum(["attention", "content"]).default("attention"),
-  // Attention mode: resize to target dimensions using subject detection
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
-  // Content mode: trim uniform borders, optionally pad to square
   threshold: z.number().int().min(0).max(255).default(30),
   padToSquare: z.boolean().default(false),
   padColor: z.string().default("#ffffff"),
   targetSize: z.number().int().positive().optional(),
+  quality: z.number().int().min(1).max(100).optional(),
 });
 
 /**
@@ -26,35 +26,41 @@ export function registerSmartCrop(app: FastifyInstance) {
     toolId: "smart-crop",
     settingsSchema,
     process: async (inputBuffer, settings, filename) => {
+      const outputFormat = await resolveOutputFormat(inputBuffer, filename, settings.quality);
       let result: Buffer;
 
       if (settings.mode === "content") {
-        // Crop to content: trim uniform borders
-        const pipeline = sharp(inputBuffer).trim({ threshold: settings.threshold });
-        let trimmed = await pipeline.toBuffer({ resolveWithObject: true });
-
         if (settings.padToSquare || settings.targetSize) {
-          const meta = await sharp(trimmed.data).metadata();
-          const w = meta.width ?? 1;
-          const h = meta.height ?? 1;
+          // Trim first to get dimensions, then pad to square
+          const trimmed = await sharp(inputBuffer)
+            .trim({ threshold: settings.threshold })
+            .toBuffer({ resolveWithObject: true });
+
+          const w = trimmed.info.width;
+          const h = trimmed.info.height;
           const target = settings.targetSize || Math.max(w, h);
           const padR = Math.round(parseInt(settings.padColor.slice(1, 3), 16));
           const padG = Math.round(parseInt(settings.padColor.slice(3, 5), 16));
           const padB = Math.round(parseInt(settings.padColor.slice(5, 7), 16));
 
-          trimmed = await sharp(trimmed.data)
+          const padded = await sharp(trimmed.data)
             .resize({
               width: target,
               height: target,
               fit: "contain",
               background: { r: padR, g: padG, b: padB, alpha: 1 },
             })
-            .toBuffer({ resolveWithObject: true });
+            .toFormat(outputFormat.format, { quality: outputFormat.quality })
+            .toBuffer();
+          result = padded;
+        } else {
+          // Simple trim + format in one pass (no intermediate encode)
+          result = await sharp(inputBuffer)
+            .trim({ threshold: settings.threshold })
+            .toFormat(outputFormat.format, { quality: outputFormat.quality })
+            .toBuffer();
         }
-
-        result = trimmed.data;
       } else {
-        // Attention mode: resize to target using subject detection
         const w = settings.width ?? 1080;
         const h = settings.height ?? 1080;
         result = await sharp(inputBuffer)
@@ -62,12 +68,13 @@ export function registerSmartCrop(app: FastifyInstance) {
             fit: "cover",
             position: sharp.strategy.attention,
           })
-          .png()
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
           .toBuffer();
       }
 
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_smartcrop.png`;
-      return { buffer: result, filename: outputFilename, contentType: "image/png" };
+      const stem = filename.replace(/\.[^.]+$/, "");
+      const outputFilename = `${stem}_smartcrop.${outputFormat.extension}`;
+      return { buffer: result, filename: outputFilename, contentType: outputFormat.contentType };
     },
   });
 }

@@ -323,25 +323,23 @@ export function useToolProcessor(toolId: string) {
         const zipBuffer = new Uint8Array((await zipBlob.arrayBuffer()) as ArrayBuffer);
         const extracted = unzipSync(zipBuffer);
 
-        const fileOrder = (response.headers.get("X-File-Order")?.split(",") ?? []).map(
-          decodeURIComponent,
-        );
         const entries = useFileStore.getState().entries;
-        const extractedNames = Object.keys(extracted);
+        let fileResults: Record<string, string> = {};
+        try {
+          fileResults = JSON.parse(response.headers.get("X-File-Results") ?? "{}");
+        } catch {
+          // Malformed header - fall back to empty mapping, all entries marked failed
+        }
 
         for (let i = 0; i < entries.length; i++) {
-          let zipName: string | undefined;
-          if (fileOrder[i] && extracted[fileOrder[i]]) {
-            zipName = fileOrder[i];
-          } else {
-            zipName = extractedNames.find((n) => n === entries[i].file.name) ?? extractedNames[i];
-          }
-          if (zipName && extracted[zipName]) {
-            const blob = new Blob([extracted[zipName] as BlobPart]);
+          const processedName = fileResults[String(i)];
+          if (processedName && extracted[processedName]) {
+            const blob = new Blob([extracted[processedName] as BlobPart]);
             updateEntry(i, {
               processedUrl: URL.createObjectURL(blob),
               processedSize: blob.size,
               status: "completed",
+              error: null,
             });
           } else {
             updateEntry(i, { status: "failed", error: "File not found in batch results" });

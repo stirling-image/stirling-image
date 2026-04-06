@@ -31,6 +31,7 @@ export function SmartCropControls({ onChange }: SmartCropControlsProps) {
   const [padToSquare, setPadToSquare] = useState(false);
   const [padColor, setPadColor] = useState("#ffffff");
   const [targetSize, setTargetSize] = useState("1000");
+  const [quality, setQuality] = useState(95);
 
   const emit = (overrides: Record<string, unknown> = {}) => {
     if (mode === "content") {
@@ -39,6 +40,7 @@ export function SmartCropControls({ onChange }: SmartCropControlsProps) {
         threshold,
         padToSquare,
         padColor,
+        quality,
         ...(padToSquare ? { targetSize: Number(targetSize) } : {}),
         ...overrides,
       });
@@ -47,6 +49,7 @@ export function SmartCropControls({ onChange }: SmartCropControlsProps) {
         mode: "attention",
         width: Number(width),
         height: Number(height),
+        quality,
         ...overrides,
       });
     }
@@ -55,9 +58,9 @@ export function SmartCropControls({ onChange }: SmartCropControlsProps) {
   const handleModeChange = (m: Mode) => {
     setMode(m);
     if (m === "content") {
-      onChange?.({ mode: "content", threshold, padToSquare, padColor });
+      onChange?.({ mode: "content", threshold, padToSquare, padColor, quality });
     } else {
-      onChange?.({ mode: "attention", width: Number(width), height: Number(height) });
+      onChange?.({ mode: "attention", width: Number(width), height: Number(height), quality });
     }
   };
 
@@ -257,6 +260,32 @@ export function SmartCropControls({ onChange }: SmartCropControlsProps) {
           </p>
         </>
       )}
+
+      {/* Quality slider */}
+      <div>
+        <div className="flex justify-between items-center">
+          <label htmlFor="smart-crop-quality" className="text-xs text-muted-foreground">
+            Output Quality
+          </label>
+          <span className="text-xs text-muted-foreground tabular-nums">{quality}%</span>
+        </div>
+        <input
+          id="smart-crop-quality"
+          type="range"
+          min={1}
+          max={100}
+          value={quality}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setQuality(v);
+            emit({ quality: v });
+          }}
+          className="w-full mt-1"
+        />
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          For JPEG and WebP outputs. PNG is always lossless.
+        </p>
+      </div>
     </div>
   );
 }
@@ -271,6 +300,7 @@ export function SmartCropSettings() {
     threshold: 30,
     padToSquare: false,
     padColor: "#ffffff",
+    quality: 95,
   });
 
   const handleProcess = () => {
