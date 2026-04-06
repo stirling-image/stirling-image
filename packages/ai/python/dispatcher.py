@@ -37,7 +37,7 @@ def _try_import(name, import_fn):
 
 
 _try_import("PIL", lambda: __import__("PIL"))
-_try_import("cv2", lambda: __import__("cv2"))
+_try_import("mediapipe", lambda: __import__("mediapipe"))
 _try_import("numpy", lambda: __import__("numpy"))
 _try_import("gpu", lambda: __import__("gpu"))
 
