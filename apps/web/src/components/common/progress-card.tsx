@@ -12,6 +12,9 @@ interface ProgressCardProps {
 export function ProgressCard({ active, phase, label, stage, percent, elapsed }: ProgressCardProps) {
   if (!active) return null;
 
+  // No real-time server progress: non-AI tools sit at 100% while the server works
+  const isIndeterminate = phase === "processing" && percent >= 100;
+
   const icon =
     phase === "uploading" ? (
       <Upload className="h-4 w-4 text-primary" />
@@ -19,7 +22,8 @@ export function ProgressCard({ active, phase, label, stage, percent, elapsed }: 
       <Loader2 className="h-4 w-4 text-primary animate-spin" />
     );
 
-  const sublabel = [stage, `${elapsed}s`].filter(Boolean).join(" \u00b7 ");
+  const slowHint = phase === "processing" && elapsed >= 10 ? "This may take a moment" : undefined;
+  const sublabel = [stage, slowHint, `${elapsed}s`].filter(Boolean).join(" \u00b7 ");
 
   return (
     <div className="bg-muted/80 border border-border rounded-xl p-3 space-y-2.5">
@@ -37,7 +41,7 @@ export function ProgressCard({ active, phase, label, stage, percent, elapsed }: 
       </div>
       <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+          className={`h-full bg-primary rounded-full transition-all duration-500 ease-out ${isIndeterminate ? "animate-pulse" : ""}`}
           style={{ width: `${Math.min(100, percent)}%` }}
         />
       </div>

@@ -14,6 +14,7 @@ import { db, schema } from "../db/index.js";
 
 export interface JobProgress {
   jobId: string;
+  type?: "batch";
   status: "processing" | "completed" | "failed";
   totalFiles: number;
   completedFiles: number;
@@ -161,11 +162,13 @@ export function recoverStaleJobs(): void {
 export function updateJobProgress(progress: JobProgress): void {
   jobProgressStore.set(progress.jobId, progress);
   persistJobProgress(progress);
-  // Notify all SSE listeners
+  // Notify all SSE listeners (add type: "batch" so the frontend can distinguish
+  // batch events from single-file events in the shared SSE stream)
   const subs = listeners.get(progress.jobId);
   if (subs) {
+    const event = { ...progress, type: "batch" } as JobProgress & { type: "batch" };
     for (const cb of subs) {
-      cb(progress);
+      cb(event);
     }
     // If the job is done, clean up listeners after a brief delay
     if (progress.status === "completed" || progress.status === "failed") {
@@ -218,7 +221,7 @@ export async function registerProgressRoutes(app: FastifyInstance): Promise<void
       // If the job already has progress, send it immediately
       const existing = jobProgressStore.get(jobId);
       if (existing) {
-        sendEvent(existing);
+        sendEvent({ ...existing, type: "batch" });
         if (existing.status === "completed" || existing.status === "failed") {
           reply.raw.end();
           return;
