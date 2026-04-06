@@ -9,6 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Role } from "@stirling-image/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -17,8 +18,7 @@ import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import { decodeHeic } from "../lib/heic-converter.js";
 import { createWorkspace } from "../lib/workspace.js";
-import { requirePermission } from "../permissions.js";
-import { requireAuth } from "../plugins/auth.js";
+import { hasPermission, requirePermission } from "../permissions.js";
 import { getRegisteredToolIds, getToolConfig } from "./tool-factory.js";
 
 /** Schema for a single pipeline step. */
@@ -223,7 +223,7 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
    * Save a named pipeline definition for later reuse.
    */
   app.post("/api/v1/pipeline/save", async (request: FastifyRequest, reply: FastifyReply) => {
-    const user = requireAuth(request, reply);
+    const user = requirePermission("pipelines:own")(request, reply);
     if (!user) return;
 
     const body = request.body as unknown;
@@ -278,15 +278,16 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
    * List all saved pipelines.
    */
   app.get("/api/v1/pipeline/list", async (request: FastifyRequest, reply: FastifyReply) => {
-    const user = requireAuth(request, reply);
+    const user = requirePermission("pipelines:own")(request, reply);
     if (!user) return;
 
-    // Users see their own pipelines + legacy pipelines (no owner)
+    // Admins (pipelines:all) see everything; users see own + legacy (no owner)
+    const canSeeAll = hasPermission(user.role as Role, "pipelines:all");
     const rows = db
       .select()
       .from(schema.pipelines)
       .all()
-      .filter((row) => !row.userId || row.userId === user.id);
+      .filter((row) => canSeeAll || !row.userId || row.userId === user.id);
 
     const pipelines = rows.map((row) => ({
       id: row.id,
@@ -307,7 +308,7 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
   app.delete(
     "/api/v1/pipeline/:id",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const user = requireAuth(request, reply);
+      const user = requirePermission("pipelines:own")(request, reply);
       if (!user) return;
 
       const { id } = request.params;
@@ -315,12 +316,13 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
       const existing = db.select().from(schema.pipelines).where(eq(schema.pipelines.id, id)).get();
 
       if (!existing) {
-        return reply.status(404).send({ error: "Pipeline not found" });
+        return reply.status(404).send({ error: "Pipeline not found", code: "NOT_FOUND" });
       }
 
-      // Only the owner (or admin) can delete; legacy pipelines (no owner) can be deleted by anyone
-      if (existing.userId && existing.userId !== user.id && user.role !== "admin") {
-        return reply.status(403).send({ error: "Not authorized to delete this pipeline" });
+      // Only the owner (or pipelines:all) can delete; legacy pipelines (no owner) can be deleted by anyone
+      const canDeleteAll = hasPermission(user.role as Role, "pipelines:all");
+      if (existing.userId && existing.userId !== user.id && !canDeleteAll) {
+        return reply.status(404).send({ error: "Pipeline not found", code: "NOT_FOUND" });
       }
 
       db.delete(schema.pipelines).where(eq(schema.pipelines.id, id)).run();

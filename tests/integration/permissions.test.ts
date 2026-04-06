@@ -514,3 +514,57 @@ describe("file ownership scoping", () => {
     expect(body.deleted).toBe(0);
   });
 });
+
+describe("pipeline ownership scoping", () => {
+  let userToken: string;
+
+  beforeAll(async () => {
+    await testApp.app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { username: "pipeuser", password: "TestPass1", role: "user" },
+    });
+    db.update(schema.users)
+      .set({ mustChangePassword: false })
+      .where(eq(schema.users.username, "pipeuser"))
+      .run();
+    const loginRes = await testApp.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { username: "pipeuser", password: "TestPass1" },
+    });
+    userToken = JSON.parse(loginRes.body).token;
+  });
+
+  it("user can save and list their own pipelines", async () => {
+    const saveRes = await testApp.app.inject({
+      method: "POST",
+      url: "/api/v1/pipeline/save",
+      headers: { authorization: `Bearer ${userToken}` },
+      payload: {
+        name: "My Pipeline",
+        steps: [{ toolId: "rotate", settings: { angle: 90 } }],
+      },
+    });
+    expect(saveRes.statusCode).toBe(201);
+
+    const listRes = await testApp.app.inject({
+      method: "GET",
+      url: "/api/v1/pipeline/list",
+      headers: { authorization: `Bearer ${userToken}` },
+    });
+    const body = JSON.parse(listRes.body);
+    expect(body.pipelines.some((p: any) => p.name === "My Pipeline")).toBe(true);
+  });
+
+  it("admin can see all users' pipelines", async () => {
+    const listRes = await testApp.app.inject({
+      method: "GET",
+      url: "/api/v1/pipeline/list",
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const body = JSON.parse(listRes.body);
+    expect(body.pipelines.some((p: any) => p.name === "My Pipeline")).toBe(true);
+  });
+});
