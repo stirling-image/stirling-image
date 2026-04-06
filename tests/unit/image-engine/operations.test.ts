@@ -19,6 +19,7 @@ import {
   contrast,
   convert,
   crop,
+  editMetadata,
   flip,
   getImageInfo,
   grayscale,
@@ -1468,5 +1469,91 @@ describe("parseXmp", () => {
   it("returns empty object for empty buffer", () => {
     const result = parseXmp(Buffer.from(""));
     expect(result).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// editMetadata
+// ---------------------------------------------------------------------------
+describe("editMetadata", () => {
+  it("writes common fields readable via exif-reader", async () => {
+    const image = sharp(jpgWithExif);
+    const result = await editMetadata(image, {
+      artist: "New Artist",
+      copyright: "New Copyright",
+    });
+    const buf = await result.jpeg().toBuffer();
+    const meta = await sharp(buf).metadata();
+    expect(meta.exif).toBeTruthy();
+    const parsed = exifReader(meta.exif!);
+    expect(parsed.Image?.Artist).toBe("New Artist");
+    expect(parsed.Image?.Copyright).toBe("New Copyright");
+    // Original fields should be preserved via withExifMerge
+    expect(parsed.Image?.Software).toBe("Stirling-Image Test");
+  });
+
+  it("clears GPS while preserving other EXIF", async () => {
+    // First write GPS to the image
+    const withGps = sharp(jpgWithExif).withExif({
+      IFD0: { Artist: "GPS Test" },
+      IFD3: { GPSLatitudeRef: "N" },
+    });
+    const gpsBuf = await withGps.jpeg().toBuffer();
+
+    const image = sharp(gpsBuf);
+    const result = await editMetadata(image, { clearGps: true });
+    const buf = await result.jpeg().toBuffer();
+    const meta = await sharp(buf).metadata();
+    const parsed = exifReader(meta.exif!);
+    // GPS should be gone
+    expect(parsed.GPSInfo).toBeUndefined();
+    // Other EXIF should still be present
+    expect(parsed.Image?.Artist).toBe("GPS Test");
+  });
+
+  it("removes specific fields via fieldsToRemove", async () => {
+    const image = sharp(jpgWithExif);
+    const result = await editMetadata(image, {
+      fieldsToRemove: ["Software"],
+    });
+    const buf = await result.jpeg().toBuffer();
+    const meta = await sharp(buf).metadata();
+    const parsed = exifReader(meta.exif!);
+    expect(parsed.Image?.Software).toBeUndefined();
+    // Other fields preserved
+    expect(parsed.Image?.Artist).toBe("Test Artist");
+  });
+
+  it("preserves metadata with no options", async () => {
+    const image = sharp(jpgWithExif);
+    const result = await editMetadata(image, {});
+    const buf = await result.jpeg().toBuffer();
+    const meta = await sharp(buf).metadata();
+    expect(meta.exif).toBeTruthy();
+    const parsed = exifReader(meta.exif!);
+    expect(parsed.Image?.Artist).toBe("Test Artist");
+  });
+
+  it("edit wins over remove for same field", async () => {
+    const image = sharp(jpgWithExif);
+    const result = await editMetadata(image, {
+      artist: "Override Artist",
+      fieldsToRemove: ["Artist"],
+    });
+    const buf = await result.jpeg().toBuffer();
+    const meta = await sharp(buf).metadata();
+    const parsed = exifReader(meta.exif!);
+    expect(parsed.Image?.Artist).toBe("Override Artist");
+  });
+
+  it("writes fresh EXIF to image without existing metadata", async () => {
+    const image = sharp(png1x1);
+    const result = await editMetadata(image, {
+      artist: "Fresh Artist",
+      copyright: "Fresh Copyright",
+    });
+    const buf = await result.png().toBuffer();
+    // The operation should not throw
+    expect(buf.length).toBeGreaterThan(0);
   });
 });
