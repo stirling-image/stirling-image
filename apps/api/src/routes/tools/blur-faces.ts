@@ -10,10 +10,7 @@ import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 import { registerToolProcessFn } from "../tool-factory.js";
 
-/**
- * Face detection and blurring route.
- * Uses MediaPipe for detection, PIL for blurring.
- */
+/** Face detection and blurring route. */
 export function registerBlurFaces(app: FastifyInstance) {
   app.post("/api/v1/tools/blur-faces", async (request: FastifyRequest, reply: FastifyReply) => {
     let fileBuffer: Buffer | null = null;
