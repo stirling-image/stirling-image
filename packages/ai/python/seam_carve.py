@@ -13,16 +13,17 @@ Args:
 
 import json
 import sys
-import numpy as np
-from PIL import Image
 
 
 def emit_progress(percent, stage):
-    print(json.dumps({"progress": int(percent), "stage": stage}), file=sys.stderr, flush=True)
+    """Emit structured progress to stderr for bridge.ts to capture."""
+    print(json.dumps({"progress": percent, "stage": stage}), file=sys.stderr, flush=True)
 
 
 def build_face_mask(img_array):
     """Detect faces with MediaPipe and return a boolean keep_mask."""
+    import numpy as np
+
     try:
         import mediapipe as mp
     except ImportError:
@@ -71,11 +72,23 @@ def main():
 
     input_path = sys.argv[1]
     output_path = sys.argv[2]
-    settings = json.loads(sys.argv[3])
+
+    try:
+        settings = json.loads(sys.argv[3])
+    except (json.JSONDecodeError, ValueError):
+        print(json.dumps({"success": False, "error": "Invalid settings JSON"}))
+        sys.exit(1)
 
     target_width = settings.get("width")
     target_height = settings.get("height")
     protect_faces = settings.get("protectFaces", False)
+
+    try:
+        import numpy as np
+        from PIL import Image
+    except ImportError:
+        print(json.dumps({"success": False, "error": "Pillow/numpy not installed"}))
+        sys.exit(1)
 
     try:
         import seam_carving
