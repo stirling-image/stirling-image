@@ -1,4 +1,5 @@
 import { CATEGORIES, TOOLS } from "@stirling-image/shared";
+import { Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { SearchBar } from "../common/search-bar";
@@ -6,7 +7,7 @@ import { ToolCard } from "../common/tool-card";
 
 export function ToolPanel() {
   const [search, setSearch] = useState("");
-  const { disabledTools, experimentalEnabled, variantUnavailableTools, loaded, fetch } =
+  const { variant, disabledTools, experimentalEnabled, variantUnavailableTools, loaded, fetch } =
     useSettingsStore();
 
   useEffect(() => {
@@ -48,6 +49,27 @@ export function ToolPanel() {
         <SearchBar value={search} onChange={setSearch} />
       </div>
       <div className="px-3 pb-4 flex-1">
+        {variant === "lite" && (
+          <div className="mb-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-xs leading-relaxed">
+                <p className="font-medium">Lite mode</p>
+                <p className="mt-0.5 text-amber-700 dark:text-amber-400">
+                  AI tools are unavailable. Use the{" "}
+                  <code className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">
+                    latest
+                  </code>{" "}
+                  or{" "}
+                  <code className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">
+                    full
+                  </code>{" "}
+                  tag for all features.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {CATEGORIES.filter((cat) => groupedTools.has(cat.id)).map((category) => (
           <div key={category.id} className="mb-4">
             <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">

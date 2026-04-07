@@ -112,6 +112,7 @@ await docsRoutes(app);
 app.get("/api/v1/health", async () => ({
   status: "healthy",
   version: APP_VERSION,
+  variant: process.env.STIRLING_VARIANT === "lite" ? "lite" : "full",
 }));
 
 // Admin health check (full diagnostics)
