@@ -181,6 +181,7 @@ ENV PORT=1349 \
     STORAGE_MODE=local \
     DB_PATH=/data/stirling.db \
     WORKSPACE_PATH=/tmp/workspace \
+    FILES_STORAGE_PATH=/data/files \
     PYTHON_VENV_PATH=/opt/venv \
     DEFAULT_THEME=light \
     DEFAULT_LOCALE=en \
