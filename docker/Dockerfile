@@ -202,6 +202,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:1349/api/v1/health || exit 1
 
 # tini as PID 1 for zombie reaping + signal forwarding
-# node --import tsx replaces npx tsx to avoid npx eating signals
 ENTRYPOINT ["tini", "--", "entrypoint.sh"]
-CMD ["node", "--import", "tsx", "apps/api/src/index.ts"]
+CMD ["npx", "tsx", "apps/api/src/index.ts"]
