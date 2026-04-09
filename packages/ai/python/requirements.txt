@@ -1,6 +1,5 @@
 rembg[cpu]==2.0.62
 realesrgan==0.3.0
-lama-cleaner==1.2.5
 paddleocr==2.9.1
 paddlepaddle==3.0.0
 mediapipe==0.10.21
