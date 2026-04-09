@@ -23,7 +23,9 @@ REMBG_MODELS = [
     "birefnet-general",
 ]
 
-PADDLEOCR_LANGUAGES = ["en", "de", "fr", "es", "zh", "ja", "ko"]
+# PaddleOCR language codes (not ISO). German/French/Spanish use "latin" model.
+# Valid keys: ch, en, korean, japan, chinese_cht, ta, te, ka, latin, arabic, cyrillic, devanagari
+PADDLEOCR_LANGUAGES = ["en", "ch", "japan", "korean", "latin"]
 
 
 def download_rembg_models():
