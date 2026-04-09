@@ -85,17 +85,28 @@ def verify_mediapipe():
 
 def smoke_test():
     """Final verification that all ML libraries and models are loadable."""
+    import platform
+
     print("=== Running smoke test ===")
+    is_amd64 = platform.machine() in ("x86_64", "amd64")
 
     from rembg import new_session
-    from realesrgan import RealESRGANer
-    from basicsr.archs.rrdbnet_arch import RRDBNet
     from paddleocr import PaddleOCR
     import mediapipe as mp
     import cv2
     import numpy
     from PIL import Image
     import seam_carving
+    print("  Core imports OK")
+
+    # RealESRGAN/basicsr has a known torchvision compat issue on arm64.
+    # On amd64 we verify the full import chain; on arm64 we just check the model file.
+    if is_amd64:
+        from realesrgan import RealESRGANer
+        from basicsr.archs.rrdbnet_arch import RRDBNet
+        print("  RealESRGAN imports OK (amd64)")
+    else:
+        print("  RealESRGAN import skipped (arm64 - Lanczos fallback used)")
 
     assert os.path.exists(REALESRGAN_MODEL_PATH), (
         f"RealESRGAN model missing: {REALESRGAN_MODEL_PATH}"
@@ -104,7 +115,6 @@ def smoke_test():
         "RealESRGAN model file is too small"
     )
 
-    print("  All imports OK")
     print("  RealESRGAN model file verified")
     print("Smoke test passed.\n")
 
