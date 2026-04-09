@@ -31,11 +31,21 @@ def main():
 
         # Try Real-ESRGAN first
         try:
-            from basicsr.archs.rrdbnet_arch import RRDBNet
-            from realesrgan import RealESRGANer
-            from gpu import gpu_available
-            import numpy as np
-            import torch
+            # Redirect stdout to stderr so basicsr/realesrgan init messages
+            # cannot contaminate our JSON result on stdout.
+            stdout_fd = os.dup(1)
+            os.dup2(2, 1)
+
+            try:
+                from basicsr.archs.rrdbnet_arch import RRDBNet
+                from realesrgan import RealESRGANer
+                from gpu import gpu_available
+                import numpy as np
+                import torch
+            finally:
+                # Restore stdout after imports
+                os.dup2(stdout_fd, 1)
+                os.close(stdout_fd)
 
             if not os.path.exists(REALESRGAN_MODEL_PATH):
                 raise FileNotFoundError(f"RealESRGAN model not found: {REALESRGAN_MODEL_PATH}")

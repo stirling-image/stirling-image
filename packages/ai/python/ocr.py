@@ -33,27 +33,39 @@ def run_tesseract(input_path, language):
 def run_paddleocr(input_path, language):
     """Run PaddleOCR."""
     os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
-    from paddleocr import PaddleOCR
-    from gpu import gpu_available
 
-    # Map API language codes to PaddleOCR codes
-    paddle_lang_map = {"en": "en", "de": "latin", "fr": "latin", "es": "latin", "zh": "ch", "ja": "japan", "ko": "korean"}
-    paddle_lang = paddle_lang_map.get(language, "en")
+    # Redirect stdout to stderr so PaddleOCR download/init messages
+    # cannot contaminate our JSON result on stdout.
+    stdout_fd = os.dup(1)
+    os.dup2(2, 1)
 
-    emit_progress(20, "Loading")
-    ocr = PaddleOCR(lang=paddle_lang, use_gpu=gpu_available())
-    emit_progress(30, "Scanning")
-    result = ocr.ocr(input_path)
-    emit_progress(70, "Extracting text")
-    text = "\n".join(
-        [
-            line[1][0]
-            for res in result
-            if res
-            for line in res
-            if line and line[1]
-        ]
-    )
+    try:
+        from paddleocr import PaddleOCR
+        from gpu import gpu_available
+
+        # Map API language codes to PaddleOCR codes
+        paddle_lang_map = {"en": "en", "de": "latin", "fr": "latin", "es": "latin", "zh": "ch", "ja": "japan", "ko": "korean"}
+        paddle_lang = paddle_lang_map.get(language, "en")
+
+        emit_progress(20, "Loading")
+        ocr = PaddleOCR(lang=paddle_lang, use_gpu=gpu_available(), show_log=False)
+        emit_progress(30, "Scanning")
+        result = ocr.ocr(input_path)
+        emit_progress(70, "Extracting text")
+        text = "\n".join(
+            [
+                line[1][0]
+                for res in result
+                if res
+                for line in res
+                if line and line[1]
+            ]
+        )
+    finally:
+        # Restore stdout
+        os.dup2(stdout_fd, 1)
+        os.close(stdout_fd)
+
     return text, "paddleocr"
 
 
