@@ -1,11 +1,8 @@
 # syntax=docker/dockerfile:1
 # ============================================
-# Stirling Image - Production Dockerfile
-# Multi-stage build for single-container deployment
+# Stirling Image - Unified Production Dockerfile
+# Single image: GPU auto-detected on amd64, CPU on arm64
 # ============================================
-
-ARG VARIANT=full
-ARG GPU=false
 
 # ============================================
 # Stage 1: Build the frontend (Vite + React)
@@ -39,25 +36,22 @@ RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
     pnpm --filter @stirling-image/web build
 
 # ============================================
-# Stage 2: Base image selection
+# Stage 2: Platform-specific base images
 # ============================================
-FROM node:22-bookworm AS base-cpu
-FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04 AS base-gpu
-
-# Select base: GPU=false -> base-cpu, GPU=true -> base-gpu
-FROM base-cpu AS production-base-false
-FROM base-gpu AS production-base-true
+FROM node:22-bookworm AS base-linux-arm64
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04 AS base-linux-amd64
 
 # ============================================
 # Stage 3: Production runtime
 # ============================================
-FROM production-base-${GPU} AS production
+ARG TARGETOS
+ARG TARGETARCH
+FROM base-${TARGETOS}-${TARGETARCH} AS production
 
-ARG VARIANT
-ARG GPU
+ARG TARGETARCH
 
-# Install Node.js when using CUDA base (node:22-bookworm already has it)
-RUN if [ "$GPU" = "true" ]; then \
+# Install Node.js on amd64 (CUDA base has no Node; arm64 base already has it)
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
     apt-get update && apt-get install -y --no-install-recommends \
         curl ca-certificates gnupg && \
     mkdir -p /etc/apt/keyrings && \
@@ -71,67 +65,55 @@ RUN if [ "$GPU" = "true" ]; then \
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# System dependencies shared by all variants
+# System dependencies (all platforms)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    tini \
     imagemagick \
     libraw-dev \
     potrace \
     curl \
     gosu \
     libheif-examples \
+    python3 python3-pip python3-venv python3-dev \
+    tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu tesseract-ocr-fra tesseract-ocr-spa \
+    build-essential \
+    libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python/ML system dependencies (full variant only)
-RUN if [ "$VARIANT" = "full" ]; then \
-    apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip python3-venv python3-dev \
-        tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu tesseract-ocr-fra tesseract-ocr-spa \
-        build-essential \
-        libgl1 libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/* \
+# Python venv - Layer 1: Base packages (rarely change, ~3 GB)
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install \
+        Pillow==11.1.0 \
+        numpy==1.26.4 \
+        opencv-python-headless==4.10.0.84
+
+# Platform-conditional ONNX runtime
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+    /opt/venv/bin/pip install onnxruntime-gpu==1.20.1 \
+; else \
+    /opt/venv/bin/pip install onnxruntime==1.20.1 \
 ; fi
 
-# Python venv + ML packages + model weights (full variant only)
-COPY packages/ai/python/requirements.txt /tmp/requirements.txt
-COPY packages/ai/python/requirements-gpu.txt /tmp/requirements-gpu.txt
-RUN if [ "$VARIANT" = "full" ]; then \
-    python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --upgrade pip && \
-    if [ "$GPU" = "true" ]; then \
-        /opt/venv/bin/pip install \
-            Pillow numpy opencv-python-headless onnxruntime-gpu && \
-        (/opt/venv/bin/pip install rembg || echo "WARNING: rembg not installed") && \
-        (/opt/venv/bin/pip install realesrgan \
-            --extra-index-url https://download.pytorch.org/whl/cu126 \
-            || echo "WARNING: realesrgan not installed") && \
-        (/opt/venv/bin/pip install paddlepaddle-gpu paddleocr || echo "WARNING: PaddleOCR not installed") && \
-        (/opt/venv/bin/pip install mediapipe || echo "WARNING: mediapipe not installed") && \
-        (/opt/venv/bin/pip install lama-cleaner || echo "WARNING: lama-cleaner not installed") && \
-        (/opt/venv/bin/pip install seam-carving || echo "WARNING: seam-carving not installed") \
-    ; else \
-        /opt/venv/bin/pip install \
-            Pillow numpy opencv-python-headless onnxruntime && \
-        (/opt/venv/bin/pip install "rembg[cpu]" || echo "WARNING: rembg not installed") && \
-        (/opt/venv/bin/pip install realesrgan || echo "WARNING: realesrgan not installed") && \
-        (/opt/venv/bin/pip install paddlepaddle paddleocr || echo "WARNING: PaddleOCR not installed") && \
-        (/opt/venv/bin/pip install mediapipe || echo "WARNING: mediapipe not installed") && \
-        (/opt/venv/bin/pip install lama-cleaner || echo "WARNING: lama-cleaner not installed") && \
-        (/opt/venv/bin/pip install seam-carving || echo "WARNING: seam-carving not installed") \
-    ; fi \
-; fi && rm -f /tmp/requirements.txt /tmp/requirements-gpu.txt
+# Python venv - Layer 2: Tool packages (change occasionally, ~2 GB)
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+    /opt/venv/bin/pip install rembg==2.0.62 && \
+    /opt/venv/bin/pip install realesrgan==0.3.0 \
+        --extra-index-url https://download.pytorch.org/whl/cu126 && \
+    /opt/venv/bin/pip install paddlepaddle-gpu==3.0.0 paddleocr==2.9.1 \
+; else \
+    /opt/venv/bin/pip install "rembg[cpu]==2.0.62" && \
+    /opt/venv/bin/pip install realesrgan==0.3.0 && \
+    /opt/venv/bin/pip install paddlepaddle==3.0.0 paddleocr==2.9.1 \
+; fi
 
+RUN /opt/venv/bin/pip install \
+    mediapipe==0.10.21 \
+    seam-carving==1.1.0
+
+# Pre-download and verify all ML models
 COPY docker/download_models.py /tmp/download_models.py
-RUN if [ "$VARIANT" = "full" ]; then \
-    /opt/venv/bin/python3 /tmp/download_models.py && \
-    /opt/venv/bin/python3 -c "\
-try: \
-    from paddleocr import PaddleOCR; \
-    print('Downloading PaddleOCR models...'); \
-    ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False); \
-    print('PaddleOCR models ready'); \
-except: print('PaddleOCR model pre-download skipped') \
-" 2>/dev/null || echo "WARNING: Could not pre-download PaddleOCR models" \
-; fi && rm -f /tmp/download_models.py
+RUN /opt/venv/bin/python3 /tmp/download_models.py && rm -f /tmp/download_models.py
 
 WORKDIR /app
 
@@ -151,10 +133,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
     pnpm install --frozen-lockfile --prod
 
 # Remove build tools no longer needed in production
-RUN if [ "$VARIANT" = "full" ]; then \
-    apt-get purge -y --auto-remove build-essential python3-dev && \
-    rm -rf /var/lib/apt/lists/* \
-; fi
+RUN apt-get purge -y --auto-remove build-essential python3-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy source code for API (tsx runs TS directly - no build step needed)
 COPY apps/api/src ./apps/api/src
@@ -170,9 +150,9 @@ COPY packages/ai/python ./packages/ai/python
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
 
 # Create required directories
-RUN mkdir -p /data /tmp/workspace
+RUN mkdir -p /data /data/files /tmp/workspace
 
-# Environment defaults (matching PRD Section 16.1)
+# Environment defaults
 ENV PORT=1349 \
     NODE_ENV=production \
     AUTH_ENABLED=true \
@@ -192,13 +172,20 @@ ENV PORT=1349 \
     MAX_BATCH_SIZE=200 \
     CONCURRENT_JOBS=3 \
     MAX_MEGAPIXELS=100 \
-    RATE_LIMIT_PER_MIN=100 \
-    STIRLING_VARIANT=${VARIANT}
+    RATE_LIMIT_PER_MIN=100
+
+# NVIDIA Container Toolkit env vars (harmless on non-GPU systems)
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Suppress noisy ML library output in docker logs
+ENV PYTHONWARNINGS=ignore \
+    TF_CPP_MIN_LOG_LEVEL=3 \
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
 
 # Create non-root user for runtime
 RUN groupadd -r stirling && useradd -r -g stirling -d /app -s /sbin/nologin stirling
-RUN chown -R stirling:stirling /app /data /tmp/workspace && \
-    ([ -d /opt/venv ] && chown -R stirling:stirling /opt/venv || true)
+RUN chown -R stirling:stirling /app /data /tmp/workspace /opt/venv
 
 # Entrypoint fixes volume permissions then drops to stirling via gosu
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -206,8 +193,10 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 1349
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:1349/api/v1/health || exit 1
 
-ENTRYPOINT ["entrypoint.sh"]
-CMD ["npx", "tsx", "apps/api/src/index.ts"]
+# tini as PID 1 for zombie reaping + signal forwarding
+# node --import tsx replaces npx tsx to avoid npx eating signals
+ENTRYPOINT ["tini", "--", "entrypoint.sh"]
+CMD ["node", "--import", "tsx", "apps/api/src/index.ts"]
