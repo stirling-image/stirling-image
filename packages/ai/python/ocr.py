@@ -36,8 +36,12 @@ def run_paddleocr(input_path, language):
     from paddleocr import PaddleOCR
     from gpu import gpu_available
 
+    # Map API language codes to PaddleOCR codes
+    paddle_lang_map = {"en": "en", "de": "latin", "fr": "latin", "es": "latin", "zh": "ch", "ja": "japan", "ko": "korean"}
+    paddle_lang = paddle_lang_map.get(language, "en")
+
     emit_progress(20, "Loading")
-    ocr = PaddleOCR(lang=language, use_gpu=gpu_available())
+    ocr = PaddleOCR(lang=paddle_lang, use_gpu=gpu_available())
     emit_progress(30, "Scanning")
     result = ocr.ocr(input_path)
     emit_progress(70, "Extracting text")
