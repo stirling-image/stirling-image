@@ -63,11 +63,16 @@ def download_realesrgan_model():
 def download_paddleocr_models():
     """Pre-download PaddleOCR models for all supported languages."""
     print("=== Downloading PaddleOCR models ===")
-    os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
-    # Force CPU mode during build - no GPU driver available at build time
-    os.environ["PADDLE_DEVICE"] = "cpu"
-    os.environ["FLAGS_use_cuda"] = "0"
-    from paddleocr import PaddleOCR
+    try:
+        from paddleocr import PaddleOCR
+    except ImportError as e:
+        if "libcuda" in str(e):
+            # paddlepaddle-gpu can't import without CUDA driver at build time.
+            # Models will be downloaded on first use at runtime instead.
+            print(f"  Skipping PaddleOCR model pre-download (no CUDA driver at build time)")
+            print(f"  Models will download on first use at runtime.\n")
+            return
+        raise
 
     for lang in PADDLEOCR_LANGUAGES:
         print(f"  Downloading models for lang={lang}...")
@@ -100,13 +105,20 @@ def smoke_test():
     is_amd64 = platform.machine() in ("x86_64", "amd64")
 
     from rembg import new_session
-    from paddleocr import PaddleOCR
     import mediapipe as mp
     import cv2
     import numpy
     from PIL import Image
     import seam_carving
-    print("  Core imports OK")
+
+    try:
+        from paddleocr import PaddleOCR
+        print("  Core imports OK (including PaddleOCR)")
+    except ImportError as e:
+        if "libcuda" in str(e):
+            print("  Core imports OK (PaddleOCR skipped - no CUDA driver at build time)")
+        else:
+            raise
 
     # RealESRGAN/basicsr has a known torchvision compat issue on arm64.
     # On amd64 we verify the full import chain; on arm64 we just check the model file.
