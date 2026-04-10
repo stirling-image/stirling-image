@@ -1,3 +1,32 @@
+# [1.14.0](https://github.com/stirling-image/stirling-image/compare/v1.13.0...v1.14.0) (2026-04-10)
+
+
+### Bug Fixes
+
+* add FILES_STORAGE_PATH to Dockerfile ENV to prevent data loss ([b575243](https://github.com/stirling-image/stirling-image/commit/b575243e9a0cb2ac4567d785a74e57dea912e9e2))
+* add shutdown timeout and improve health endpoint ([986ad37](https://github.com/stirling-image/stirling-image/commit/986ad37bb5e6644dd93521018a1bcd2d6243f502))
+* address code review findings before merge ([caf65bc](https://github.com/stirling-image/stirling-image/commit/caf65bc4697ddfea27674b56fd2e8de847edc734))
+* correct PaddleOCR language codes for model download and OCR ([e1ee571](https://github.com/stirling-image/stirling-image/commit/e1ee57103c201f104b737c2719d0014d4912d4b2))
+* force CPU mode in download_models.py for build-time compatibility ([b4b59a7](https://github.com/stirling-image/stirling-image/commit/b4b59a7500375bc2e65cb0050e5308b07610d2cf))
+* handle paddlepaddle-gpu CUDA import at build time gracefully ([0083a74](https://github.com/stirling-image/stirling-image/commit/0083a741a9a3924ccc37c4e622c2980a8a41f1a3))
+* install cuda-compat stubs for build-time PaddlePaddle import ([d31d665](https://github.com/stirling-image/stirling-image/commit/d31d66556ef0aa7c20a73a94f5d95b54b99fbb8a))
+* load RealESRGAN pretrained weights for actual AI upscaling ([fa9569c](https://github.com/stirling-image/stirling-image/commit/fa9569c920d6bdac094dcd661fc5cf3b4be3f17a))
+* revert to npx tsx in CMD for pnpm compatibility ([e55253d](https://github.com/stirling-image/stirling-image/commit/e55253dee03f9e93187d50e0ffb66b423a1230c0))
+* simplify smoke test to CPU-only imports for build-time compat ([3481663](https://github.com/stirling-image/stirling-image/commit/34816639609cbccab91a5cad5760fea769c4b565))
+* skip RealESRGAN import check on arm64 in smoke test ([1e2ef52](https://github.com/stirling-image/stirling-image/commit/1e2ef5284686253ae33e05411a515369b7f41a3e))
+* split paddlepaddle-gpu and paddleocr installs, use --extra-index-url ([74183e8](https://github.com/stirling-image/stirling-image/commit/74183e8dc1e3d8f90cff4484f5526c3c3dfba9a6))
+* suppress ML library stdout noise in ocr.py and upscale.py ([c0b419d](https://github.com/stirling-image/stirling-image/commit/c0b419de21acb92b243ef78191dff6a2153c5961))
+* use PaddlePaddle GPU package index for CUDA wheels ([dd9528f](https://github.com/stirling-image/stirling-image/commit/dd9528f53c9bcf148842ab94f14a4ebd5ae223ec))
+* use platform-specific mediapipe version for arm64 compatibility ([7face19](https://github.com/stirling-image/stirling-image/commit/7face19238f54cfea02d453b697e34b50ccd9d21))
+
+
+### Features
+
+* expand model pre-download with verification and smoke test ([a9e3b96](https://github.com/stirling-image/stirling-image/commit/a9e3b9688776a51efd2f42cae810de425cf1d9cf))
+* simplify CI to single unified Docker build ([b385a2e](https://github.com/stirling-image/stirling-image/commit/b385a2eabb255f7a8fe2d3720a358ff5bf254310))
+* simplify compose to single file, add log rotation ([84f7057](https://github.com/stirling-image/stirling-image/commit/84f7057a49850b7a47440099ec2caad8d3b87efe))
+* unified Docker image with GPU auto-detection ([6c3eb3b](https://github.com/stirling-image/stirling-image/commit/6c3eb3b876cee0301d5fb3ed8324a3c8e92b1307))
+
 # [1.13.0](https://github.com/stirling-image/stirling-image/compare/v1.12.0...v1.13.0) (2026-04-10)
 
 
