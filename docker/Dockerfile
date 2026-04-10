@@ -118,16 +118,10 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 
 RUN /opt/venv/bin/pip install seam-carving==1.1.0
 
-# Install CUDA forward-compat stubs for build-time model downloads.
-# paddlepaddle-gpu needs libcuda.so.1 to import, but the real driver is
-# only injected at runtime by nvidia-container-toolkit. The compat package
-# provides a stub that satisfies the dlopen without a real GPU.
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-    apt-get update && apt-get install -y --no-install-recommends cuda-compat-12-6 && \
-    rm -rf /var/lib/apt/lists/* \
-; fi
-
 # Pre-download and verify all ML models
+# Note: on amd64, paddlepaddle-gpu can't import without the CUDA driver (only
+# available at runtime). The download script gracefully skips PaddleOCR model
+# pre-download in this case; models download on first use at runtime instead.
 COPY docker/download_models.py /tmp/download_models.py
 RUN /opt/venv/bin/python3 /tmp/download_models.py && rm -f /tmp/download_models.py
 
