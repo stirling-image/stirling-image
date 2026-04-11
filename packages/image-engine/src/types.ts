@@ -32,6 +32,7 @@ export interface CropOptions {
   top: number;
   width: number;
   height: number;
+  unit?: "px" | "percent";
 }
 
 export interface RotateOptions {

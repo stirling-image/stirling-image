@@ -96,6 +96,7 @@ export function ToolPage() {
     setSelectedIndex,
     navigateNext,
     navigatePrev,
+    currentEntry,
   } = useFileStore();
   const isMobile = useMobile();
   const hasMultiple = entries.length > 1;
@@ -249,6 +250,18 @@ export function ToolPage() {
       );
     }
 
+    // Show error state for failed batch files (before interactive canvas blocks,
+    // which also match !hasProcessed and would show the canvas instead of the error)
+    if (hasFile && !hasProcessed && currentEntry?.status === "failed") {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 h-full text-center px-4">
+          <p className="text-sm text-red-500">
+            {currentEntry.error ?? "Processing failed for this file"}
+          </p>
+        </div>
+      );
+    }
+
     if (displayMode === "interactive-crop" && hasFile && !hasProcessed && originalBlobUrl) {
       return (
         <CropCanvas
@@ -274,7 +287,11 @@ export function ToolPage() {
       );
     }
 
-    if (hasProcessed && originalBlobUrl && displayMode === "side-by-side") {
+    if (
+      hasProcessed &&
+      originalBlobUrl &&
+      (displayMode === "side-by-side" || displayMode === "interactive-crop")
+    ) {
       return (
         <SideBySideComparison
           beforeSrc={originalBlobUrl}
