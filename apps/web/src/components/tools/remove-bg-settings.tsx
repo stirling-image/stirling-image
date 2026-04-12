@@ -43,8 +43,8 @@ const SUBJECT_OPTIONS: { value: SubjectType; label: string; icon: typeof User }[
 
 const ALL_QUALITY_OPTIONS: { value: Quality; label: string; peopleOnly?: boolean }[] = [
   { value: "fast", label: "Fast" },
-  { value: "balanced", label: "Balanced" },
-  { value: "best", label: "Best" },
+  { value: "balanced", label: "HD" },
+  { value: "best", label: "Max" },
   { value: "ultra", label: "Ultra", peopleOnly: true },
 ];
 
