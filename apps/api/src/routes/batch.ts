@@ -146,15 +146,19 @@ export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
 
             try {
               let processBuffer = file.buffer;
+              let processFilename = file.filename;
               // Skip HEIC decode and auto-orient for edit-metadata (ExifTool handles all formats natively)
               const skipPreprocess = toolId === "edit-metadata" || toolId === "strip-metadata";
               if (!skipPreprocess && validation.format === "heif") {
                 processBuffer = await decodeHeic(processBuffer);
+                // Update extension to match decoded format (HEIC/HEIF → PNG)
+                const ext = processFilename.match(/\.[^.]+$/)?.[0];
+                if (ext) processFilename = processFilename.slice(0, -ext.length) + ".png";
               }
               if (!skipPreprocess) {
                 processBuffer = await autoOrient(processBuffer);
               }
-              const result = await toolConfig.process(processBuffer, settings, file.filename);
+              const result = await toolConfig.process(processBuffer, settings, processFilename);
 
               results[index] = { buffer: result.buffer, filename: result.filename };
 

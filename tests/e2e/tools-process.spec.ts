@@ -82,7 +82,7 @@ test.describe("Tool processing (core tools)", () => {
   test("strip-metadata processes image", async ({ loggedInPage: page }) => {
     await page.goto("/strip-metadata");
     await uploadTestImage(page);
-    await page.getByRole("button", { name: /strip metadata/i }).click();
+    await page.getByRole("button", { name: /remove metadata/i }).click();
     await waitForProcessing(page);
     await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
       timeout: 15_000,
@@ -106,8 +106,8 @@ test.describe("Tool processing (core tools)", () => {
     });
   });
 
-  test("brightness-contrast processes image", async ({ loggedInPage: page }) => {
-    await page.goto("/brightness-contrast");
+  test("adjust-colors processes image", async ({ loggedInPage: page }) => {
+    await page.goto("/adjust-colors");
     await uploadTestImage(page);
     // Adjust brightness to non-zero so processing makes a change
     const brightnessSlider = page.locator("input[type='range']").first();

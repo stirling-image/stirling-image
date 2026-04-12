@@ -1,10 +1,9 @@
-import { Download } from "lucide-react";
+import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-type Tab = "basic" | "channels" | "effects";
 type Effect = "none" | "grayscale" | "sepia" | "invert";
 
 interface ColorControlsProps {
@@ -14,21 +13,25 @@ interface ColorControlsProps {
 }
 
 export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorControlsProps) {
-  const [tab, setTab] = useState<Tab>(() => {
-    if (toolId === "color-channels") return "channels";
-    if (toolId === "color-effects") return "effects";
-    return "basic";
-  });
-
-  // Basic adjustments
+  // Light
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
-  const [saturation, setSaturation] = useState(0);
+  const [exposure, setExposure] = useState(0);
 
-  // Color channels
+  // Color
+  const [saturation, setSaturation] = useState(0);
+  const [temperature, setTemperature] = useState(0);
+  const [tint, setTint] = useState(0);
+  const [hue, setHue] = useState(0);
+
+  // Detail
+  const [sharpness, setSharpness] = useState(0);
+
+  // Channels
   const [red, setRed] = useState(100);
   const [green, setGreen] = useState(100);
   const [blue, setBlue] = useState(100);
+  const [channelsOpen, setChannelsOpen] = useState(false);
 
   // Effects
   const [effect, setEffect] = useState<Effect>("none");
@@ -36,20 +39,51 @@ export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorContro
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  // Report settings on change
   useEffect(() => {
-    onChangeRef.current?.({ brightness, contrast, saturation, red, green, blue, effect });
-  }, [brightness, contrast, saturation, red, green, blue, effect]);
+    onChangeRef.current?.({
+      brightness,
+      contrast,
+      exposure,
+      saturation,
+      temperature,
+      tint,
+      hue,
+      sharpness,
+      red,
+      green,
+      blue,
+      effect,
+    });
+  }, [
+    brightness,
+    contrast,
+    exposure,
+    saturation,
+    temperature,
+    tint,
+    hue,
+    sharpness,
+    red,
+    green,
+    blue,
+    effect,
+  ]);
 
-  // Emit CSS filter for live preview
+  // CSS filter preview
   const hasChannelChanges = red !== 100 || green !== 100 || blue !== 100;
+  const hasTempTint = temperature !== 0 || tint !== 0;
+
   useEffect(() => {
     if (!onPreviewFilter) return;
     const parts: string[] = [];
     if (brightness !== 0) parts.push(`brightness(${1 + brightness / 100})`);
     if (contrast !== 0) parts.push(`contrast(${1 + contrast / 100})`);
+    if (exposure !== 0) parts.push(`brightness(${1 + exposure / 200})`);
     if (saturation !== 0) parts.push(`saturate(${1 + saturation / 100})`);
+    if (hue !== 0) parts.push(`hue-rotate(${hue}deg)`);
+    if (hasTempTint) parts.push("url(#stirling-temp-tint-filter)");
     if (hasChannelChanges) parts.push("url(#stirling-channel-filter)");
+    if (sharpness > 0) parts.push("url(#stirling-sharpen-filter)");
     if (effect === "grayscale") parts.push("grayscale(1)");
     if (effect === "sepia") parts.push("sepia(1)");
     if (effect === "invert") parts.push("invert(1)");
@@ -57,33 +91,49 @@ export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorContro
   }, [
     brightness,
     contrast,
+    exposure,
     saturation,
-    red,
-    green,
-    blue,
-    effect,
+    temperature,
+    tint,
+    hue,
+    sharpness,
     hasChannelChanges,
+    hasTempTint,
+    effect,
     onPreviewFilter,
   ]);
 
   const hasChanges =
     brightness !== 0 ||
     contrast !== 0 ||
+    exposure !== 0 ||
     saturation !== 0 ||
+    temperature !== 0 ||
+    tint !== 0 ||
+    hue !== 0 ||
+    sharpness !== 0 ||
     red !== 100 ||
     green !== 100 ||
     blue !== 100 ||
     effect !== "none";
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "basic", label: "Basic" },
-    { id: "channels", label: "Channels" },
-    { id: "effects", label: "Effects" },
-  ];
+  // Build SVG filter matrices
+  const tempT = temperature / 100;
+  const tintN = tint / 100;
 
   return (
     <>
-      {/* Hidden SVG filter for color channel preview */}
+      {/* Hidden SVG filters for live preview */}
+      {hasTempTint && (
+        <svg width="0" height="0" style={{ position: "absolute" }}>
+          <filter id="stirling-temp-tint-filter" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values={`${1 + tempT * 0.15 + tintN * 0.1} 0 0 0 0  0 ${1 + tempT * 0.05 - tintN * 0.15} 0 0 0  0 0 ${1 - tempT * 0.15 + tintN * 0.1} 0 0  0 0 0 1 0`}
+            />
+          </filter>
+        </svg>
+      )}
       {hasChannelChanges && (
         <svg width="0" height="0" style={{ position: "absolute" }}>
           <filter id="stirling-channel-filter" colorInterpolationFilters="sRGB">
@@ -94,52 +144,116 @@ export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorContro
           </filter>
         </svg>
       )}
-      {/* Tabs */}
-      <div className="flex gap-1">
-        {tabs.map((t) => (
+      {sharpness > 0 && (
+        <svg width="0" height="0" style={{ position: "absolute" }}>
+          <filter id="stirling-sharpen-filter" colorInterpolationFilters="sRGB">
+            <feConvolveMatrix
+              order="3"
+              preserveAlpha="true"
+              kernelMatrix={`0 ${-sharpness / 100} 0 ${-sharpness / 100} ${1 + (4 * sharpness) / 100} ${-sharpness / 100} 0 ${-sharpness / 100} 0`}
+            />
+          </filter>
+        </svg>
+      )}
+
+      {/* Light section */}
+      <SectionLabel>Light</SectionLabel>
+      <div className="space-y-2">
+        <SliderControl
+          label="Brightness"
+          value={brightness}
+          onChange={setBrightness}
+          min={-100}
+          max={100}
+        />
+        <SliderControl
+          label="Contrast"
+          value={contrast}
+          onChange={setContrast}
+          min={-100}
+          max={100}
+        />
+        <SliderControl
+          label="Exposure"
+          value={exposure}
+          onChange={setExposure}
+          min={-100}
+          max={100}
+        />
+      </div>
+
+      {/* Color section */}
+      <SectionLabel>Color</SectionLabel>
+      <div className="space-y-2">
+        <SliderControl
+          label="Saturation"
+          value={saturation}
+          onChange={setSaturation}
+          min={-100}
+          max={100}
+        />
+        <SliderControl
+          label="Temperature"
+          value={temperature}
+          onChange={setTemperature}
+          min={-100}
+          max={100}
+          hint="cool / warm"
+        />
+        <SliderControl
+          label="Tint"
+          value={tint}
+          onChange={setTint}
+          min={-100}
+          max={100}
+          hint="green / magenta"
+        />
+        <SliderControl label="Hue" value={hue} onChange={setHue} min={-180} max={180} />
+      </div>
+
+      {/* Detail section */}
+      <SectionLabel>Detail</SectionLabel>
+      <div className="space-y-2">
+        <SliderControl
+          label="Sharpness"
+          value={sharpness}
+          onChange={setSharpness}
+          min={0}
+          max={100}
+        />
+      </div>
+
+      {/* Effects section */}
+      <SectionLabel>Effects</SectionLabel>
+      <div className="grid grid-cols-2 gap-1">
+        {(["none", "grayscale", "sepia", "invert"] as const).map((e) => (
           <button
             type="button"
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 text-xs py-1.5 rounded ${
-              tab === t.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            key={e}
+            onClick={() => setEffect(e)}
+            className={`text-xs py-2 rounded capitalize transition-colors ${
+              effect === e
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-primary/10"
             }`}
           >
-            {t.label}
+            {e}
           </button>
         ))}
       </div>
 
-      {/* Basic Adjustments */}
-      {tab === "basic" && (
-        <div className="space-y-3">
-          <SliderControl
-            label="Brightness"
-            value={brightness}
-            onChange={setBrightness}
-            min={-100}
-            max={100}
-          />
-          <SliderControl
-            label="Contrast"
-            value={contrast}
-            onChange={setContrast}
-            min={-100}
-            max={100}
-          />
-          <SliderControl
-            label="Saturation"
-            value={saturation}
-            onChange={setSaturation}
-            min={-100}
-            max={100}
-          />
-        </div>
-      )}
-
-      {/* Color Channels */}
-      {tab === "channels" && (
-        <div className="space-y-3">
+      {/* Color Channels (expandable) */}
+      <button
+        type="button"
+        onClick={() => setChannelsOpen(!channelsOpen)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full"
+      >
+        {channelsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        Color Channels
+        {hasChannelChanges && <span className="ml-auto text-primary text-[10px]">modified</span>}
+      </button>
+      {channelsOpen && (
+        <div className="space-y-2 pl-1">
           <SliderControl
             label="Red"
             value={red}
@@ -167,37 +281,19 @@ export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorContro
         </div>
       )}
 
-      {/* Effects */}
-      {tab === "effects" && (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Color Effect</p>
-          <div className="grid grid-cols-2 gap-1">
-            {(["none", "grayscale", "sepia", "invert"] as const).map((e) => (
-              <button
-                type="button"
-                key={e}
-                onClick={() => setEffect(e)}
-                className={`text-xs py-2 rounded capitalize transition-colors ${
-                  effect === e
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-primary/10"
-                }`}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Reset button */}
+      {/* Reset */}
       {hasChanges && (
         <button
           type="button"
           onClick={() => {
             setBrightness(0);
             setContrast(0);
+            setExposure(0);
             setSaturation(0);
+            setTemperature(0);
+            setTint(0);
+            setHue(0);
+            setSharpness(0);
             setRed(100);
             setGreen(100);
             setBlue(100);
@@ -212,8 +308,9 @@ export function ColorControls({ toolId, onChange, onPreviewFilter }: ColorContro
   );
 }
 
+// ── ColorSettings wrapper (handles processing + download) ─────────
+
 interface ColorSettingsProps {
-  /** The specific tool ID to use for processing */
   toolId: string;
   onPreviewFilter?: (filter: string) => void;
 }
@@ -231,15 +328,7 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
     progress,
   } = useToolProcessor(toolId);
 
-  const [settings, setSettings] = useState<Record<string, unknown>>({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    red: 100,
-    green: 100,
-    blue: 100,
-    effect: "none",
-  });
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
 
   const handleProcess = () => {
     if (files.length > 1) {
@@ -250,14 +339,11 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
   };
 
   const hasFile = files.length > 0;
-  const hasChanges =
-    settings.brightness !== 0 ||
-    settings.contrast !== 0 ||
-    settings.saturation !== 0 ||
-    settings.red !== 100 ||
-    settings.green !== 100 ||
-    settings.blue !== 100 ||
-    settings.effect !== "none";
+  const hasChanges = Object.entries(settings).some(([key, val]) => {
+    if (key === "effect") return val !== "none";
+    if (key === "red" || key === "green" || key === "blue") return val !== 100;
+    return val !== 0;
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,13 +351,11 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <ColorControls toolId={toolId} onChange={setSettings} onPreviewFilter={onPreviewFilter} />
 
-      {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {/* Size info */}
       {originalSize != null && processedSize != null && (
         <div className="text-xs text-muted-foreground space-y-0.5">
           <p>Original: {(originalSize / 1024).toFixed(1)} KB</p>
@@ -279,7 +363,6 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
         </div>
       )}
 
-      {/* Process */}
       {processing ? (
         <ProgressCard
           active={processing}
@@ -292,7 +375,7 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
       ) : (
         <button
           type="submit"
-          data-testid={`${toolId}-submit`}
+          data-testid="adjust-colors-submit"
           disabled={!hasFile || !hasChanges || processing}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
@@ -300,12 +383,12 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
         </button>
       )}
 
-      {/* Download */}
-      {downloadUrl && (
+      {/* Download (single-file only - batch uses Download All ZIP in tool-page) */}
+      {downloadUrl && files.length <= 1 && (
         <a
           href={downloadUrl}
           download
-          data-testid={`${toolId}-download`}
+          data-testid="adjust-colors-download"
           className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
         >
           <Download className="h-4 w-4" />
@@ -316,7 +399,16 @@ export function ColorSettings({ toolId, onPreviewFilter }: ColorSettingsProps) {
   );
 }
 
-/** Reusable slider control */
+// ── Shared sub-components ─────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 pt-1">
+      {children}
+    </p>
+  );
+}
+
 function SliderControl({
   label,
   value,
@@ -324,6 +416,7 @@ function SliderControl({
   min,
   max,
   color,
+  hint,
 }: {
   label: string;
   value: number;
@@ -331,6 +424,7 @@ function SliderControl({
   min: number;
   max: number;
   color?: string;
+  hint?: string;
 }) {
   const id = `color-slider-${label.toLowerCase()}`;
   return (
@@ -338,8 +432,11 @@ function SliderControl({
       <div className="flex justify-between items-center">
         <label htmlFor={id} className={`text-xs ${color || "text-muted-foreground"}`}>
           {label}
+          {hint && <span className="text-[10px] text-muted-foreground/60 ml-1">({hint})</span>}
         </label>
-        <span className="text-xs font-mono text-foreground">{value}</span>
+        <span className="text-xs font-mono text-foreground tabular-nums w-8 text-right">
+          {value}
+        </span>
       </div>
       <input
         id={id}

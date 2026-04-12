@@ -7,6 +7,7 @@
 import type React from "react";
 import { lazy } from "react";
 import type { Crop } from "react-image-crop";
+import type { BgPreviewState } from "@/components/common/image-viewer";
 import type { EraserCanvasRef } from "@/components/tools/eraser-canvas";
 import type { PreviewTransform } from "@/components/tools/rotate-settings";
 
@@ -53,6 +54,7 @@ export interface ToolRegistryEntry {
   Settings: React.ComponentType<{
     onPreviewTransform?: (t: PreviewTransform) => void;
     onPreviewFilter?: (filter: string) => void;
+    onBgPreview?: (state: BgPreviewState | null) => void;
     cropProps?: CropProps;
     eraserProps?: EraserProps;
   }>;
@@ -253,18 +255,15 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ["strip-metadata", { displayMode: "no-comparison", Settings: StripMetadataSettings }],
   ["edit-metadata", { displayMode: "no-comparison", Settings: EditMetadataSettings }],
 
-  // Color adjustments (all share ColorSettings with different toolId)
-  ...(["brightness-contrast", "saturation", "color-channels", "color-effects"] as const).map(
-    (id) =>
-      [
-        id,
-        {
-          displayMode: "live-preview" as DisplayMode,
-          livePreview: true,
-          Settings: makeColorSettingsComponent(id) as never,
-        },
-      ] as const,
-  ),
+  // Color adjustments (consolidated)
+  [
+    "adjust-colors",
+    {
+      displayMode: "live-preview" as DisplayMode,
+      livePreview: true,
+      Settings: makeColorSettingsComponent("adjust-colors") as never,
+    },
+  ],
 
   // Watermark & Overlay
   ["watermark-text", { displayMode: "before-after", Settings: WatermarkTextSettings }],

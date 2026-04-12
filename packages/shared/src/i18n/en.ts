@@ -44,16 +44,11 @@ export const en = {
     "image-to-pdf": { name: "Image to PDF", description: "Combine images into a PDF document" },
     "pdf-to-image": { name: "PDF to Image", description: "Convert PDF pages to images" },
     favicon: { name: "Favicon Generator", description: "Generate all favicon and app icon sizes" },
-    "brightness-contrast": {
-      name: "Brightness & Contrast",
-      description: "Adjust brightness and contrast levels",
+    "adjust-colors": {
+      name: "Adjust Colors",
+      description:
+        "Brightness, contrast, exposure, saturation, temperature, sharpness, and effects",
     },
-    saturation: {
-      name: "Saturation & Exposure",
-      description: "Adjust color saturation and exposure",
-    },
-    "color-channels": { name: "Color Channels", description: "Adjust individual R, G, B channels" },
-    "color-effects": { name: "Color Effects", description: "Grayscale, Sepia, Invert, Tint" },
     "replace-color": {
       name: "Replace & Invert Color",
       description: "Replace specific colors or invert",
@@ -64,7 +59,10 @@ export const en = {
     },
     upscale: { name: "Image Upscaling", description: "AI super-resolution enhancement" },
     "erase-object": { name: "Object Eraser", description: "Paint over unwanted elements" },
-    ocr: { name: "OCR / Text Extraction", description: "Extract text from images" },
+    ocr: {
+      name: "OCR / Text Extraction",
+      description: "Extract text from images with AI-powered accuracy",
+    },
     "blur-faces": {
       name: "Face / PII Blur",
       description: "Auto-detect and blur faces and sensitive info",

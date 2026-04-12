@@ -91,6 +91,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libimage-exiftool-perl \
     python3 python3-pip python3-venv python3-dev \
     tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu tesseract-ocr-fra tesseract-ocr-spa \
+    tesseract-ocr-chi-sim tesseract-ocr-jpn tesseract-ocr-kor \
     build-essential \
     libgl1 libglib2.0-0 \
     libegl1 libwayland-egl1 libwayland-client0 libwayland-cursor0 \
@@ -120,13 +121,13 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     /opt/venv/bin/pip install rembg==2.0.62 && \
     /opt/venv/bin/pip install realesrgan==0.3.0 \
         --extra-index-url https://download.pytorch.org/whl/cu126 && \
-    /opt/venv/bin/pip install paddlepaddle-gpu==3.0.0 \
+    /opt/venv/bin/pip install paddlepaddle-gpu>=3.2.1 \
         --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu126/ && \
-    /opt/venv/bin/pip install paddleocr==2.9.1 \
+    /opt/venv/bin/pip install "paddleocr[doc-parser]>=3.4.0,<3.5.0" \
 ; else \
     /opt/venv/bin/pip install "rembg[cpu]==2.0.62" && \
     /opt/venv/bin/pip install realesrgan==0.3.0 && \
-    /opt/venv/bin/pip install paddlepaddle==3.0.0 paddleocr==2.9.1 \
+    /opt/venv/bin/pip install paddlepaddle>=3.2.1 "paddleocr[doc-parser]>=3.4.0,<3.5.0" \
 ; fi
 
 # mediapipe 0.10.21 only has amd64 wheels; arm64 maxes out at 0.10.18

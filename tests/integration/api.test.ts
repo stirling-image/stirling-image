@@ -2641,6 +2641,128 @@ describe("Pipeline", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// OCR API
+// ═══════════════════════════════════════════════════════════════════════════
+describe("OCR API", () => {
+  describe("POST /api/v1/tools/ocr", () => {
+    it("accepts quality param and returns text without engine field", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-test.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ quality: "fast" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // OCR may fail with 422 if Python sidecar/engines are not installed (CI)
+      if (res.statusCode === 200) {
+        const body = JSON.parse(res.body);
+        expect(body.text).toBeDefined();
+        expect(body.jobId).toBeDefined();
+        expect(body).not.toHaveProperty("engine");
+      } else {
+        // 422 = OCR engine not available, which is acceptable in test environments
+        expect(res.statusCode).toBe(422);
+      }
+    });
+
+    it("backward compat: old engine param is still accepted", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        {
+          name: "file",
+          filename: "ocr-compat.png",
+          contentType: "image/png",
+          content: PNG_200x150,
+        },
+        { name: "settings", content: JSON.stringify({ engine: "tesseract" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // Should not be a 400 — engine param must still be accepted
+      expect(res.statusCode).not.toBe(400);
+      // Either succeeds (200) or OCR engine unavailable (422)
+      expect([200, 422]).toContain(res.statusCode);
+    });
+
+    it("accepts language auto and enhance params", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-lang.png", contentType: "image/png", content: PNG_200x150 },
+        {
+          name: "settings",
+          content: JSON.stringify({ quality: "balanced", language: "auto", enhance: true }),
+        },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // All three params should be accepted without validation errors
+      expect(res.statusCode).not.toBe(400);
+      expect([200, 422]).toContain(res.statusCode);
+    });
+
+    it("returns 400 for invalid quality value", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-bad.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ quality: "ultra" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("returns 400 when no file is provided", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "settings", content: JSON.stringify({ quality: "fast" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toMatch(/no image/i);
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BATCH PROCESSING
 // ═══════════════════════════════════════════════════════════════════════════
 describe("Batch processing", () => {

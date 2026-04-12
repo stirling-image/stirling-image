@@ -104,3 +104,7 @@ export interface ColorChannelOptions {
   green: number; // 0-200
   blue: number; // 0-200
 }
+
+export interface SharpenOptions {
+  value: number; // 0 to 100
+}

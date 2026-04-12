@@ -106,6 +106,14 @@ export function App() {
               <Route path="/files" element={<FilesPage />} />
               <Route path="/fullscreen" element={<FullscreenGridPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              {/* Redirects: old color tools consolidated into adjust-colors */}
+              <Route
+                path="/brightness-contrast"
+                element={<Navigate to="/adjust-colors" replace />}
+              />
+              <Route path="/saturation" element={<Navigate to="/adjust-colors" replace />} />
+              <Route path="/color-channels" element={<Navigate to="/adjust-colors" replace />} />
+              <Route path="/color-effects" element={<Navigate to="/adjust-colors" replace />} />
               <Route path="/:toolId" element={<ToolPage />} />
               <Route path="/" element={<HomePage />} />
             </Routes>

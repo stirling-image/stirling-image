@@ -7,6 +7,7 @@ export interface FileEntry {
   previewLoading: boolean;
   processedUrl: string | null;
   processedPreviewUrl: string | null;
+  processedFilename: string | null;
   processedSize: number | null;
   originalSize: number;
   status: "pending" | "processing" | "completed" | "failed";
@@ -25,6 +26,7 @@ function createEntry(file: File): FileEntry {
     previewLoading: needsServerPreview(file),
     processedUrl: null,
     processedPreviewUrl: null,
+    processedFilename: null,
     processedSize: null,
     originalSize: file.size,
     status: "pending",
@@ -280,6 +282,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         ...updated[selectedIndex],
         processedUrl: url,
         processedPreviewUrl: previewUrl ?? null,
+        processedFilename: null,
         status: "completed",
       };
     } else {
@@ -287,6 +290,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         ...updated[selectedIndex],
         processedUrl: null,
         processedPreviewUrl: null,
+        processedFilename: null,
         status: "pending",
       };
     }
@@ -314,6 +318,7 @@ export const useFileStore = create<FileState>((set, get) => ({
       ...e,
       processedUrl: null,
       processedPreviewUrl: null,
+      processedFilename: null,
       processedSize: null,
       status: "pending" as const,
       error: null,

@@ -14,6 +14,7 @@ export { resize } from "./operations/resize.js";
 export { rotate } from "./operations/rotate.js";
 export { saturation } from "./operations/saturation.js";
 export { sepia } from "./operations/sepia.js";
+export { sharpen } from "./operations/sharpen.js";
 export { stripMetadata } from "./operations/strip-metadata.js";
 export * from "./types.js";
 export * from "./utils/metadata.js";

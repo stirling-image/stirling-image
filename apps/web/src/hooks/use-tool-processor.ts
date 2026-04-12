@@ -124,10 +124,17 @@ export function useToolProcessor(toolId: string) {
         }
       }
 
-      // Build form data
+      // Build form data - extract any File objects from settings before JSON serialization
+      const cleanSettings = { ...settings };
+      const bgImageFile = cleanSettings._bgImageFile as File | undefined;
+      delete cleanSettings._bgImageFile;
+
       const formData = new FormData();
       formData.append("file", files[0]);
-      formData.append("settings", JSON.stringify(settings));
+      formData.append("settings", JSON.stringify(cleanSettings));
+      if (bgImageFile) {
+        formData.append("backgroundImage", bgImageFile);
+      }
       if (isAiTool) {
         formData.append("clientJobId", clientJobId);
       }
@@ -368,6 +375,7 @@ export function useToolProcessor(toolId: string) {
             const blob = new Blob([extracted[processedName] as BlobPart]);
             updateEntry(i, {
               processedUrl: URL.createObjectURL(blob),
+              processedFilename: processedName,
               processedSize: blob.size,
               status: "completed",
               error: null,

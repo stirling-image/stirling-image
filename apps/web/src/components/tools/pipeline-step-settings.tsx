@@ -15,12 +15,7 @@ import { TextOverlayControls } from "./text-overlay-settings";
 import { UpscaleControls } from "./upscale-settings";
 import { WatermarkTextControls } from "./watermark-text-settings";
 
-const COLOR_TOOL_IDS = new Set([
-  "brightness-contrast",
-  "saturation",
-  "color-channels",
-  "color-effects",
-]);
+const COLOR_TOOL_IDS = new Set(["adjust-colors"]);
 
 interface PipelineStepSettingsProps {
   toolId: string;

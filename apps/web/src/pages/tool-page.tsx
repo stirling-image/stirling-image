@@ -6,7 +6,7 @@ import type { Crop } from "react-image-crop";
 import { useParams } from "react-router-dom";
 import { BeforeAfterSlider } from "@/components/common/before-after-slider";
 import { Dropzone } from "@/components/common/dropzone";
-import { ImageViewer } from "@/components/common/image-viewer";
+import { type BgPreviewState, ImageViewer } from "@/components/common/image-viewer";
 import { ReviewPanel } from "@/components/common/review-panel";
 import { SideBySideComparison } from "@/components/common/side-by-side-comparison";
 import { ThumbnailStrip } from "@/components/common/thumbnail-strip";
@@ -33,8 +33,10 @@ const BROWSER_PREVIEWABLE_EXTS = new Set([
   "avif",
 ]);
 
-function canBrowserPreview(url: string): boolean {
-  const ext = decodeURIComponent(url).split(".").pop()?.toLowerCase() ?? "";
+function canBrowserPreview(url: string, filename?: string | null): boolean {
+  // For blob URLs from batch processing, check the real filename instead
+  const source = filename ?? url;
+  const ext = decodeURIComponent(source).split(".").pop()?.toLowerCase() ?? "";
   return BROWSER_PREVIEWABLE_EXTS.has(ext);
 }
 
@@ -137,6 +139,7 @@ export function ToolPage() {
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(true);
   const [previewTransform, setPreviewTransform] = useState<PreviewTransform | null>(null);
   const [previewFilter, setPreviewFilter] = useState<string>("");
+  const [bgPreview, setBgPreview] = useState<BgPreviewState | null>(null);
 
   const [cropCrop, setCropCrop] = useState<Crop>({
     unit: "%",
@@ -227,12 +230,17 @@ export function ToolPage() {
   const isNoDropzone = displayMode === "no-dropzone";
   const isLivePreview = registryEntry.livePreview ?? false;
 
-  // Derive processed file info from the actual download URL (has correct extension)
-  const processedFileName = processedUrl
-    ? decodeURIComponent(processedUrl.split("/").pop() ?? "processed-image")
-    : "processed-image";
+  // Derive processed file info: use stored filename for batch results (blob URLs),
+  // fall back to parsing the download URL for single-file results
+  const processedFileName =
+    currentEntry?.processedFilename ??
+    (processedUrl
+      ? decodeURIComponent(processedUrl.split("/").pop() ?? "processed-image")
+      : "processed-image");
   const processedFileType = processedFileName.split(".").pop()?.toUpperCase() || "IMAGE";
-  const isProcessedPreviewable = processedUrl ? canBrowserPreview(processedUrl) : false;
+  const isProcessedPreviewable = processedUrl
+    ? canBrowserPreview(processedUrl, currentEntry?.processedFilename)
+    : false;
   // Use server-generated preview for non-previewable formats (HEIC, TIFF).
   // Always a string when hasProcessed is true (processedUrl is non-null).
   const displayUrl = (processedPreviewUrl ?? processedUrl) as string;
@@ -241,6 +249,7 @@ export function ToolPage() {
   const settingsProps = {
     onPreviewTransform: isLivePreview ? setPreviewTransform : undefined,
     onPreviewFilter: isLivePreview ? setPreviewFilter : undefined,
+    onBgPreview: setBgPreview,
     cropProps:
       displayMode === "interactive-crop"
         ? {
@@ -360,6 +369,18 @@ export function ToolPage() {
     }
 
     if (hasProcessed && originalBlobUrl) {
+      // When bg preview state is set (remove-background effects mode),
+      // show the ImageViewer with layered CSS preview instead of before/after slider
+      if (bgPreview) {
+        return (
+          <ImageViewer
+            src={displayUrl}
+            filename={processedFileName}
+            fileSize={processedSize ?? 0}
+            bgPreview={bgPreview}
+          />
+        );
+      }
       return (
         <BeforeAfterSlider
           beforeSrc={originalBlobUrl}
@@ -460,6 +481,18 @@ export function ToolPage() {
           </Suspense>
         </div>
 
+        {/* Batch download — shown right after settings for easy access */}
+        {entries.length > 1 && hasProcessed && batchZipBlob && (
+          <button
+            type="button"
+            onClick={handleDownloadAll}
+            className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
+          >
+            <Download className="h-4 w-4" />
+            Download All (ZIP)
+          </button>
+        )}
+
         {hasProcessed && processedSize != null && (
           <ReviewPanel
             filename={processedFileName}
@@ -540,21 +573,6 @@ export function ToolPage() {
           </div>
 
           {renderSettingsContent()}
-
-          {/* Batch download */}
-          {entries.length > 1 && hasProcessed && batchZipBlob && (
-            <div className="space-y-2">
-              <div className="border-t border-border pt-2" />
-              <button
-                type="button"
-                onClick={handleDownloadAll}
-                className="w-full py-2 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-1.5 text-xs font-medium hover:bg-primary/90"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download All (ZIP)
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Main area: image viewer */}

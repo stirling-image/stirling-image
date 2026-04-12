@@ -1,5 +1,7 @@
-import { Download, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Download } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { ProgressCard } from "@/components/common/progress-card";
 import { formatHeaders } from "@/lib/api";
 import { useFileStore } from "@/stores/file-store";
 
@@ -14,57 +16,124 @@ const SIZES = [
 ];
 
 export function FaviconSettings() {
-  const { files, processing, error, setProcessing, setError } = useFileStore();
-  const [downloadReady, setDownloadReady] = useState(false);
+  const { files, error, setProcessing, setError } = useFileStore();
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState({
+    phase: "idle" as "idle" | "uploading" | "processing" | "complete",
+    percent: 0,
+    elapsed: 0,
+  });
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
-  const handleProcess = async () => {
-    if (files.length === 0) return;
+  useEffect(() => {
+    return () => {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
+      if (processingTimerRef.current) clearInterval(processingTimerRef.current);
+      if (xhrRef.current) xhrRef.current.abort();
+    };
+  }, []);
 
-    setProcessing(true);
-    setError(null);
-    setDownloadReady(false);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", files[0]);
-
-      const res = await fetch("/api/v1/tools/favicon", {
-        method: "POST",
-        headers: formatHeaders(),
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed: ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "favicons.zip";
-      a.click();
-      URL.revokeObjectURL(url);
-      setDownloadReady(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setProcessing(false);
-    }
+  const cleanup = () => {
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    if (processingTimerRef.current) clearInterval(processingTimerRef.current);
+    elapsedRef.current = null;
+    processingTimerRef.current = null;
+    setBusy(false);
+    setProcessing(false);
   };
 
-  const hasFile = files.length > 0;
+  const handleProcess = useCallback(() => {
+    if (files.length === 0) return;
+
+    flushSync(() => {
+      setBusy(true);
+      setProcessing(true);
+      setError(null);
+      if (downloadUrl) {
+        URL.revokeObjectURL(downloadUrl);
+        setDownloadUrl(null);
+      }
+      setProgress({ phase: "uploading", percent: 0, elapsed: 0 });
+    });
+
+    const startTime = Date.now();
+    elapsedRef.current = setInterval(() => {
+      setProgress((prev) => ({ ...prev, elapsed: Math.floor((Date.now() - startTime) / 1000) }));
+    }, 1000);
+
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("file", file);
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+    xhr.responseType = "blob";
+    xhr.timeout = 180_000;
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const uploadPercent = (event.loaded / event.total) * 40;
+        setProgress((prev) =>
+          prev.phase === "uploading" ? { ...prev, percent: uploadPercent } : prev,
+        );
+      }
+    };
+
+    xhr.upload.onload = () => {
+      setProgress((prev) => ({ ...prev, phase: "processing", percent: 40 }));
+      const step = (95 - 40) / 90;
+      processingTimerRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev.phase !== "processing") return prev;
+          return { ...prev, percent: Math.min(95, prev.percent + step) };
+        });
+      }, 500);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const blob = xhr.response as Blob;
+        setDownloadUrl(URL.createObjectURL(blob));
+        setProgress((prev) => ({ ...prev, phase: "complete", percent: 100 }));
+      } else {
+        setError(`Favicon generation failed: ${xhr.status}`);
+      }
+      cleanup();
+    };
+
+    xhr.onerror = () => {
+      setError("Network error during favicon generation");
+      cleanup();
+    };
+
+    xhr.ontimeout = () => {
+      setError("Request timed out - the server may be overloaded");
+      cleanup();
+    };
+
+    xhr.open("POST", "/api/v1/tools/favicon");
+    formatHeaders().forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+    xhr.send(formData);
+  }, [files, setProcessing, setError, downloadUrl]);
+
+  const hasFiles = files.length > 0;
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Upload a square image (recommended 512x512 or larger) to generate all favicon and app icon
-        sizes.
+        Upload square images (recommended 512x512 or larger) to generate all favicon and app icon
+        sizes.{" "}
+        {files.length > 1 && `Each of the ${files.length} images gets its own folder in the ZIP.`}
       </p>
 
       <div>
-        <p className="text-xs font-medium text-muted-foreground">Generated Sizes</p>
+        <p className="text-xs font-medium text-muted-foreground">Generated Sizes (per image)</p>
         <div className="mt-1 space-y-0.5">
           {SIZES.map((s) => (
             <div key={s.name} className="flex justify-between text-xs text-foreground">
@@ -78,21 +147,41 @@ export function FaviconSettings() {
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      <button
-        type="button"
-        data-testid="favicon-submit"
-        onClick={handleProcess}
-        disabled={!hasFile || processing}
-        className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-        {processing ? "Generating..." : "Generate Favicons"}
-      </button>
+      {busy ? (
+        <ProgressCard
+          active={busy}
+          phase={progress.phase === "idle" ? "uploading" : progress.phase}
+          label="Generating Favicons"
+          stage={
+            progress.phase === "uploading"
+              ? "Uploading images..."
+              : `Processing ${files.length} image${files.length !== 1 ? "s" : ""}...`
+          }
+          percent={progress.percent}
+          elapsed={progress.elapsed}
+        />
+      ) : (
+        <button
+          type="button"
+          data-testid="favicon-submit"
+          onClick={handleProcess}
+          disabled={!hasFiles || busy}
+          className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          Generate Favicons ({files.length} image{files.length !== 1 ? "s" : ""})
+        </button>
+      )}
 
-      {downloadReady && (
-        <p className="text-xs text-green-600 flex items-center gap-1">
-          <Download className="h-3 w-3" /> ZIP downloaded successfully
-        </p>
+      {downloadUrl && (
+        <a
+          href={downloadUrl}
+          download="favicons.zip"
+          data-testid="favicon-download"
+          className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
+        >
+          <Download className="h-4 w-4" />
+          Download Favicons ZIP
+        </a>
       )}
     </div>
   );

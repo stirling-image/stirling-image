@@ -8,8 +8,11 @@ import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 
 const settingsSchema = z.object({
-  engine: z.enum(["tesseract", "paddleocr"]).default("tesseract"),
-  language: z.enum(["en", "de", "fr", "es", "zh", "ja", "ko"]).default("en"),
+  quality: z.enum(["fast", "balanced", "best"]).default("balanced"),
+  language: z.enum(["auto", "en", "de", "fr", "es", "zh", "ja", "ko"]).default("auto"),
+  enhance: z.boolean().default(true),
+  // Backward compat: old "engine" param still accepted
+  engine: z.enum(["tesseract", "paddleocr"]).optional(),
 });
 
 /**
@@ -70,11 +73,17 @@ export function registerOcr(app: FastifyInstance) {
         return reply.status(400).send({ error: "Settings must be valid JSON" });
       }
 
+      // Backward compat: map old engine param to quality
+      let quality = settings.quality;
+      if (settings.engine && !settingsRaw?.includes('"quality"')) {
+        quality = settings.engine === "tesseract" ? "fast" : "balanced";
+      }
+
       request.log.info(
         {
           toolId: "ocr",
           imageSize: fileBuffer.length,
-          engine: settings.engine,
+          quality,
           language: settings.language,
         },
         "Starting OCR",
@@ -98,8 +107,9 @@ export function registerOcr(app: FastifyInstance) {
         fileBuffer,
         workspacePath,
         {
-          engine: settings.engine,
+          quality,
           language: settings.language,
+          enhance: settings.enhance,
         },
         onProgress,
       );
@@ -116,7 +126,6 @@ export function registerOcr(app: FastifyInstance) {
         jobId,
         filename,
         text: result.text,
-        engine: result.engine,
       });
     } catch (err) {
       request.log.error({ err, toolId: "ocr" }, "OCR failed");

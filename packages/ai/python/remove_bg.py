@@ -9,13 +9,45 @@ def emit_progress(percent, stage):
     print(json.dumps({"progress": percent, "stage": stage}), file=sys.stderr, flush=True)
 
 
+_matting_registered = False
+
+def _register_matting_session(sessions_class):
+    """Register the BiRefNet-matting ONNX session for Ultra quality mode."""
+    global _matting_registered
+    if _matting_registered:
+        return
+    _matting_registered = True
+
+    import os
+    import pooch
+    from rembg.sessions.birefnet_general import BiRefNetSessionGeneral
+
+    class BiRefNetMattingSession(BiRefNetSessionGeneral):
+        @classmethod
+        def download_models(cls, *args, **kwargs):
+            fname = f"{cls.name(*args, **kwargs)}.onnx"
+            pooch.retrieve(
+                "https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/BiRefNet-matting-epoch_100.onnx",
+                None,  # Skip checksum for GitHub release assets
+                fname=fname,
+                path=cls.u2net_home(*args, **kwargs),
+                progressbar=True,
+            )
+            return os.path.join(cls.u2net_home(*args, **kwargs), fname)
+
+        @classmethod
+        def name(cls, *args, **kwargs):
+            return "birefnet-matting"
+
+    sessions_class.append(BiRefNetMattingSession)
+
+
 def main():
     input_path = sys.argv[1]
     output_path = sys.argv[2]
     settings = json.loads(sys.argv[3]) if len(sys.argv) > 3 else {}
 
     model = settings.get("model", "birefnet-general-lite")
-    bg_color = settings.get("backgroundColor", "")
 
     # Redirect stdout to stderr so library download/progress output
     # cannot contaminate our JSON result on stdout.
@@ -24,8 +56,11 @@ def main():
 
     try:
         from rembg import remove, new_session
+        from rembg.sessions import sessions_class
         from gpu import onnx_providers
-        import io
+
+        # Register BiRefNet-matting (Ultra quality) if not already present
+        _register_matting_session(sessions_class)
 
         emit_progress(10, "Loading model")
 
@@ -51,21 +86,8 @@ def main():
 
         emit_progress(80, "Background removed")
 
-        # If a background color is specified, composite onto it
-        if bg_color and bg_color.startswith("#"):
-            emit_progress(85, "Compositing background")
-            from PIL import Image
-
-            img = Image.open(io.BytesIO(output_data)).convert("RGBA")
-            hex_color = bg_color.lstrip("#")
-            r = int(hex_color[0:2], 16)
-            g = int(hex_color[2:4], 16)
-            b = int(hex_color[4:6], 16)
-            bg = Image.new("RGBA", img.size, (r, g, b, 255))
-            bg.paste(img, mask=img.split()[3])
-            buf = io.BytesIO()
-            bg.save(buf, format="PNG")
-            output_data = buf.getvalue()
+        # Always return transparent PNG. All background compositing
+        # (solid color, gradient, blur, shadow) is handled by Node.js/Sharp.
 
         emit_progress(95, "Saving result")
         with open(output_path, "wb") as f:
