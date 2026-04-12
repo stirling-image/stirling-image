@@ -20,6 +20,13 @@ REALESRGAN_MODEL_URL = (
 REALESRGAN_MODEL_PATH = os.path.join(REALESRGAN_MODEL_DIR, "RealESRGAN_x4plus.pth")
 REALESRGAN_MIN_SIZE = 60_000_000  # ~67 MB
 
+GFPGAN_MODEL_DIR = "/opt/models/gfpgan"
+GFPGAN_MODEL_URL = (
+    "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
+)
+GFPGAN_MODEL_PATH = os.path.join(GFPGAN_MODEL_DIR, "GFPGANv1.3.pth")
+GFPGAN_MIN_SIZE = 300_000_000  # ~332 MB
+
 REMBG_MODELS = [
     "u2net",
     "isnet-general-use",
@@ -30,9 +37,24 @@ REMBG_MODELS = [
     "birefnet-matting",
 ]
 
-# PaddleOCR language codes (not ISO). German/French/Spanish use "latin" model.
-# Valid keys: ch, en, korean, japan, chinese_cht, ta, te, ka, latin, arabic, cyrillic, devanagari
-PADDLEOCR_LANGUAGES = ["en", "ch", "japan", "korean", "latin"]
+# PaddleOCR PP-OCRv5 HuggingFace model repos to pre-download.
+# These are the models used by PaddleOCR(ocr_version="PP-OCRv5").
+# Downloaded via huggingface_hub to avoid initializing the PaddlePaddle
+# inference engine, which segfaults under QEMU emulation at build time.
+PADDLEOCR_MODELS = [
+    "PaddlePaddle/PP-OCRv5_server_det",
+    "PaddlePaddle/PP-OCRv5_server_rec",
+    "PaddlePaddle/PP-OCRv5_mobile_det",
+    "PaddlePaddle/PP-OCRv5_mobile_rec",
+    "PaddlePaddle/latin_PP-OCRv5_mobile_rec",
+    "PaddlePaddle/korean_PP-OCRv5_mobile_rec",
+    "PaddlePaddle/PP-LCNet_x1_0_textline_ori",
+]
+
+PADDLEOCR_VL_MODEL = "PaddlePaddle/PaddleOCR-VL-1.5"
+
+# PaddleX stores models here by default
+PADDLEX_MODEL_DIR = os.path.expanduser("~/.paddlex/official_models")
 
 
 def _register_birefnet_matting():
@@ -90,44 +112,52 @@ def download_realesrgan_model():
     print(f"  RealESRGAN_x4plus.pth downloaded ({size / 1_000_000:.1f} MB)\n")
 
 
-def download_paddleocr_models():
-    """Pre-download PaddleOCR PP-OCRv5 models for all supported languages."""
-    print("=== Downloading PaddleOCR PP-OCRv5 models ===")
-    try:
-        from paddleocr import PaddleOCR
-    except ImportError as e:
-        if "libcuda" in str(e):
-            print(f"  Skipping PaddleOCR model pre-download (no CUDA driver at build time)")
-            print(f"  Models will download on first use at runtime.\n")
-            return
-        raise
+def download_gfpgan_model():
+    """Download GFPGANv1.3.pth pretrained weights for face enhancement."""
+    print("=== Downloading GFPGAN model ===")
+    os.makedirs(GFPGAN_MODEL_DIR, exist_ok=True)
+    print(f"  Downloading from {GFPGAN_MODEL_URL}...")
+    urllib.request.urlretrieve(GFPGAN_MODEL_URL, GFPGAN_MODEL_PATH)
 
-    for lang in PADDLEOCR_LANGUAGES:
-        print(f"  Downloading PP-OCRv5 models for lang={lang}...")
-        PaddleOCR(lang=lang, use_gpu=False, show_log=False, ocr_version="PP-OCRv5")
-        print(f"  {lang} ready")
-    print(f"All {len(PADDLEOCR_LANGUAGES)} PaddleOCR PP-OCRv5 languages downloaded.\n")
+    size = os.path.getsize(GFPGAN_MODEL_PATH)
+    assert size > GFPGAN_MIN_SIZE, (
+        f"GFPGAN model too small: {size} bytes (expected > {GFPGAN_MIN_SIZE})"
+    )
+    print(f"  GFPGANv1.3.pth downloaded ({size / 1_000_000:.1f} MB)\n")
+
+
+def download_paddleocr_models():
+    """Pre-download PaddleOCR PP-OCRv5 model weights from HuggingFace.
+
+    Uses huggingface_hub.snapshot_download() to fetch model files directly
+    into the PaddleX cache directory. This avoids initializing PaddlePaddle's
+    C++ inference engine, which segfaults under QEMU emulation (arm64 host
+    building amd64 image).
+    """
+    print("=== Downloading PaddleOCR PP-OCRv5 models ===")
+    from huggingface_hub import snapshot_download
+
+    os.makedirs(PADDLEX_MODEL_DIR, exist_ok=True)
+
+    for repo_id in PADDLEOCR_MODELS:
+        model_name = repo_id.split("/", 1)[1]
+        local_dir = os.path.join(PADDLEX_MODEL_DIR, model_name)
+        print(f"  Downloading {model_name}...")
+        snapshot_download(repo_id=repo_id, local_dir=local_dir)
+        print(f"  {model_name} ready")
+    print(f"All {len(PADDLEOCR_MODELS)} PaddleOCR PP-OCRv5 models downloaded.\n")
 
 
 def download_paddleocr_vl_model():
-    """Pre-download PaddleOCR-VL 1.5 model weights."""
+    """Pre-download PaddleOCR-VL 1.5 model weights from HuggingFace."""
     print("=== Downloading PaddleOCR-VL 1.5 model ===")
-    try:
-        from paddleocr import PaddleOCRVL
-    except ImportError as e:
-        if "libcuda" in str(e):
-            print(f"  Skipping PaddleOCR-VL pre-download (no CUDA driver at build time)")
-            print(f"  Model will download on first use at runtime.\n")
-            return
-        raise
+    from huggingface_hub import snapshot_download
 
-    print("  Downloading PaddleOCR-VL 1.5 weights (~1.93 GB)...")
-    try:
-        PaddleOCRVL(device="cpu")
-        print("  PaddleOCR-VL 1.5 ready\n")
-    except Exception as e:
-        print(f"  Warning: PaddleOCR-VL pre-download failed: {e}")
-        print(f"  Model will download on first use at runtime.\n")
+    model_name = PADDLEOCR_VL_MODEL.split("/", 1)[1]
+    local_dir = os.path.join(PADDLEX_MODEL_DIR, model_name)
+    print(f"  Downloading {model_name} (~1.93 GB)...")
+    snapshot_download(repo_id=PADDLEOCR_VL_MODEL, local_dir=local_dir)
+    print(f"  {model_name} ready\n")
 
 
 def verify_mediapipe():
@@ -175,6 +205,28 @@ def smoke_test():
     )
     print("  RealESRGAN model file verified")
 
+    # GFPGAN model file must exist
+    assert os.path.exists(GFPGAN_MODEL_PATH), (
+        f"GFPGAN model missing: {GFPGAN_MODEL_PATH}"
+    )
+    assert os.path.getsize(GFPGAN_MODEL_PATH) > GFPGAN_MIN_SIZE, (
+        "GFPGAN model file is too small"
+    )
+    print("  GFPGAN model file verified")
+
+    # PaddleOCR model directories must exist
+    for repo_id in PADDLEOCR_MODELS:
+        model_name = repo_id.split("/", 1)[1]
+        model_dir = os.path.join(PADDLEX_MODEL_DIR, model_name)
+        assert os.path.isdir(model_dir), f"PaddleOCR model missing: {model_dir}"
+    print(f"  PaddleOCR models verified ({len(PADDLEOCR_MODELS)} models)")
+
+    # PaddleOCR-VL model directory must exist
+    vl_name = PADDLEOCR_VL_MODEL.split("/", 1)[1]
+    vl_dir = os.path.join(PADDLEX_MODEL_DIR, vl_name)
+    assert os.path.isdir(vl_dir), f"PaddleOCR-VL model missing: {vl_dir}"
+    print("  PaddleOCR-VL model verified")
+
     print("Smoke test passed.\n")
 
 
@@ -182,6 +234,7 @@ def main():
     print("Pre-downloading all ML models...\n")
     download_rembg_models()
     download_realesrgan_model()
+    download_gfpgan_model()
     download_paddleocr_models()
     download_paddleocr_vl_model()
     verify_mediapipe()

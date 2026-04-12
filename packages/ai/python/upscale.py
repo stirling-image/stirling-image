@@ -3,6 +3,23 @@ import sys
 import json
 import os
 
+# Patch for basicsr compatibility with torchvision >= 0.18.
+# torchvision removed transforms.functional_tensor, merging it into
+# transforms.functional. basicsr still imports the old path, so we
+# create a shim module to redirect the import.
+try:
+    import torchvision.transforms.functional_tensor  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    try:
+        import types
+        import torchvision.transforms.functional as _F
+
+        _shim = types.ModuleType("torchvision.transforms.functional_tensor")
+        _shim.rgb_to_grayscale = _F.rgb_to_grayscale
+        sys.modules["torchvision.transforms.functional_tensor"] = _shim
+    except ImportError:
+        pass  # torchvision not installed at all, Real-ESRGAN unavailable
+
 
 def emit_progress(percent, stage):
     """Emit structured progress to stderr for bridge.ts to capture."""
@@ -27,6 +44,7 @@ def apply_denoise(img, strength):
     try:
         import numpy as np
         import cv2
+        from PIL import Image
 
         arr = np.array(img)
         # Map 0-1 strength to filter parameter (3-15 range)
@@ -35,7 +53,7 @@ def apply_denoise(img, strength):
             denoised = cv2.fastNlMeansDenoisingColored(arr, None, h, h, 7, 21)
         else:
             denoised = cv2.fastNlMeansDenoising(arr, None, h, 7, 21)
-        return type(img).fromarray(denoised)
+        return Image.fromarray(denoised)
     except ImportError:
         from PIL import ImageFilter
 
@@ -70,8 +88,10 @@ def main():
             try:
                 emit_progress(10, "Loading AI model")
 
-                # Redirect stdout to stderr so basicsr/realesrgan init messages
-                # cannot contaminate our JSON result on stdout.
+                # Redirect stdout to stderr for the ENTIRE AI pipeline.
+                # Libraries like basicsr, realesrgan, gfpgan, and torch print
+                # download progress and init messages to stdout which would
+                # corrupt our JSON result.
                 stdout_fd = os.dup(1)
                 os.dup2(2, 1)
 
@@ -81,70 +101,71 @@ def main():
                     from gpu import gpu_available
                     import numpy as np
                     import torch
+
+                    if not os.path.exists(REALESRGAN_MODEL_PATH):
+                        raise FileNotFoundError(
+                            f"RealESRGAN model not found: {REALESRGAN_MODEL_PATH}"
+                        )
+
+                    use_gpu = gpu_available()
+                    device = torch.device("cuda" if use_gpu else "cpu")
+
+                    # RealESRGAN_x4plus is a 4x model internally
+                    ai_model = RRDBNet(
+                        num_in_ch=3,
+                        num_out_ch=3,
+                        num_feat=64,
+                        num_block=23,
+                        num_grow_ch=32,
+                        scale=4,
+                    )
+                    upsampler = RealESRGANer(
+                        scale=4,
+                        model_path=REALESRGAN_MODEL_PATH,
+                        model=ai_model,
+                        half=use_gpu,
+                        device=device,
+                    )
+                    emit_progress(20, "AI model loaded")
+
+                    img_array = np.array(img.convert("RGB"))
+                    emit_progress(30, "Enhancing image with AI")
+                    output_array, _ = upsampler.enhance(img_array, outscale=scale)
+                    emit_progress(80, "AI enhancement complete")
+                    result = Image.fromarray(output_array)
+                    method = "realesrgan"
+
+                    # Face enhancement with GFPGAN
+                    if face_enhance:
+                        emit_progress(82, "Enhancing faces")
+                        try:
+                            from gfpgan import GFPGANer
+
+                            if os.path.exists(GFPGAN_MODEL_PATH):
+                                face_enhancer = GFPGANer(
+                                    model_path=GFPGAN_MODEL_PATH,
+                                    upscale=scale,
+                                    arch="clean",
+                                    channel_multiplier=2,
+                                    bg_upsampler=upsampler,
+                                )
+                                _, _, face_output = face_enhancer.enhance(
+                                    img_array,
+                                    has_aligned=False,
+                                    only_center_face=False,
+                                    paste_back=True,
+                                )
+                                result = Image.fromarray(face_output)
+                                emit_progress(88, "Face enhancement complete")
+                            else:
+                                emit_progress(88, "Face model not found, skipping")
+                        except (ImportError, RuntimeError, OSError):
+                            emit_progress(88, "Face enhancement unavailable, skipping")
+
                 finally:
-                    # Restore stdout after imports
+                    # Restore stdout after ALL AI processing
                     os.dup2(stdout_fd, 1)
                     os.close(stdout_fd)
-
-                if not os.path.exists(REALESRGAN_MODEL_PATH):
-                    raise FileNotFoundError(
-                        f"RealESRGAN model not found: {REALESRGAN_MODEL_PATH}"
-                    )
-
-                use_gpu = gpu_available()
-                device = torch.device("cuda" if use_gpu else "cpu")
-
-                # RealESRGAN_x4plus is a 4x model internally
-                model = RRDBNet(
-                    num_in_ch=3,
-                    num_out_ch=3,
-                    num_feat=64,
-                    num_block=23,
-                    num_grow_ch=32,
-                    scale=4,
-                )
-                upsampler = RealESRGANer(
-                    scale=4,
-                    model_path=REALESRGAN_MODEL_PATH,
-                    model=model,
-                    half=use_gpu,
-                    device=device,
-                )
-                emit_progress(20, "AI model loaded")
-
-                img_array = np.array(img.convert("RGB"))
-                emit_progress(30, "Enhancing image with AI")
-                output_array, _ = upsampler.enhance(img_array, outscale=scale)
-                emit_progress(80, "AI enhancement complete")
-                result = Image.fromarray(output_array)
-                method = "realesrgan"
-
-                # Face enhancement with GFPGAN
-                if face_enhance:
-                    emit_progress(82, "Enhancing faces")
-                    try:
-                        from gfpgan import GFPGANer
-
-                        if os.path.exists(GFPGAN_MODEL_PATH):
-                            face_enhancer = GFPGANer(
-                                model_path=GFPGAN_MODEL_PATH,
-                                upscale=scale,
-                                arch="clean",
-                                channel_multiplier=2,
-                                bg_upsampler=upsampler,
-                            )
-                            _, _, face_output = face_enhancer.enhance(
-                                img_array,
-                                has_aligned=False,
-                                only_center_face=False,
-                                paste_back=True,
-                            )
-                            result = Image.fromarray(face_output)
-                            emit_progress(88, "Face enhancement complete")
-                        else:
-                            emit_progress(88, "Face model not found, skipping")
-                    except (ImportError, RuntimeError, OSError):
-                        emit_progress(88, "Face enhancement unavailable, skipping")
 
             except (ImportError, FileNotFoundError, RuntimeError, OSError):
                 # RealESRGAN unavailable or failed
@@ -165,22 +186,29 @@ def main():
 
         # Determine final output path based on format
         base_path = output_path.rsplit(".", 1)[0]
-        if output_format == "jpeg":
-            final_path = base_path + ".jpg"
-        elif output_format == "webp":
-            final_path = base_path + ".webp"
-        else:
-            final_path = base_path + ".png"
+        EXT_MAP = {
+            "jpeg": ".jpg",
+            "jpg": ".jpg",
+            "png": ".png",
+            "webp": ".webp",
+            "tiff": ".tiff",
+            "gif": ".gif",
+        }
+        final_path = base_path + EXT_MAP.get(output_format, ".png")
 
         # Save with format-specific options
         emit_progress(95, "Saving result")
         save_kwargs = {}
-        if output_format == "jpeg":
+        if output_format in ("jpeg", "jpg"):
             result = result.convert("RGB")  # Strip alpha for JPEG
             save_kwargs["quality"] = quality
             save_kwargs["optimize"] = True
         elif output_format == "webp":
             save_kwargs["quality"] = quality
+        elif output_format == "tiff":
+            save_kwargs["compression"] = "tiff_lzw"
+        elif output_format == "gif":
+            result = result.convert("P", palette=Image.ADAPTIVE, colors=256)
 
         result.save(final_path, **save_kwargs)
 
