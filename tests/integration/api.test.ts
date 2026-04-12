@@ -3228,6 +3228,98 @@ describe("Smart crop format preservation", () => {
     });
     expect(res.statusCode).toBe(200);
   });
+
+  it("subject mode with entropy strategy", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "subject", strategy: "entropy", width: 50, height: 50 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("subject mode with padding", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "subject", width: 50, height: 50, padding: 10 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("trim mode with new mode name", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.png", contentType: "image/png", content: PNG_200x150 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "trim", threshold: 30 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.png/);
+  });
+
+  it("defaults to subject mode when no mode specified", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ width: 50, height: 50 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -780,7 +780,7 @@ paths:
     post:
       tags: [Tools]
       summary: Smart crop
-      description: Automatically crop to the most interesting region at the specified dimensions.
+      description: Smart crop with three modes - subject focus, face focus, or auto trim.
       security:
         - bearerAuth: []
       requestBody:
@@ -799,8 +799,18 @@ paths:
                   type: string
                   description: |
                     JSON string with options:
-                    - `width` (integer, required) — Target width in pixels
-                    - `height` (integer, required) — Target height in pixels
+                    - `mode` (string) — "subject" (default), "face", or "trim"
+                    - `strategy` (string) — "attention" (default) or "entropy" (subject mode)
+                    - `width` (integer) — Target width in pixels (default 1080)
+                    - `height` (integer) — Target height in pixels (default 1080)
+                    - `padding` (integer 0-50) — Padding percentage around focus area
+                    - `facePreset` (string) — "closeup", "head-shoulders", "upper-body", "half-body" (face mode)
+                    - `sensitivity` (number 0-1) — Face detection sensitivity (face mode)
+                    - `threshold` (integer 0-255) — Trim tolerance (trim mode)
+                    - `padToSquare` (boolean) — Pad to square after trimming (trim mode)
+                    - `padColor` (string) — Hex color for padding (trim mode)
+                    - `targetSize` (integer) — Target size for padded output (trim mode)
+                    - `quality` (integer 1-100) — Output quality
       responses:
         "200":
           description: Processed image

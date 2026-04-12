@@ -15,6 +15,7 @@ def main():
 
     blur_radius = settings.get("blurRadius", 30)
     sensitivity = settings.get("sensitivity", 0.5)
+    detect_only = settings.get("detectOnly", False)
 
     try:
         emit_progress(10, "Preparing")
@@ -64,26 +65,30 @@ def main():
                     w = int(bbox.width * iw)
                     h = int(bbox.height * ih)
 
-                    # Add padding around the face
-                    pad = int(max(w, h) * 0.1)
-                    x1 = max(0, x - pad)
-                    y1 = max(0, y - pad)
-                    x2 = min(img.width, x + w + pad)
-                    y2 = min(img.height, y + h + pad)
+                    if not detect_only:
+                        # Add padding around the face
+                        pad = int(max(w, h) * 0.1)
+                        x1 = max(0, x - pad)
+                        y1 = max(0, y - pad)
+                        x2 = min(img.width, x + w + pad)
+                        y2 = min(img.height, y + h + pad)
 
-                    face_region = img.crop((x1, y1, x2, y2))
-                    blurred = face_region.filter(
-                        ImageFilter.GaussianBlur(blur_radius)
-                    )
-                    img.paste(blurred, (x1, y1))
+                        face_region = img.crop((x1, y1, x2, y2))
+                        blurred = face_region.filter(
+                            ImageFilter.GaussianBlur(blur_radius)
+                        )
+                        img.paste(blurred, (x1, y1))
+                        emit_progress(
+                            50 + int((i + 1) / num_faces * 40),
+                            f"Blurring face {i + 1} of {num_faces}",
+                        )
+
                     faces.append({"x": x, "y": y, "w": w, "h": h})
-                    emit_progress(
-                        50 + int((i + 1) / num_faces * 40),
-                        f"Blurring face {i + 1} of {num_faces}",
-                    )
 
-            emit_progress(95, "Saving result")
-            img.save(output_path)
+            if not detect_only:
+                emit_progress(95, "Saving result")
+                img.save(output_path)
+
             print(
                 json.dumps(
                     {

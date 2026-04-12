@@ -58,7 +58,7 @@ export const en = {
       description: "AI-powered background removal",
     },
     upscale: { name: "Image Upscaling", description: "AI super-resolution enhancement" },
-    "erase-object": { name: "Object Eraser", description: "Paint over unwanted elements" },
+    "erase-object": { name: "Object Eraser", description: "Remove unwanted objects with AI" },
     ocr: {
       name: "OCR / Text Extraction",
       description: "Extract text from images with AI-powered accuracy",
@@ -67,7 +67,10 @@ export const en = {
       name: "Face / PII Blur",
       description: "Auto-detect and blur faces and sensitive info",
     },
-    "smart-crop": { name: "Smart Crop", description: "AI detects subject and crops optimally" },
+    "smart-crop": {
+      name: "Smart Crop",
+      description: "Smart subject, face, or trim-based cropping",
+    },
     "content-aware-resize": {
       name: "Content-Aware Resize",
       description: "Intelligently resize images while preserving important content",

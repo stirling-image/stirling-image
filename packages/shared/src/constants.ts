@@ -132,7 +132,7 @@ export const TOOLS: Tool[] = [
   {
     id: "erase-object",
     name: "Object Eraser",
-    description: "Paint over unwanted elements",
+    description: "Remove unwanted objects with AI",
     category: "ai",
     icon: "Wand2",
     route: "/erase-object",
@@ -156,7 +156,7 @@ export const TOOLS: Tool[] = [
   {
     id: "smart-crop",
     name: "Smart Crop",
-    description: "AI detects subject and crops optimally",
+    description: "Smart subject, face, or trim-based cropping",
     category: "ai",
     icon: "Focus",
     route: "/smart-crop",
@@ -352,6 +352,19 @@ export const SOCIAL_MEDIA_PRESETS: SocialMediaPreset[] = [
   { platform: "WhatsApp", name: "Profile Picture", width: 500, height: 500 },
   { platform: "Pinterest", name: "Pin", width: 1000, height: 1500 },
   { platform: "Threads", name: "Post Image", width: 1080, height: 1080 },
+];
+
+export interface SmartCropFacePreset {
+  id: string;
+  label: string;
+  multiplier: number;
+}
+
+export const SMART_CROP_FACE_PRESETS: SmartCropFacePreset[] = [
+  { id: "closeup", label: "Close-up", multiplier: 1.8 },
+  { id: "head-shoulders", label: "Head & Shoulders", multiplier: 2.8 },
+  { id: "upper-body", label: "Upper Body", multiplier: 4.5 },
+  { id: "half-body", label: "Half Body", multiplier: 7.0 },
 ];
 
 export const APP_VERSION = "1.14.0";
