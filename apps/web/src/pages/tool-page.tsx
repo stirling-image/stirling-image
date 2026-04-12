@@ -294,6 +294,18 @@ export function ToolPage() {
       );
     }
 
+    // Custom results panel (find-duplicates, etc.)
+    if (displayMode === "custom-results" && registryEntry?.ResultsPanel) {
+      if (!hasFile)
+        return <Dropzone onFiles={handleFiles} accept="image/*" multiple currentFiles={files} />;
+      const ResultsPanel = registryEntry.ResultsPanel;
+      return (
+        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+          <ResultsPanel />
+        </Suspense>
+      );
+    }
+
     if (displayMode === "interactive-crop" && hasFile && !hasProcessed && originalBlobUrl) {
       return (
         <CropCanvas
