@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
 import { validateImageBuffer } from "../../lib/file-validation.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 const MAX_CANVAS_PIXELS = 100_000_000;
@@ -63,7 +64,7 @@ export function registerStitch(app: FastifyInstance) {
       return reply.status(400).send({ error: "At least 2 images are required for stitching" });
     }
 
-    // Validate all files
+    // Validate all files and decode HEIC/HEIF
     for (const file of files) {
       const validation = await validateImageBuffer(file.buffer);
       if (!validation.valid) {
@@ -71,6 +72,7 @@ export function registerStitch(app: FastifyInstance) {
           .status(400)
           .send({ error: `Invalid file "${file.filename}": ${validation.reason}` });
       }
+      file.buffer = await ensureSharpCompat(file.buffer);
     }
 
     let settings: z.infer<typeof settingsSchema>;

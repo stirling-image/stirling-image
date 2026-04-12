@@ -11,6 +11,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -27,6 +28,7 @@ import {
 } from "../lib/file-storage.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { ensureSharpCompat } from "../lib/heic-converter.js";
 import { getAuthUser, requireAuth } from "../plugins/auth.js";
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -368,7 +370,10 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
       const filePath = getStoredFilePath(file.storedName);
 
       try {
-        const thumbnail = await sharp(filePath)
+        // Read file and decode HEIC/HEIF if needed before Sharp processing
+        const fileBuffer = await ensureSharpCompat(await readFile(filePath));
+
+        const thumbnail = await sharp(fileBuffer)
           .resize(300, null, { withoutEnlargement: true })
           .jpeg({ quality: 80 })
           .toBuffer();

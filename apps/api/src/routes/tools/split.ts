@@ -4,6 +4,7 @@ import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const settingsSchema = z.object({
   columns: z.number().min(1).max(10).default(2),
@@ -57,6 +58,9 @@ export function registerSplit(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      fileBuffer = await ensureSharpCompat(fileBuffer);
+
       const metadata = await sharp(fileBuffer).metadata();
       const fullW = metadata.width ?? 0;
       const fullH = metadata.height ?? 0;

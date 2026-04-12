@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import potrace from "potrace";
 import sharp from "sharp";
 import { z } from "zod";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 const settingsSchema = z.object({
@@ -78,6 +79,9 @@ export function registerVectorize(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      fileBuffer = await ensureSharpCompat(fileBuffer);
+
       // Convert to BMP-compatible format for potrace (PNG)
       const pngBuffer = await sharp(fileBuffer).grayscale().png().toBuffer();
 

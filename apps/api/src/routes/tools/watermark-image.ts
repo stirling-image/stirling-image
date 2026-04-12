@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const settingsSchema = z.object({
   position: z
@@ -67,6 +68,10 @@ export function registerWatermarkImage(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      mainBuffer = await ensureSharpCompat(mainBuffer);
+      watermarkBuffer = await ensureSharpCompat(watermarkBuffer);
+
       const mainImage = sharp(mainBuffer);
       const mainMeta = await mainImage.metadata();
       const mainW = mainMeta.width ?? 800;

@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 /**
  * Compute a dHash (difference hash) for perceptual duplicate detection.
@@ -66,6 +67,11 @@ export function registerFindDuplicates(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      for (const file of files) {
+        file.buffer = await ensureSharpCompat(file.buffer);
+      }
+
       // Compute hashes for all images
       const hashes: Array<{ filename: string; hash: string }> = [];
       for (const file of files) {

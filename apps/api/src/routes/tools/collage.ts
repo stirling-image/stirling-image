@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
 import { validateImageBuffer } from "../../lib/file-validation.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 const settingsSchema = z.object({
@@ -56,7 +57,7 @@ export function registerCollage(app: FastifyInstance) {
       return reply.status(400).send({ error: "No images provided" });
     }
 
-    // Validate all files
+    // Validate all files and decode HEIC/HEIF
     for (const file of files) {
       const validation = await validateImageBuffer(file.buffer);
       if (!validation.valid) {
@@ -64,6 +65,7 @@ export function registerCollage(app: FastifyInstance) {
           .status(400)
           .send({ error: `Invalid file "${file.filename}": ${validation.reason}` });
       }
+      file.buffer = await ensureSharpCompat(file.buffer);
     }
 
     let settings: z.infer<typeof settingsSchema>;

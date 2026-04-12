@@ -1,3 +1,5 @@
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Download, Loader2, MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CollapsibleSection } from "@/components/common/collapsible-section";
@@ -7,6 +9,47 @@ import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { formatHeaders } from "@/lib/api";
 import { EXIF_LABELS, SKIP_KEYS } from "@/lib/metadata-utils";
 import { useFileStore } from "@/stores/file-store";
+
+/** Interactive Leaflet map with a red circle marker. */
+function MiniMap({ lat, lon, zoom = 15 }: { lat: number; lon: number; zoom?: number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+    }).setView([lat, lon], zoom);
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    L.circleMarker([lat, lon], {
+      radius: 7,
+      color: "#fff",
+      weight: 2,
+      fillColor: "#ef4444",
+      fillOpacity: 1,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [lat, lon, zoom]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-36 rounded-md overflow-hidden border border-border"
+    />
+  );
+}
 
 interface MetadataResult {
   filename: string;
@@ -58,7 +101,7 @@ export function StripMetadataControls({
 
   return (
     <>
-      {/* Strip All */}
+      {/* Remove All */}
       <label className="flex items-center gap-2 text-sm text-foreground font-medium">
         <input
           type="checkbox"
@@ -66,7 +109,7 @@ export function StripMetadataControls({
           onChange={(e) => handleStripAllChange(e.target.checked)}
           className="rounded"
         />
-        Strip All Metadata
+        Remove All Metadata
       </label>
 
       <div className="border-t border-border" />
@@ -256,13 +299,20 @@ export function StripMetadataSettings() {
 
           {metadata && hasAnyMetadata && (
             <div className="space-y-1.5">
-              {/* GPS warning banner */}
+              {/* GPS warning banner + map */}
               {hasGps && gpsLat != null && gpsLon != null && (
-                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
-                  <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                    Location data: {gpsLat.toFixed(4)}, {gpsLon.toFixed(4)}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+                    <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                      Location data: {gpsLat.toFixed(6)}, {gpsLon.toFixed(6)}
+                    </span>
+                  </div>
+                  <MiniMap lat={gpsLat} lon={gpsLon} />
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                    This image contains your precise location. Consider removing GPS data before
+                    sharing.
+                  </p>
                 </div>
               )}
 
@@ -342,7 +392,7 @@ export function StripMetadataSettings() {
         <ProgressCard
           active={processing}
           phase={progress.phase === "idle" ? "uploading" : progress.phase}
-          label="Stripping metadata"
+          label="Removing metadata"
           stage={progress.stage}
           percent={progress.percent}
           elapsed={progress.elapsed}
@@ -354,7 +404,7 @@ export function StripMetadataSettings() {
           disabled={!hasFile || processing}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Strip Metadata
+          Remove Metadata
         </button>
       )}
 

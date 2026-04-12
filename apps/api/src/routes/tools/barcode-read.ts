@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jsQR from "jsqr";
 import sharp from "sharp";
 import { validateImageBuffer } from "../../lib/file-validation.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 /**
  * Read QR codes and barcodes from uploaded images.
@@ -42,6 +43,9 @@ export function registerBarcodeRead(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      fileBuffer = await ensureSharpCompat(fileBuffer);
+
       // Convert to RGBA raw pixel data for jsQR
       const image = sharp(fileBuffer);
       const metadata = await image.metadata();

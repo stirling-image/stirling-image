@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const FAVICON_SIZES = [
   { name: "favicon-16x16.png", size: 16, format: "png" as const },
@@ -39,6 +40,9 @@ export function registerFavicon(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      fileBuffer = await ensureSharpCompat(fileBuffer);
+
       const jobId = randomUUID();
 
       reply.hijack();

@@ -88,6 +88,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gosu \
     libheif-examples \
+    libimage-exiftool-perl \
     python3 python3-pip python3-venv python3-dev \
     tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu tesseract-ocr-fra tesseract-ocr-spa \
     build-essential \

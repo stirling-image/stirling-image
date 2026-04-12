@@ -64,6 +64,28 @@ export async function decodeHeic(buffer: Buffer): Promise<Buffer> {
  * Encode a PNG/JPEG buffer to HEIC using the system `heif-enc` CLI tool.
  * Uses x265 (HEVC) compression for true HEIC output.
  */
+/**
+ * Detect HEIC/HEIF format from magic bytes (ftyp box at offset 4, brand at offset 8).
+ */
+function isHeifBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false;
+  const ftyp = buffer.subarray(4, 8).toString("ascii");
+  if (ftyp !== "ftyp") return false;
+  const brand = buffer.subarray(8, 12).toString("ascii");
+  return ["heic", "heix", "mif1", "msf1", "hevc", "hevx"].includes(brand);
+}
+
+/**
+ * Ensure a buffer is decodable by Sharp. HEIC/HEIF buffers are decoded to
+ * PNG via the system decoder; all other formats pass through unchanged.
+ */
+export async function ensureSharpCompat(buffer: Buffer): Promise<Buffer> {
+  if (isHeifBuffer(buffer)) {
+    return decodeHeic(buffer);
+  }
+  return buffer;
+}
+
 export async function encodeHeic(buffer: Buffer, quality = 80): Promise<Buffer> {
   const id = randomUUID();
   const inputPath = join(tmpdir(), `heic-in-${id}.png`);

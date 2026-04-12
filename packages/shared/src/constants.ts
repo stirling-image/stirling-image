@@ -57,7 +57,7 @@ export const TOOLS: Tool[] = [
   // Optimization
   {
     id: "strip-metadata",
-    name: "Strip Metadata",
+    name: "Remove Metadata",
     description: "Remove EXIF, GPS, and camera info",
     category: "optimization",
     icon: "ShieldOff",

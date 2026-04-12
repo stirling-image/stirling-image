@@ -28,16 +28,22 @@ export function ImageViewer({
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
   const [fitMode, setFitMode] = useState<"fit" | "actual">("fit");
+  const [loadError, setLoadError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const isSvg = filename.toLowerCase().endsWith(".svg");
 
   const handleImageLoad = useCallback(() => {
+    setLoadError(false);
     if (imgRef.current) {
       setNaturalWidth(imgRef.current.naturalWidth);
       setNaturalHeight(imgRef.current.naturalHeight);
     }
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setLoadError(true);
   }, []);
 
   const zoomIn = useCallback(() => {
@@ -66,13 +72,14 @@ export function ImageViewer({
     setZoom(100);
   }, []);
 
-  // Reset zoom on src change
+  // Reset state on src change
   useEffect(() => {
     setZoom(DEFAULT_ZOOM);
     setFitMode("fit");
     setNaturalWidth(null);
     setNaturalHeight(null);
-  }, []);
+    setLoadError(false);
+  }, [src]);
 
   const previewTransform = [
     cssRotate ? `rotate(${cssRotate}deg)` : "",
@@ -150,23 +157,21 @@ export function ImageViewer({
         ref={containerRef}
         className="flex-1 flex items-center justify-center overflow-auto bg-muted/20 p-4"
       >
-        {isSvg ? (
-          <img
-            ref={imgRef}
-            src={src}
-            alt={filename}
-            onLoad={handleImageLoad}
-            className="select-none"
-            style={imageStyle}
-            draggable={false}
-          />
+        {loadError ? (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p className="text-sm text-muted-foreground">Preview not available</p>
+            <p className="text-xs text-muted-foreground/60">
+              This format cannot be displayed in the browser
+            </p>
+          </div>
         ) : (
           <img
             ref={imgRef}
             src={src}
             alt={filename}
             onLoad={handleImageLoad}
-            className="select-none rounded-sm"
+            onError={handleImageError}
+            className={`select-none${isSvg ? "" : " rounded-sm"}`}
             style={imageStyle}
             draggable={false}
           />

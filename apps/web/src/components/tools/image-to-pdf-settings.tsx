@@ -1,5 +1,7 @@
-import { Download, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { ProgressCard } from "@/components/common/progress-card";
 import { formatHeaders } from "@/lib/api";
 import { useFileStore } from "@/stores/file-store";
 
@@ -16,21 +18,14 @@ function PdfPagePreview({
   pageSize,
   orientation,
   margin,
-  file,
+  imgUrl,
 }: {
   pageSize: string;
   orientation: "portrait" | "landscape";
   margin: number;
-  file: File | null;
+  imgUrl: string | null;
 }) {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
-  const imgUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
-
-  useEffect(() => {
-    return () => {
-      if (imgUrl) URL.revokeObjectURL(imgUrl);
-    };
-  }, [imgUrl]);
 
   useEffect(() => {
     if (!imgUrl) {
@@ -39,6 +34,7 @@ function PdfPagePreview({
     }
     const img = new Image();
     img.onload = () => setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => setImgSize(null);
     img.src = imgUrl;
   }, [imgUrl]);
 
@@ -110,45 +106,125 @@ function PdfPagePreview({
   );
 }
 export function ImageToPdfSettings() {
-  const { files, selectedIndex, processing, error, setProcessing, setError } = useFileStore();
+  const { files, selectedIndex, entries, error, setProcessing, setError } = useFileStore();
   const [pageSize, setPageSize] = useState<"A4" | "Letter" | "A3" | "A5">("A4");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [margin, setMargin] = useState(20);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
-  const handleProcess = async () => {
+  // Local processing state so the ProgressCard renders reliably
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState({
+    phase: "idle" as "idle" | "uploading" | "processing" | "complete",
+    percent: 0,
+    elapsed: 0,
+  });
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
+      if (processingTimerRef.current) clearInterval(processingTimerRef.current);
+      if (xhrRef.current) xhrRef.current.abort();
+    };
+  }, []);
+
+  const cleanup = () => {
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    if (processingTimerRef.current) clearInterval(processingTimerRef.current);
+    elapsedRef.current = null;
+    processingTimerRef.current = null;
+    setBusy(false);
+    setProcessing(false);
+  };
+
+  const handleProcess = useCallback(() => {
     if (files.length === 0) return;
 
-    setProcessing(true);
-    setError(null);
-    setDownloadUrl(null);
+    // flushSync forces React to paint the ProgressCard before the XHR starts,
+    // so users always see feedback even if the request completes quickly.
+    flushSync(() => {
+      setBusy(true);
+      setProcessing(true);
+      setError(null);
+      setDownloadUrl(null);
+      setProgress({ phase: "uploading", percent: 0, elapsed: 0 });
+    });
 
-    try {
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append("file", file);
-      }
-      formData.append("settings", JSON.stringify({ pageSize, orientation, margin }));
+    const startTime = Date.now();
+    elapsedRef.current = setInterval(() => {
+      setProgress((prev) => ({ ...prev, elapsed: Math.floor((Date.now() - startTime) / 1000) }));
+    }, 1000);
 
-      const res = await fetch("/api/v1/tools/image-to-pdf", {
-        method: "POST",
-        headers: formatHeaders(),
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Failed: ${res.status}`);
-      }
-
-      const result = await res.json();
-      setDownloadUrl(result.downloadUrl);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "PDF creation failed");
-    } finally {
-      setProcessing(false);
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("file", file);
     }
-  };
+    formData.append("settings", JSON.stringify({ pageSize, orientation, margin }));
+
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+    xhr.timeout = 180_000;
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const uploadPercent = (event.loaded / event.total) * 40;
+        setProgress((prev) =>
+          prev.phase === "uploading" ? { ...prev, percent: uploadPercent } : prev,
+        );
+      }
+    };
+
+    xhr.upload.onload = () => {
+      setProgress((prev) => ({ ...prev, phase: "processing", percent: 40 }));
+      const step = (95 - 40) / 90;
+      processingTimerRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev.phase !== "processing") return prev;
+          return { ...prev, percent: Math.min(95, prev.percent + step) };
+        });
+      }, 500);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          setDownloadUrl(result.downloadUrl);
+          setProgress((prev) => ({ ...prev, phase: "complete", percent: 100 }));
+        } catch {
+          setError("Failed to parse server response");
+        }
+      } else {
+        try {
+          const body = JSON.parse(xhr.responseText);
+          setError(body.error || `Failed: ${xhr.status}`);
+        } catch {
+          setError(`PDF creation failed: ${xhr.status}`);
+        }
+      }
+      cleanup();
+    };
+
+    xhr.onerror = () => {
+      setError("Network error during PDF creation");
+      cleanup();
+    };
+
+    xhr.ontimeout = () => {
+      setError("Request timed out - the server may be overloaded");
+      cleanup();
+    };
+
+    xhr.open("POST", "/api/v1/tools/image-to-pdf");
+    const headers = formatHeaders();
+    for (const [key, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(key, value as string);
+    }
+    xhr.send(formData);
+  }, [files, pageSize, orientation, margin, setProcessing, setError]);
 
   const hasFiles = files.length > 0;
 
@@ -218,21 +294,35 @@ export function ImageToPdfSettings() {
         pageSize={pageSize}
         orientation={orientation}
         margin={margin}
-        file={files.length > 0 ? (files[selectedIndex] ?? files[0]) : null}
+        imgUrl={entries[selectedIndex]?.blobUrl ?? entries[0]?.blobUrl ?? null}
       />
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      <button
-        type="button"
-        data-testid="image-to-pdf-submit"
-        onClick={handleProcess}
-        disabled={!hasFiles || processing}
-        className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-        {processing ? "Creating PDF..." : `Create PDF (${files.length} pages)`}
-      </button>
+      {busy ? (
+        <ProgressCard
+          active={busy}
+          phase={progress.phase === "idle" ? "uploading" : progress.phase}
+          label="Creating PDF"
+          stage={
+            progress.phase === "uploading"
+              ? "Uploading images..."
+              : `Processing ${files.length} pages...`
+          }
+          percent={progress.percent}
+          elapsed={progress.elapsed}
+        />
+      ) : (
+        <button
+          type="button"
+          data-testid="image-to-pdf-submit"
+          onClick={handleProcess}
+          disabled={!hasFiles || busy}
+          className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          Create PDF ({files.length} pages)
+        </button>
+      )}
 
       {downloadUrl && (
         <a

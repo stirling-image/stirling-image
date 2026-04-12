@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 /**
  * Simple k-means-like color quantization to extract dominant colors.
@@ -69,6 +70,9 @@ export function registerColorPalette(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed
+      fileBuffer = await ensureSharpCompat(fileBuffer);
+
       // Resize to small image for analysis
       const raw = await sharp(fileBuffer)
         .resize(50, 50, { fit: "fill" })

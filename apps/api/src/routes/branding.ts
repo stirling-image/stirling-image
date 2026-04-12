@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import sharp from "sharp";
 import { db, schema } from "../db/index.js";
+import { ensureSharpCompat } from "../lib/heic-converter.js";
 import { requireAdmin } from "../plugins/auth.js";
 
 const BRANDING_DIR = join(process.cwd(), "data", "branding");
@@ -56,8 +57,9 @@ export async function brandingRoutes(app: FastifyInstance): Promise<void> {
         .send({ error: "Logo must be 500KB or smaller", code: "VALIDATION_ERROR" });
     }
 
-    // Convert to PNG, resize to max 128x128
-    const pngBuffer = await sharp(buffer)
+    // Decode HEIC/HEIF if needed, then convert to PNG, resize to max 128x128
+    const compatBuffer = await ensureSharpCompat(buffer);
+    const pngBuffer = await sharp(compatBuffer)
       .resize(128, 128, { fit: "inside", withoutEnlargement: true })
       .png()
       .toBuffer();
