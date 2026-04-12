@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 /**
@@ -67,9 +68,9 @@ export function registerFindDuplicates(app: FastifyInstance) {
     }
 
     try {
-      // Decode HEIC/HEIF if needed
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
       for (const file of files) {
-        file.buffer = await ensureSharpCompat(file.buffer);
+        file.buffer = await autoOrient(await ensureSharpCompat(file.buffer));
       }
 
       // Compute hashes for all images

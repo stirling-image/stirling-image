@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db, schema } from "../db/index.js";
+import { autoOrient } from "../lib/auto-orient.js";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import { decodeHeic } from "../lib/heic-converter.js";
@@ -106,6 +107,9 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
         });
       }
     }
+
+    // Normalize EXIF orientation before passing to pipeline steps
+    fileBuffer = await autoOrient(fileBuffer);
 
     // Parse and validate the pipeline definition
     if (!pipelineRaw) {

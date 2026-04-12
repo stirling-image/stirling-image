@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import potrace from "potrace";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
@@ -79,8 +80,8 @@ export function registerVectorize(app: FastifyInstance) {
     }
 
     try {
-      // Decode HEIC/HEIF if needed
-      fileBuffer = await ensureSharpCompat(fileBuffer);
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+      fileBuffer = await autoOrient(await ensureSharpCompat(fileBuffer));
 
       // Convert to BMP-compatible format for potrace (PNG)
       const pngBuffer = await sharp(fileBuffer).grayscale().png().toBuffer();

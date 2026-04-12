@@ -13,6 +13,11 @@ os.environ["PADDLE_DEVICE"] = "cpu"
 os.environ["FLAGS_use_cuda"] = "0"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+LAMA_MODEL_DIR = "/opt/models/lama"
+LAMA_MODEL_URL = "https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx"
+LAMA_MODEL_PATH = os.path.join(LAMA_MODEL_DIR, "lama_fp32.onnx")
+LAMA_MIN_SIZE = 100_000_000  # ~200 MB
+
 REALESRGAN_MODEL_DIR = "/opt/models/realesrgan"
 REALESRGAN_MODEL_URL = (
     "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
@@ -96,6 +101,20 @@ def download_rembg_models():
         new_session(model)
         print(f"  {model} ready")
     print(f"All {len(REMBG_MODELS)} rembg models downloaded.\n")
+
+
+def download_lama_model():
+    """Download LaMa ONNX inpainting model from HuggingFace."""
+    print("=== Downloading LaMa ONNX model ===")
+    os.makedirs(LAMA_MODEL_DIR, exist_ok=True)
+    print(f"  Downloading from {LAMA_MODEL_URL}...")
+    urllib.request.urlretrieve(LAMA_MODEL_URL, LAMA_MODEL_PATH)
+
+    size = os.path.getsize(LAMA_MODEL_PATH)
+    assert size > LAMA_MIN_SIZE, (
+        f"LaMa model too small: {size} bytes (expected > {LAMA_MIN_SIZE})"
+    )
+    print(f"  lama_fp32.onnx downloaded ({size / 1_000_000:.1f} MB)\n")
 
 
 def download_realesrgan_model():
@@ -196,6 +215,15 @@ def smoke_test():
     import mediapipe as mp
     print("  MediaPipe import OK")
 
+    # LaMa model file must exist
+    assert os.path.exists(LAMA_MODEL_PATH), (
+        f"LaMa model missing: {LAMA_MODEL_PATH}"
+    )
+    assert os.path.getsize(LAMA_MODEL_PATH) > LAMA_MIN_SIZE, (
+        "LaMa model file is too small"
+    )
+    print("  LaMa ONNX model file verified")
+
     # RealESRGAN model file must exist
     assert os.path.exists(REALESRGAN_MODEL_PATH), (
         f"RealESRGAN model missing: {REALESRGAN_MODEL_PATH}"
@@ -232,6 +260,7 @@ def smoke_test():
 
 def main():
     print("Pre-downloading all ML models...\n")
+    download_lama_model()
     download_rembg_models()
     download_realesrgan_model()
     download_gfpgan_model()

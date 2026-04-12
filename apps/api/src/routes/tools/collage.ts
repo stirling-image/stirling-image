@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
@@ -65,7 +66,7 @@ export function registerCollage(app: FastifyInstance) {
           .status(400)
           .send({ error: `Invalid file "${file.filename}": ${validation.reason}` });
       }
-      file.buffer = await ensureSharpCompat(file.buffer);
+      file.buffer = await autoOrient(await ensureSharpCompat(file.buffer));
     }
 
     let settings: z.infer<typeof settingsSchema>;

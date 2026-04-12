@@ -3,6 +3,7 @@ import { basename, extname } from "node:path";
 import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const FAVICON_SIZES = [
@@ -62,8 +63,8 @@ export function registerFavicon(app: FastifyInstance) {
       archive.pipe(reply.raw);
 
       for (const file of uploadedFiles) {
-        // Decode HEIC/HEIF if needed
-        const decoded = await ensureSharpCompat(file.buffer);
+        // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+        const decoded = await autoOrient(await ensureSharpCompat(file.buffer));
         const stem = basename(file.filename, extname(file.filename));
         // Single file: flat structure. Multiple files: per-image folders.
         const prefix = isSingleFile ? "" : `${stem}/`;

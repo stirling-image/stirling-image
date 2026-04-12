@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { sanitizeFilename } from "../../lib/filename.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
@@ -81,9 +82,9 @@ export function registerCompose(app: FastifyInstance) {
     }
 
     try {
-      // Decode HEIC/HEIF if needed
-      baseBuffer = await ensureSharpCompat(baseBuffer);
-      overlayBuffer = await ensureSharpCompat(overlayBuffer);
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+      baseBuffer = await autoOrient(await ensureSharpCompat(baseBuffer));
+      overlayBuffer = await autoOrient(await ensureSharpCompat(overlayBuffer));
 
       // Apply opacity to overlay if needed
       let processedOverlay = overlayBuffer;

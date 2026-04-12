@@ -215,7 +215,7 @@ ENV PYTHONWARNINGS=ignore \
 
 # Create non-root user for runtime
 RUN groupadd -r stirling && useradd -r -g stirling -d /app -s /sbin/nologin stirling
-RUN chown -R stirling:stirling /app /data /tmp/workspace /opt/venv
+RUN chown -R stirling:stirling /app /data /tmp/workspace /opt/venv /opt/models
 
 # Entrypoint fixes volume permissions then drops to stirling via gosu
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh

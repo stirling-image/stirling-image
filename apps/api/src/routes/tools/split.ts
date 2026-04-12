@@ -4,6 +4,7 @@ import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const settingsSchema = z.object({
@@ -58,8 +59,8 @@ export function registerSplit(app: FastifyInstance) {
     }
 
     try {
-      // Decode HEIC/HEIF if needed
-      fileBuffer = await ensureSharpCompat(fileBuffer);
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+      fileBuffer = await autoOrient(await ensureSharpCompat(fileBuffer));
 
       const metadata = await sharp(fileBuffer).metadata();
       const fullW = metadata.width ?? 0;
