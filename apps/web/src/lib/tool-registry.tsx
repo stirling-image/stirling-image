@@ -254,6 +254,11 @@ const NoiseRemovalSettings = lazy(() =>
     default: m.NoiseRemovalSettings,
   })),
 );
+const RedEyeRemovalSettings = lazy(() =>
+  import("@/components/tools/red-eye-removal-settings").then((m) => ({
+    default: m.RedEyeRemovalSettings,
+  })),
+);
 
 // ── Color tool wrapper ─────────────────────────────────────────────
 // Color tools share a single component but differ by toolId.
@@ -384,6 +389,7 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ],
   ["colorize", { displayMode: "before-after", Settings: ColorizeSettings }],
   ["noise-removal", { displayMode: "before-after", Settings: NoiseRemovalSettings }],
+  ["red-eye-removal", { displayMode: "before-after", Settings: RedEyeRemovalSettings }],
 ]);
 
 export function getToolRegistryEntry(toolId: string): ToolRegistryEntry | undefined {
