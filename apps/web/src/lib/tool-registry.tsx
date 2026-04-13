@@ -20,6 +20,7 @@ export type DisplayMode =
   | "no-comparison"
   | "interactive-crop"
   | "interactive-eraser"
+  | "interactive-split"
   | "no-dropzone"
   | "custom-results";
 
@@ -56,6 +57,7 @@ export interface ToolRegistryEntry {
     onPreviewTransform?: (t: PreviewTransform) => void;
     onPreviewFilter?: (filter: string) => void;
     onBgPreview?: (state: BgPreviewState | null) => void;
+    onImageStyle?: (style: React.CSSProperties | null) => void;
     cropProps?: CropProps;
     eraserProps?: EraserProps;
   }>;
@@ -156,6 +158,9 @@ const StitchSettings = lazy(() =>
 );
 const SplitSettings = lazy(() =>
   import("@/components/tools/split-settings").then((m) => ({ default: m.SplitSettings })),
+);
+const SplitCanvas = lazy(() =>
+  import("@/components/tools/split-canvas").then((m) => ({ default: m.SplitCanvas })),
 );
 const BorderSettings = lazy(() =>
   import("@/components/tools/border-settings").then((m) => ({ default: m.BorderSettings })),
@@ -310,8 +315,11 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   // Layout & Composition
   ["collage", { displayMode: "before-after", Settings: CollageSettings }],
   ["stitch", { displayMode: "no-comparison", Settings: StitchSettings }],
-  ["split", { displayMode: "before-after", Settings: SplitSettings }],
-  ["border", { displayMode: "before-after", Settings: BorderSettings }],
+  [
+    "split",
+    { displayMode: "interactive-split", Settings: SplitSettings, ResultsPanel: SplitCanvas },
+  ],
+  ["border", { displayMode: "no-comparison", Settings: BorderSettings }],
 
   // Format & Conversion
   ["svg-to-raster", { displayMode: "before-after", Settings: SvgToRasterSettings }],

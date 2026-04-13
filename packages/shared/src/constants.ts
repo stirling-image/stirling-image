@@ -263,7 +263,7 @@ export const TOOLS: Tool[] = [
   {
     id: "split",
     name: "Image Splitting",
-    description: "Split image into grid parts",
+    description: "Split images into grid tiles or by pixel size with live preview",
     category: "layout",
     icon: "Grid3x3",
     route: "/split",

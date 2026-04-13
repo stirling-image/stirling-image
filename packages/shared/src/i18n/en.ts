@@ -4,7 +4,7 @@
  * Adding a new language is as simple as creating a new file (e.g. de.ts, fr.ts)
  * that satisfies the same shape as `TranslationKeys`.
  */
-export const en = {
+export const en = ({
   common: {
     upload: "Upload from computer",
     process: "Process",
@@ -107,20 +107,45 @@ export const en = {
       name: "Image Splitting",
       description: "Split images into grid tiles or by pixel size with live preview",
     },
-    border: { name: "Border & Frame", description: "Add borders, rounded corners, shadows" },
+    border: {
+      name: "Border & Frame",
+      description: "Add borders, padding, rounded corners, and shadows with one-click presets",
+    },
     "svg-to-raster": {
       name: "SVG to Raster",
       description:
         "Convert SVG to PNG, JPEG, WebP, AVIF, TIFF, GIF, or HEIF at custom scale and DPI",
-    },
-    vectorize: { name: "Image to SVG", description: "Convert images to scalable vector graphics" },
-    "gif-tools": { name: "GIF Tools", description: "Resize/crop/convert animated GIFs" },
-    pipeline: { name: "Pipeline Builder", description: "Chain multiple tools into a workflow" },
-    batch: { name: "Batch Processing", description: "Apply any tool to multiple images" },
+}
+,
+    vectorize:
+{
+  name: "Image to SVG", description;
+  : "Convert images to scalable vector graphics"
+}
+,
+    "gif-tools":
+{
+  name: "GIF Tools", description;
+  : "Resize/crop/convert animated GIFs"
+}
+,
+    pipeline:
+{
+  name: "Pipeline Builder", description;
+  : "Chain multiple tools into a workflow"
+}
+,
+    batch:
+{
+  name: "Batch Processing", description;
+  : "Apply any tool to multiple images"
+}
+,
   },
-  settings: {
-    title: "Settings",
-    general: "General",
+  settings:
+{
+  title: "Settings", general;
+  : "General",
     system: "System Settings",
     security: "Security",
     apiKeys: "API Keys",
@@ -149,9 +174,9 @@ export const en = {
     aboutLinks: "Links",
     github: "GitHub",
     documentation: "Documentation",
-    teams: {
-      title: "Teams",
-      description: "Manage teams and organize workspace members",
+    teams:
+  title: "Teams", description;
+  : "Manage teams and organize workspace members",
       createTeam: "Create New Team",
       teamName: "Team Name",
       totalMembers: "Total Members",
@@ -164,49 +189,53 @@ export const en = {
       nameRequired: "Team name is required",
       nameTooLong: "Team name must be 50 characters or less",
       duplicateName: "A team with this name already exists",
-    },
-    tools: {
-      title: "Tools",
-      description: "Enable or disable tools for all users",
+  ,
+    tools:
+  title: "Tools", description;
+  : "Enable or disable tools for all users",
       searchPlaceholder: "Search tools...",
       enabled: "Enabled",
       disabled: "Disabled",
       restartRequired: "Restart required for changes to take effect",
       toolUnavailable: "Tool unavailable",
-    },
-    experimental: {
-      label: "Enable Experimental Tools",
-      description: "Show tools that are still in development. These may be unstable.",
-    },
-    fileManagement: {
-      title: "File Management",
-      maxAge: "Max File Age (hours)",
+  ,
+    experimental:
+  label: "Enable Experimental Tools", description;
+  : "Show tools that are still in development. These may be unstable.",
+  ,
+    fileManagement:
+  title: "File Management", maxAge;
+  : "Max File Age (hours)",
       maxAgeDescription: "How long processed files are kept before automatic cleanup",
       startupCleanup: "Startup Cleanup",
       startupCleanupDescription: "Clean up old temporary files when the server starts",
-    },
-    branding: {
-      logo: "Custom Logo",
-      logoDescription: "Upload a custom logo for the sidebar and navbar",
+  ,
+    branding:
+  logo: "Custom Logo", logoDescription;
+  : "Upload a custom logo for the sidebar and navbar",
       uploadLogo: "Upload Logo",
       removeLogo: "Remove Logo",
       logoRequirements: "PNG, SVG, or JPEG. Max 500KB.",
       dragDrop: "Drag and drop or click to upload",
-    },
-  },
-  auth: {
-    login: "Login",
-    logout: "Log out",
+  ,
+}
+,
+  auth:
+{
+  login: "Login", logout;
+  : "Log out",
     username: "Username",
     password: "Password",
     loginButton: "Login",
     loggingIn: "Logging in...",
     invalidCredentials: "Invalid username or password",
     connectionError: "Connection error",
-  },
-  pipeline: {
-    title: "Automate",
-    createNew: "Create New Automation",
+}
+,
+  pipeline:
+{
+  title: "Automate", createNew;
+  : "Create New Automation",
     savedAutomations: "Saved Automations",
     templates: "Templates",
     addStep: "Add Step",
@@ -226,15 +255,19 @@ export const en = {
     webOptimization: "Web Optimization",
     profilePicture: "Profile Picture",
     watermarkBatch: "Watermark Batch",
-  },
-  nav: {
-    tools: "Tools",
-    reader: "Reader",
+}
+,
+  nav:
+{
+  tools: "Tools", reader;
+  : "Reader",
     automate: "Automate",
     files: "Files",
     help: "Help",
     settings: "Settings",
-  },
-} as const;
+}
+,
+} as
+const;
 
 export type TranslationKeys = typeof en;

@@ -339,6 +339,17 @@ export function ToolPage() {
       );
     }
 
+    if (displayMode === "interactive-split" && hasFile && originalBlobUrl) {
+      if (registryEntry?.ResultsPanel) {
+        const Panel = registryEntry.ResultsPanel;
+        return (
+          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+            <Panel />
+          </Suspense>
+        );
+      }
+    }
+
     // Non-previewable format with no server-generated preview - show success card
     if (hasProcessed && !isProcessedPreviewable && !processedPreviewUrl) {
       return (
