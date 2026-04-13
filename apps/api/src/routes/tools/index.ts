@@ -17,6 +17,7 @@ import { registerContentAwareResize } from "./content-aware-resize.js";
 import { registerConvert } from "./convert.js";
 import { registerCrop } from "./crop.js";
 import { registerEditMetadata } from "./edit-metadata.js";
+import { registerEnhanceFaces } from "./enhance-faces.js";
 import { registerEraseObject } from "./erase-object.js";
 import { registerFavicon } from "./favicon.js";
 import { registerFindDuplicates } from "./find-duplicates.js";
@@ -132,6 +133,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "image-enhancement", register: registerImageEnhancement },
     { id: "content-aware-resize", register: registerContentAwareResize },
     { id: "colorize", register: registerColorize },
+    { id: "enhance-faces", register: registerEnhanceFaces },
   ];
 
   let skipped = 0;
