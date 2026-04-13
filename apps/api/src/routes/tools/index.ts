@@ -36,6 +36,7 @@ import { registerStitch } from "./stitch.js";
 import { registerStripMetadata } from "./strip-metadata.js";
 import { registerSvgToRaster } from "./svg-to-raster.js";
 import { registerTextOverlay } from "./text-overlay.js";
+import { registerNoiseRemoval } from "./noise-removal.js";
 import { registerUpscale } from "./upscale.js";
 import { registerVectorize } from "./vectorize.js";
 import { registerWatermarkImage } from "./watermark-image.js";
@@ -128,6 +129,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "smart-crop", register: registerSmartCrop },
     { id: "image-enhancement", register: registerImageEnhancement },
     { id: "content-aware-resize", register: registerContentAwareResize },
+    { id: "noise-removal", register: registerNoiseRemoval },
   ];
 
   let skipped = 0;
