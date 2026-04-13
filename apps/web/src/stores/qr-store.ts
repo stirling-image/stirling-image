@@ -153,7 +153,7 @@ const DEFAULTS = {
   logoSize: 0.4,
   logoMargin: 5,
   hideBackgroundDots: true,
-  size: 1024,
+  size: 1000,
   errorCorrection: "Q" as ErrorCorrectionLevel,
   downloadFormat: "png" as DownloadFormat,
 };
