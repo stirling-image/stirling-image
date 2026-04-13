@@ -234,6 +234,11 @@ const SmartCropSettings = lazy(() =>
     default: m.SmartCropSettings,
   })),
 );
+const ImageEnhancementSettings = lazy(() =>
+  import("@/components/tools/image-enhancement-settings").then((m) => ({
+    default: m.ImageEnhancementSettings,
+  })),
+);
 
 // ── Color tool wrapper ─────────────────────────────────────────────
 // Color tools share a single component but differ by toolId.
@@ -351,6 +356,14 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
     },
   ],
   ["smart-crop", { displayMode: "before-after", Settings: SmartCropSettings }],
+  [
+    "image-enhancement",
+    {
+      displayMode: "live-preview" as DisplayMode,
+      livePreview: true,
+      Settings: ImageEnhancementSettings as never,
+    },
+  ],
 ]);
 
 export function getToolRegistryEntry(toolId: string): ToolRegistryEntry | undefined {
