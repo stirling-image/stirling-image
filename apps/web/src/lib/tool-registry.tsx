@@ -244,6 +244,11 @@ const ImageEnhancementSettings = lazy(() =>
     default: m.ImageEnhancementSettings,
   })),
 );
+const ColorizeSettings = lazy(() =>
+  import("@/components/tools/colorize-settings").then((m) => ({
+    default: m.ColorizeSettings,
+  })),
+);
 
 // ── Color tool wrapper ─────────────────────────────────────────────
 // Color tools share a single component but differ by toolId.
@@ -372,6 +377,7 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
       Settings: ImageEnhancementSettings as never,
     },
   ],
+  ["colorize", { displayMode: "before-after", Settings: ColorizeSettings }],
 ]);
 
 export function getToolRegistryEntry(toolId: string): ToolRegistryEntry | undefined {

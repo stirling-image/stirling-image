@@ -53,6 +53,10 @@ export function getSettingsSummary(toolId: string, settings: Record<string, unkn
       if (settings.scale) return `${settings.scale}x`;
       return "";
     }
+    case "colorize": {
+      const pct = settings.intensity != null ? Math.round(Number(settings.intensity) * 100) : 100;
+      return `${pct}% intensity`;
+    }
     default:
       return "";
   }

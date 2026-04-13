@@ -32,6 +32,14 @@ GFPGAN_MODEL_URL = (
 GFPGAN_MODEL_PATH = os.path.join(GFPGAN_MODEL_DIR, "GFPGANv1.3.pth")
 GFPGAN_MIN_SIZE = 300_000_000  # ~332 MB
 
+DDCOLOR_MODEL_DIR = "/opt/models/ddcolor"
+DDCOLOR_MODEL_URL = (
+    "https://huggingface.co/piddnad/DDColor-models/resolve/main/ddcolor_paper_tiny.pth"
+)
+DDCOLOR_ONNX_PATH = os.path.join(DDCOLOR_MODEL_DIR, "ddcolor.onnx")
+DDCOLOR_MIN_SIZE = 50_000_000  # ~220 MB ONNX
+
+
 REMBG_MODELS = [
     "u2net",
     "isnet-general-use",
@@ -145,6 +153,37 @@ def download_gfpgan_model():
     print(f"  GFPGANv1.3.pth downloaded ({size / 1_000_000:.1f} MB)\n")
 
 
+def download_ddcolor_model():
+    """Download pre-exported DDColor ONNX model for AI photo colorization.
+
+    Uses the pre-converted ONNX model from HuggingFace (facefusion repo)
+    for direct inference via onnxruntime without needing PyTorch.
+    """
+    print("=== Downloading DDColor ONNX model ===")
+    os.makedirs(DDCOLOR_MODEL_DIR, exist_ok=True)
+
+    from huggingface_hub import hf_hub_download
+
+    print("  Downloading DDColor ONNX from HuggingFace...")
+    downloaded_path = hf_hub_download(
+        repo_id="facefusion/models-3.0.0",
+        filename="ddcolor.onnx",
+        local_dir=DDCOLOR_MODEL_DIR,
+    )
+
+    # huggingface_hub downloads to local_dir/filename
+    actual_path = os.path.join(DDCOLOR_MODEL_DIR, "ddcolor.onnx")
+    if not os.path.exists(actual_path) and os.path.exists(downloaded_path):
+        os.rename(downloaded_path, actual_path)
+
+    size = os.path.getsize(actual_path)
+    assert size > DDCOLOR_MIN_SIZE, (
+        f"DDColor model too small: {size} bytes (expected > {DDCOLOR_MIN_SIZE})"
+    )
+    print(f"  DDColor ONNX model ready ({size / 1_000_000:.1f} MB)\n")
+
+
+
 def download_paddleocr_models():
     """Pre-download PaddleOCR PP-OCRv5 model weights from HuggingFace.
 
@@ -242,6 +281,15 @@ def smoke_test():
     )
     print("  GFPGAN model file verified")
 
+    # DDColor ONNX model must exist
+    assert os.path.exists(DDCOLOR_ONNX_PATH), (
+        f"DDColor model missing: {DDCOLOR_ONNX_PATH}"
+    )
+    assert os.path.getsize(DDCOLOR_ONNX_PATH) > DDCOLOR_MIN_SIZE, (
+        "DDColor model file is too small"
+    )
+    print("  DDColor ONNX model file verified")
+
     # PaddleOCR model directories must exist
     for repo_id in PADDLEOCR_MODELS:
         model_name = repo_id.split("/", 1)[1]
@@ -264,6 +312,7 @@ def main():
     download_rembg_models()
     download_realesrgan_model()
     download_gfpgan_model()
+    download_ddcolor_model()
     download_paddleocr_models()
     download_paddleocr_vl_model()
     verify_mediapipe()

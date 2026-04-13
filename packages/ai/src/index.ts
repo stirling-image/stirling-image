@@ -1,5 +1,6 @@
 export { removeBackground } from "./background-removal.js";
 export { isGpuAvailable, shutdownDispatcher } from "./bridge.js";
+export { colorize } from "./colorization.js";
 export type { DetectFacesResult, FaceRegion } from "./face-detection.js";
 export { blurFaces, detectFaces } from "./face-detection.js";
 export { inpaint } from "./inpainting.js";
