@@ -6,17 +6,11 @@ import { useFileStore } from "@/stores/file-store";
 
 type Tier = "quick" | "balanced" | "quality" | "maximum";
 
-const TIERS: { id: Tier; icon: string; label: string; algo: string; time: string }[] = [
-  { id: "quick", icon: "\u26A1", label: "Quick", algo: "Median filter", time: "~1s" },
-  { id: "balanced", icon: "\u2696\uFE0F", label: "Balanced", algo: "Non-local means", time: "~3s" },
-  { id: "quality", icon: "\u2728", label: "Quality", algo: "AI denoiser", time: "~10s" },
-  {
-    id: "maximum",
-    icon: "\uD83D\uDC8E",
-    label: "Maximum",
-    algo: "AI + detail recovery",
-    time: "~20s",
-  },
+const TIERS: { id: Tier; label: string; desc: string }[] = [
+  { id: "quick", label: "Quick", desc: "Fast, lightweight" },
+  { id: "balanced", label: "Balanced", desc: "Good quality, moderate speed" },
+  { id: "quality", label: "Quality", desc: "AI-powered, slow" },
+  { id: "maximum", label: "Maximum", desc: "Best AI model, slowest" },
 ];
 
 const LOSSY_FORMATS = new Set(["jpeg", "webp"]);
@@ -93,16 +87,11 @@ export function NoiseRemovalControls({
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
-              <span className="text-base leading-none">{t.icon}</span>
-              <span>{t.label}</span>
+              {t.label}
             </button>
           ))}
         </div>
-        {activeTier && (
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {activeTier.algo} - {activeTier.time}
-          </p>
-        )}
+        {activeTier && <p className="text-[10px] text-muted-foreground mt-1">{activeTier.desc}</p>}
       </div>
 
       <div className="border-t border-border pt-3" />
