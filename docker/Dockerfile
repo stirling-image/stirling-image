@@ -137,6 +137,12 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     /opt/venv/bin/pip install mediapipe==0.10.18 \
 ; fi
 
+# CodeFormer face enhancement (install with --no-deps to avoid numpy 2.x conflict)
+RUN /opt/venv/bin/pip install --no-deps codeformer-pip==0.0.4 lpips
+
+# Re-pin numpy to 1.26.4 in case any transitive dep upgraded it
+RUN /opt/venv/bin/pip install numpy==1.26.4
+
 # Pre-download and verify all ML models
 # Note: on amd64, paddlepaddle-gpu can't import without the CUDA driver (only
 # available at runtime). The download script gracefully skips PaddleOCR model

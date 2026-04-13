@@ -210,12 +210,14 @@ def main():
                 model_used = "codeformer"
 
             elif model_choice == "auto":
-                # Try CodeFormer first, fall back to GFPGAN
+                # Try CodeFormer first, fall back to GFPGAN.
+                # Catch broad Exception because codeformer-pip can fail in
+                # unexpected ways (AttributeError, TypeError, etc.)
                 try:
                     fidelity_weight = 1.0 - strength
                     enhanced = enhance_with_codeformer(img_array, fidelity_weight)
                     model_used = "codeformer"
-                except (ImportError, FileNotFoundError, RuntimeError, OSError):
+                except Exception:
                     enhanced = enhance_with_gfpgan(img_array, only_center_face)
                     model_used = "gfpgan"
 
