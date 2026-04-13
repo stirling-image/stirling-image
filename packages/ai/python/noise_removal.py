@@ -24,8 +24,8 @@ NAFNET_MODEL_PATH = os.environ.get(
 _CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "stirling-image", "models")
 
 # GitHub release URLs for auto-download
-SCUNET_URL = "https://github.com/cszn/SCUNet/releases/download/v1.0/scunet_color_real_psnr.pth"
-NAFNET_URL = "https://github.com/megvii-research/NAFNet/releases/download/v0.1/NAFNet-SIDD-width64.pth"
+SCUNET_URL = "https://github.com/cszn/KAIR/releases/download/v1.0/scunet_color_real_psnr.pth"
+NAFNET_URL = "https://huggingface.co/mikestealth/nafnet-models/resolve/main/NAFNet-SIDD-width64.pth"
 
 
 def _get_model_path(env_path, filename, url):

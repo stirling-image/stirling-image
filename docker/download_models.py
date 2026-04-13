@@ -41,7 +41,7 @@ SCUNET_MIN_SIZE = 3_000_000  # ~4 MB
 
 NAFNET_MODEL_DIR = "/opt/models/nafnet"
 NAFNET_MODEL_URL = (
-    "https://github.com/megvii-research/NAFNet/releases/download/v0.0.1/"
+    "https://huggingface.co/mikestealth/nafnet-models/resolve/main/"
     "NAFNet-SIDD-width64.pth"
 )
 NAFNET_MODEL_PATH = os.path.join(NAFNET_MODEL_DIR, "NAFNet-SIDD-width64.pth")
