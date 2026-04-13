@@ -238,7 +238,7 @@ export const TOOLS: Tool[] = [
   {
     id: "barcode-read",
     name: "Barcode Reader",
-    description: "Read QR codes and barcodes from images",
+    description: "Scan images for QR codes, barcodes, and 2D codes",
     category: "utilities",
     icon: "ScanLine",
     route: "/barcode-read",
@@ -247,15 +247,15 @@ export const TOOLS: Tool[] = [
   {
     id: "collage",
     name: "Collage / Grid",
-    description: "Combine images into a grid layout",
+    description: "Combine images into beautiful grid collages with 25+ templates",
     category: "layout",
     icon: "LayoutGrid",
     route: "/collage",
   },
   {
     id: "stitch",
-    name: "Stitch",
-    description: "Join images side by side or top to bottom",
+    name: "Stitch / Combine",
+    description: "Join images side by side, stacked, or in a grid",
     category: "layout",
     icon: "Columns",
     route: "/stitch",

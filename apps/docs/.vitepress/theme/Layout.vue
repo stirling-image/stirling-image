@@ -1,6 +1,6 @@
 <script setup>
-import DefaultTheme from "vitepress/theme";
 import VPSwitchAppearance from "vitepress/dist/client/theme-default/components/VPSwitchAppearance.vue";
+import DefaultTheme from "vitepress/theme";
 import GitHubStars from "./GitHubStars.vue";
 
 const { Layout } = DefaultTheme;

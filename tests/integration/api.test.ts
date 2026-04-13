@@ -1754,6 +1754,131 @@ describe("POST /api/v1/tools/stitch", () => {
 
     expect(res.statusCode).toBe(200);
   });
+
+  it("stitches in grid mode with 2 columns", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "file", filename: "c.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "d.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ direction: "grid", gridColumns: 2 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.jobId).toBeDefined();
+    expect(body.downloadUrl).toMatch(/\/api\/v1\/download\//);
+  });
+
+  it("applies alignment setting", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ alignment: "start" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("applies border and cornerRadius", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ border: 20, cornerRadius: 10 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("respects quality setting for jpeg", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ format: "jpeg", quality: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("handles resizeMode stretch", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ resizeMode: "stretch" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("handles resizeMode crop", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ resizeMode: "crop" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

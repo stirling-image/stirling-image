@@ -28,7 +28,6 @@
     "exif-reader": "^2.0.3",
     "fastify": "^5.2.0",
     "js-yaml": "^4.1.1",
-    "jsqr": "^1.4.0",
     "mupdf": "^1.27.0",
     "p-queue": "^9.1.0",
     "pdfkit": "^0.18.0",
@@ -37,7 +36,8 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.33.0",
     "tsx": "^4.19.0",
-    "zod": "^3.24.0"
+    "zod": "^3.24.0",
+    "zxing-wasm": "^3.0.2"
   },
   "devDependencies": {
     "@types/archiver": "^7.0.0",
