@@ -130,6 +130,11 @@ const QrGenerateSettings = lazy(() =>
     default: m.QrGenerateSettings,
   })),
 );
+const QrGeneratePreview = lazy(() =>
+  import("@/components/tools/qr-generate-preview").then((m) => ({
+    default: m.QrGeneratePreview,
+  })),
+);
 const BarcodeReadSettings = lazy(() =>
   import("@/components/tools/barcode-read-settings").then((m) => ({
     default: m.BarcodeReadSettings,
@@ -276,7 +281,10 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ["compare", { displayMode: "before-after", Settings: CompareSettings }],
   ["find-duplicates", { displayMode: "before-after", Settings: FindDuplicatesSettings }],
   ["color-palette", { displayMode: "before-after", Settings: ColorPaletteSettings }],
-  ["qr-generate", { displayMode: "no-dropzone", Settings: QrGenerateSettings }],
+  [
+    "qr-generate",
+    { displayMode: "no-dropzone", Settings: QrGenerateSettings, ResultsPanel: QrGeneratePreview },
+  ],
   ["barcode-read", { displayMode: "before-after", Settings: BarcodeReadSettings }],
 
   // Layout & Composition

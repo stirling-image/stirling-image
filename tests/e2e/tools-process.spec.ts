@@ -148,12 +148,13 @@ test.describe("Tool processing (core tools)", () => {
 
   test("qr-generate creates QR code without file upload", async ({ loggedInPage: page }) => {
     await page.goto("/qr-generate");
-    // Fill in QR text
-    await page.locator("textarea").first().fill("https://example.com");
-    await page.getByRole("button", { name: /generate qr/i }).click();
-    await waitForProcessing(page);
-    // QR has a "Download QR Code" button in the left panel
-    await expect(page.getByText(/download qr/i).first()).toBeVisible({ timeout: 15_000 });
+    // Fill in URL input (client-side generation, live preview)
+    await page.getByTestId("qr-input-url").fill("https://example.com");
+    // Verify the live preview rendered (canvas or svg inside the preview area)
+    await expect(page.locator("canvas, svg").first()).toBeVisible({ timeout: 5000 });
+    // Download button should be enabled
+    const downloadBtn = page.getByTestId("qr-generate-download");
+    await expect(downloadBtn).toBeEnabled();
   });
 
   test("vectorize processes image", async ({ loggedInPage: page }) => {

@@ -230,7 +230,7 @@ export const TOOLS: Tool[] = [
   {
     id: "qr-generate",
     name: "QR Code Generator",
-    description: "Generate QR codes from text or URLs",
+    description: "Generate styled QR codes with custom colors, patterns, and logos",
     category: "utilities",
     icon: "QrCode",
     route: "/qr-generate",

@@ -88,7 +88,7 @@ export const en = {
     "color-palette": { name: "Color Palette", description: "Extract dominant colors from image" },
     "qr-generate": {
       name: "QR Code Generator",
-      description: "Generate QR codes from text or URLs",
+      description: "Generate styled QR codes with custom colors, patterns, and logos",
     },
     "barcode-read": {
       name: "Barcode Reader",
