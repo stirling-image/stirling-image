@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, ref } from "vue";
 
 const stars = ref<string | null>(null);
 const repo = "https://github.com/stirling-image/stirling-image";

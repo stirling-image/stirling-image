@@ -238,7 +238,7 @@ export const TOOLS: Tool[] = [
   {
     id: "barcode-read",
     name: "Barcode Reader",
-    description: "Read QR codes and barcodes from images",
+    description: "Scan images for QR codes, barcodes, and 2D codes",
     category: "utilities",
     icon: "ScanLine",
     route: "/barcode-read",
@@ -247,15 +247,15 @@ export const TOOLS: Tool[] = [
   {
     id: "collage",
     name: "Collage / Grid",
-    description: "Combine images into a grid layout",
+    description: "Combine images into beautiful grid collages with 25+ templates",
     category: "layout",
     icon: "LayoutGrid",
     route: "/collage",
   },
   {
     id: "stitch",
-    name: "Stitch",
-    description: "Join images side by side or top to bottom",
+    name: "Stitch / Combine",
+    description: "Join images side by side, stacked, or in a grid",
     category: "layout",
     icon: "Columns",
     route: "/stitch",
@@ -263,7 +263,7 @@ export const TOOLS: Tool[] = [
   {
     id: "split",
     name: "Image Splitting",
-    description: "Split image into grid parts",
+    description: "Split images into grid tiles or by pixel size with live preview",
     category: "layout",
     icon: "Grid3x3",
     route: "/split",
@@ -296,7 +296,8 @@ export const TOOLS: Tool[] = [
   {
     id: "gif-tools",
     name: "GIF Tools",
-    description: "Resize/crop/convert animated GIFs",
+    description:
+      "Resize, optimize, change speed, reverse, extract frames, and rotate animated GIFs",
     category: "format",
     icon: "Film",
     route: "/gif-tools",

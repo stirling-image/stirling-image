@@ -831,7 +831,7 @@ paths:
     post:
       tags: [Tools]
       summary: Image to SVG
-      description: Convert a raster image to SVG vector format.
+      description: Convert a raster image to SVG vector format using potrace (B&W) or VTracer (color).
       security:
         - bearerAuth: []
       requestBody:
@@ -850,9 +850,14 @@ paths:
                   type: string
                   description: |
                     JSON string with options:
-                    - `colorMode` (string, default "bw") — One of: bw, color
-                    - `threshold` (number 0-255, default 128) — Binarization threshold
-                    - `detail` (string, default "medium") — One of: low, medium, high
+                    - `colorMode` (string, default "bw") - One of: bw, color
+                    - `threshold` (number 0-255, default 128) - B&W binarization threshold
+                    - `colorPrecision` (number 1-8, default 6) - Color bits per channel
+                    - `layerDifference` (number 1-64, default 6) - Color gradient step
+                    - `filterSpeckle` (number 1-128, default 4) - Noise filter size
+                    - `pathMode` (string, default "spline") - One of: none, polygon, spline
+                    - `cornerThreshold` (number 0-180, default 60) - Corner detection angle
+                    - `invert` (boolean, default false) - Invert colors before tracing
       responses:
         "200":
           description: Processed image (downloadUrl points to .svg file)

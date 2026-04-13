@@ -139,6 +139,7 @@ export function ToolPage() {
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(true);
   const [previewTransform, setPreviewTransform] = useState<PreviewTransform | null>(null);
   const [previewFilter, setPreviewFilter] = useState<string>("");
+  const [imageWrapperStyle, setImageWrapperStyle] = useState<React.CSSProperties | null>(null);
   const [bgPreview, setBgPreview] = useState<BgPreviewState | null>(null);
 
   const [cropCrop, setCropCrop] = useState<Crop>({
@@ -249,6 +250,7 @@ export function ToolPage() {
   const settingsProps = {
     onPreviewTransform: isLivePreview ? setPreviewTransform : undefined,
     onPreviewFilter: isLivePreview ? setPreviewFilter : undefined,
+    onImageStyle: isLivePreview ? setImageWrapperStyle : undefined,
     onBgPreview: setBgPreview,
     cropProps:
       displayMode === "interactive-crop"
@@ -302,6 +304,18 @@ export function ToolPage() {
       );
     }
 
+    // Custom results panel (find-duplicates, etc.)
+    if (displayMode === "custom-results" && registryEntry?.ResultsPanel) {
+      if (!hasFile)
+        return <Dropzone onFiles={handleFiles} accept="image/*" multiple currentFiles={files} />;
+      const ResultsPanel = registryEntry.ResultsPanel;
+      return (
+        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+          <ResultsPanel />
+        </Suspense>
+      );
+    }
+
     if (displayMode === "interactive-crop" && hasFile && !hasProcessed && originalBlobUrl) {
       return (
         <CropCanvas
@@ -325,6 +339,17 @@ export function ToolPage() {
           onStrokeChange={setEraserHasStrokes}
         />
       );
+    }
+
+    if (displayMode === "interactive-split" && hasFile && originalBlobUrl) {
+      if (registryEntry?.ResultsPanel) {
+        const Panel = registryEntry.ResultsPanel;
+        return (
+          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+            <Panel />
+          </Suspense>
+        );
+      }
     }
 
     // Non-previewable format with no server-generated preview - show success card
@@ -366,11 +391,26 @@ export function ToolPage() {
       );
     }
 
-    if (
-      hasProcessed &&
-      originalBlobUrl &&
-      (displayMode === "live-preview" || displayMode === "no-comparison")
-    ) {
+    if (hasProcessed && originalBlobUrl && displayMode === "no-comparison") {
+      return (
+        <ImageViewer src={displayUrl} filename={processedFileName} fileSize={processedSize ?? 0} />
+      );
+    }
+
+    // For live-preview tools: keep showing the CSS-styled original so WYSIWYG.
+    // The server-rendered result is available via download.
+    if (hasProcessed && originalBlobUrl && displayMode === "live-preview" && imageWrapperStyle) {
+      return (
+        <ImageViewer
+          src={originalBlobUrl}
+          filename={selectedFileName ?? files[0].name}
+          fileSize={selectedFileSize ?? files[0].size}
+          imageWrapperStyle={imageWrapperStyle}
+        />
+      );
+    }
+
+    if (hasProcessed && originalBlobUrl && displayMode === "live-preview") {
       return (
         <ImageViewer src={displayUrl} filename={processedFileName} fileSize={processedSize ?? 0} />
       );
@@ -423,6 +463,7 @@ export function ToolPage() {
               }
             : {})}
           {...(isLivePreview && previewFilter ? { cssFilter: previewFilter } : {})}
+          {...(isLivePreview && imageWrapperStyle ? { imageWrapperStyle } : {})}
         />
       );
     }

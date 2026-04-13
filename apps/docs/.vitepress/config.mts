@@ -92,7 +92,8 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Released under the <a href="https://github.com/stirling-image/stirling-image/blob/main/LICENSE">AGPLv3 License</a>.',
+      message:
+        'Released under the <a href="https://github.com/stirling-image/stirling-image/blob/main/LICENSE">AGPLv3 License</a>.',
       copyright:
         'AI-friendly docs available at <a href="/stirling-image/llms.txt">/llms.txt</a> · <a href="/stirling-image/llms-full.txt">/llms-full.txt</a>',
     },

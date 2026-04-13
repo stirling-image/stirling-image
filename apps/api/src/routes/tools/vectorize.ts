@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { vectorize as vtrace } from "@neplex/vectorizer";
 import type { FastifyInstance } from "fastify";
 import potrace from "potrace";
 import sharp from "sharp";
@@ -12,12 +13,17 @@ import { createWorkspace } from "../../lib/workspace.js";
 const settingsSchema = z.object({
   colorMode: z.enum(["bw", "color"]).default("bw"),
   threshold: z.number().min(0).max(255).default(128),
-  detail: z.enum(["low", "medium", "high"]).default("medium"),
+  colorPrecision: z.number().min(1).max(8).default(6),
+  layerDifference: z.number().min(1).max(64).default(6),
+  filterSpeckle: z.number().min(1).max(128).default(4),
+  pathMode: z.enum(["none", "polygon", "spline"]).default("spline"),
+  cornerThreshold: z.number().min(0).max(180).default(60),
+  invert: z.boolean().default(false),
 });
 
 function traceImage(
   buffer: Buffer,
-  options: { threshold: number; turdSize: number; color?: string },
+  options: { threshold: number; turdSize: number; alphamax: number },
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     potrace.trace(buffer, options, (err: Error | null, svg: string) => {
@@ -27,14 +33,18 @@ function traceImage(
   });
 }
 
-function posterize(buffer: Buffer, options: { steps: number; threshold: number }): Promise<string> {
-  return new Promise((resolve, reject) => {
-    potrace.posterize(buffer, options, (err: Error | null, svg: string) => {
-      if (err) reject(err);
-      else resolve(svg);
-    });
-  });
-}
+// PathSimplifyMode: None=0, Polygon=1, Spline=2
+const PATH_MODE_MAP: Record<string, number> = {
+  none: 0,
+  polygon: 1,
+  spline: 2,
+};
+
+const ALPHA_MAX_MAP: Record<string, number> = {
+  none: 0,
+  polygon: 0.5,
+  spline: 1,
+};
 
 export function registerVectorize(app: FastifyInstance) {
   app.post("/api/v1/tools/vectorize", async (request, reply) => {
@@ -80,27 +90,35 @@ export function registerVectorize(app: FastifyInstance) {
     }
 
     try {
-      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
       fileBuffer = await autoOrient(await ensureSharpCompat(fileBuffer));
 
-      // Convert to BMP-compatible format for potrace (PNG)
-      const pngBuffer = await sharp(fileBuffer).grayscale().png().toBuffer();
-
-      const turdSize = settings.detail === "low" ? 10 : settings.detail === "high" ? 1 : 4;
+      if (settings.invert) {
+        fileBuffer = await sharp(fileBuffer).negate({ alpha: false }).toBuffer();
+      }
 
       let svg: string;
 
       if (settings.colorMode === "color") {
-        // Color mode: posterize
-        svg = await posterize(pngBuffer, {
-          steps: settings.detail === "low" ? 3 : settings.detail === "high" ? 8 : 5,
-          threshold: settings.threshold,
+        const pngBuffer = await sharp(fileBuffer).png().toBuffer();
+        svg = await vtrace(pngBuffer, {
+          colorMode: 0, // ColorMode.Color
+          colorPrecision: settings.colorPrecision,
+          filterSpeckle: settings.filterSpeckle,
+          cornerThreshold: settings.cornerThreshold,
+          layerDifference: settings.layerDifference,
+          hierarchical: 0, // Hierarchical.Stacked
+          mode: (PATH_MODE_MAP[settings.pathMode] ?? 2) as 0 | 1 | 2,
+          lengthThreshold: 4,
+          maxIterations: 2,
+          spliceThreshold: 45,
+          pathPrecision: 5,
         });
       } else {
-        // B&W mode: simple trace
+        const pngBuffer = await sharp(fileBuffer).grayscale().png().toBuffer();
         svg = await traceImage(pngBuffer, {
           threshold: settings.threshold,
-          turdSize,
+          turdSize: settings.filterSpeckle,
+          alphamax: ALPHA_MAX_MAP[settings.pathMode] ?? 1,
         });
       }
 
@@ -116,7 +134,6 @@ export function registerVectorize(app: FastifyInstance) {
         downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outFilename)}`,
         originalSize: fileBuffer.length,
         processedSize: svgBuffer.length,
-        svgPreview: svg.length < 50000 ? svg : undefined,
       });
     } catch (err) {
       return reply.status(422).send({

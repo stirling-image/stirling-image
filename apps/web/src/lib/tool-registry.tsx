@@ -20,7 +20,9 @@ export type DisplayMode =
   | "no-comparison"
   | "interactive-crop"
   | "interactive-eraser"
-  | "no-dropzone";
+  | "interactive-split"
+  | "no-dropzone"
+  | "custom-results";
 
 // ── Crop and eraser prop types ─────────────────────────────────────
 
@@ -55,6 +57,7 @@ export interface ToolRegistryEntry {
     onPreviewTransform?: (t: PreviewTransform) => void;
     onPreviewFilter?: (filter: string) => void;
     onBgPreview?: (state: BgPreviewState | null) => void;
+    onImageStyle?: (style: React.CSSProperties | null) => void;
     cropProps?: CropProps;
     eraserProps?: EraserProps;
   }>;
@@ -122,6 +125,11 @@ const FindDuplicatesSettings = lazy(() =>
     default: m.FindDuplicatesSettings,
   })),
 );
+const FindDuplicatesResults = lazy(() =>
+  import("@/components/tools/find-duplicates-results").then((m) => ({
+    default: m.FindDuplicatesResults,
+  })),
+);
 const ColorPaletteSettings = lazy(() =>
   import("@/components/tools/color-palette-settings").then((m) => ({
     default: m.ColorPaletteSettings,
@@ -150,6 +158,9 @@ const StitchSettings = lazy(() =>
 );
 const SplitSettings = lazy(() =>
   import("@/components/tools/split-settings").then((m) => ({ default: m.SplitSettings })),
+);
+const SplitCanvas = lazy(() =>
+  import("@/components/tools/split-canvas").then((m) => ({ default: m.SplitCanvas })),
 );
 const BorderSettings = lazy(() =>
   import("@/components/tools/border-settings").then((m) => ({ default: m.BorderSettings })),
@@ -286,7 +297,14 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   // Utilities
   ["info", { displayMode: "before-after", Settings: InfoSettings }],
   ["compare", { displayMode: "before-after", Settings: CompareSettings }],
-  ["find-duplicates", { displayMode: "before-after", Settings: FindDuplicatesSettings }],
+  [
+    "find-duplicates",
+    {
+      displayMode: "custom-results",
+      Settings: FindDuplicatesSettings,
+      ResultsPanel: FindDuplicatesResults,
+    },
+  ],
   ["color-palette", { displayMode: "before-after", Settings: ColorPaletteSettings }],
   [
     "qr-generate",
@@ -297,8 +315,11 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   // Layout & Composition
   ["collage", { displayMode: "before-after", Settings: CollageSettings }],
   ["stitch", { displayMode: "no-comparison", Settings: StitchSettings }],
-  ["split", { displayMode: "before-after", Settings: SplitSettings }],
-  ["border", { displayMode: "before-after", Settings: BorderSettings }],
+  [
+    "split",
+    { displayMode: "interactive-split", Settings: SplitSettings, ResultsPanel: SplitCanvas },
+  ],
+  ["border", { displayMode: "live-preview", livePreview: true, Settings: BorderSettings as never }],
 
   // Format & Conversion
   ["svg-to-raster", { displayMode: "before-after", Settings: SvgToRasterSettings }],

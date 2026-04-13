@@ -12,14 +12,19 @@ import { createWorkspace } from "../../lib/workspace.js";
 const MAX_CANVAS_PIXELS = 100_000_000;
 
 const settingsSchema = z.object({
-  direction: z.enum(["horizontal", "vertical"]).default("horizontal"),
-  resize: z.enum(["fit", "original"]).default("fit"),
-  gap: z.number().min(0).max(100).default(0),
+  direction: z.enum(["horizontal", "vertical", "grid"]).default("horizontal"),
+  gridColumns: z.number().int().min(2).max(10).default(2),
+  resizeMode: z.enum(["fit", "original", "stretch", "crop"]).default("fit"),
+  alignment: z.enum(["start", "center", "end"]).default("center"),
+  gap: z.number().min(0).max(200).default(0),
+  border: z.number().min(0).max(50).default(0),
+  cornerRadius: z.number().min(0).max(50).default(0),
   backgroundColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .default("#FFFFFF"),
   format: z.enum(["png", "jpeg", "webp"]).default("png"),
+  quality: z.number().min(1).max(100).default(90),
 });
 
 function parseHexColor(hex: string): { r: number; g: number; b: number } {
@@ -28,6 +33,12 @@ function parseHexColor(hex: string): { r: number; g: number; b: number } {
     g: parseInt(hex.slice(3, 5), 16),
     b: parseInt(hex.slice(5, 7), 16),
   };
+}
+
+interface PreparedImage {
+  buffer: Buffer;
+  width: number;
+  height: number;
 }
 
 export function registerStitch(app: FastifyInstance) {
@@ -65,7 +76,6 @@ export function registerStitch(app: FastifyInstance) {
       return reply.status(400).send({ error: "At least 2 images are required for stitching" });
     }
 
-    // Validate all files and decode HEIC/HEIF
     for (const file of files) {
       const validation = await validateImageBuffer(file.buffer);
       if (!validation.valid) {
@@ -89,7 +99,6 @@ export function registerStitch(app: FastifyInstance) {
     }
 
     try {
-      // Read metadata for all images
       const imageMetas = await Promise.all(
         files.map(async (file) => {
           const meta = await sharp(file.buffer).metadata();
@@ -101,85 +110,80 @@ export function registerStitch(app: FastifyInstance) {
         }),
       );
 
-      // Resize images if needed
       const isHorizontal = settings.direction === "horizontal";
-      let prepared: Array<{ buffer: Buffer; width: number; height: number }>;
+      const isGrid = settings.direction === "grid";
 
-      if (settings.resize === "fit") {
-        if (isHorizontal) {
-          // Find min height, scale taller images down
-          const minHeight = Math.min(...imageMetas.map((m) => m.height));
-          prepared = await Promise.all(
-            imageMetas.map(async (img) => {
-              if (img.height > minHeight) {
-                const scaledWidth = Math.round((img.width * minHeight) / img.height);
-                const resized = await sharp(img.buffer).resize(scaledWidth, minHeight).toBuffer();
-                return { buffer: resized, width: scaledWidth, height: minHeight };
-              }
-              return img;
-            }),
-          );
-        } else {
-          // Find min width, scale wider images down
-          const minWidth = Math.min(...imageMetas.map((m) => m.width));
-          prepared = await Promise.all(
-            imageMetas.map(async (img) => {
-              if (img.width > minWidth) {
-                const scaledHeight = Math.round((img.height * minWidth) / img.width);
-                const resized = await sharp(img.buffer).resize(minWidth, scaledHeight).toBuffer();
-                return { buffer: resized, width: minWidth, height: scaledHeight };
-              }
-              return img;
-            }),
-          );
-        }
+      let prepared: PreparedImage[];
+
+      if (isGrid) {
+        prepared = await prepareForGrid(imageMetas, settings);
+      } else if (isHorizontal) {
+        prepared = await prepareForHorizontal(imageMetas, settings.resizeMode);
       } else {
-        prepared = imageMetas;
+        prepared = await prepareForVertical(imageMetas, settings.resizeMode);
       }
 
-      // Calculate canvas dimensions
-      const n = prepared.length;
       let canvasWidth: number;
       let canvasHeight: number;
+      const composites: sharp.OverlayOptions[] = [];
 
-      if (isHorizontal) {
-        canvasWidth = prepared.reduce((sum, img) => sum + img.width, 0) + settings.gap * (n - 1);
-        canvasHeight = Math.max(...prepared.map((img) => img.height));
+      if (isGrid) {
+        const cols = Math.min(settings.gridColumns, prepared.length);
+        const rows = Math.ceil(prepared.length / cols);
+        const cellWidth = Math.max(...prepared.map((img) => img.width));
+        const cellHeight = Math.max(...prepared.map((img) => img.height));
+
+        canvasWidth = cols * cellWidth + (cols - 1) * settings.gap + 2 * settings.border;
+        canvasHeight = rows * cellHeight + (rows - 1) * settings.gap + 2 * settings.border;
+
+        for (let i = 0; i < prepared.length; i++) {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const img = prepared[i];
+
+          const cellLeft = settings.border + col * (cellWidth + settings.gap);
+          const cellTop = settings.border + row * (cellHeight + settings.gap);
+
+          const left = cellLeft + alignOffset(cellWidth, img.width, settings.alignment);
+          const top = cellTop + alignOffset(cellHeight, img.height, settings.alignment);
+
+          composites.push({ input: img.buffer, left, top });
+        }
+      } else if (isHorizontal) {
+        const totalImgWidth = prepared.reduce((sum, img) => sum + img.width, 0);
+        const maxHeight = Math.max(...prepared.map((img) => img.height));
+
+        canvasWidth = totalImgWidth + (prepared.length - 1) * settings.gap + 2 * settings.border;
+        canvasHeight = maxHeight + 2 * settings.border;
+
+        let offset = settings.border;
+        for (const img of prepared) {
+          const top = settings.border + alignOffset(maxHeight, img.height, settings.alignment);
+          composites.push({ input: img.buffer, left: offset, top });
+          offset += img.width + settings.gap;
+        }
       } else {
-        canvasWidth = Math.max(...prepared.map((img) => img.width));
-        canvasHeight = prepared.reduce((sum, img) => sum + img.height, 0) + settings.gap * (n - 1);
+        const maxWidth = Math.max(...prepared.map((img) => img.width));
+        const totalImgHeight = prepared.reduce((sum, img) => sum + img.height, 0);
+
+        canvasWidth = maxWidth + 2 * settings.border;
+        canvasHeight = totalImgHeight + (prepared.length - 1) * settings.gap + 2 * settings.border;
+
+        let offset = settings.border;
+        for (const img of prepared) {
+          const left = settings.border + alignOffset(maxWidth, img.width, settings.alignment);
+          composites.push({ input: img.buffer, left, top: offset });
+          offset += img.height + settings.gap;
+        }
       }
 
-      // Canvas size check
       if (canvasWidth * canvasHeight > MAX_CANVAS_PIXELS) {
         return reply.status(422).send({
           error: `Canvas too large: ${canvasWidth}x${canvasHeight} (${Math.round((canvasWidth * canvasHeight) / 1_000_000)}MP exceeds 100MP limit)`,
         });
       }
 
-      // Build composites
       const background = parseHexColor(settings.backgroundColor);
-      const composites: sharp.OverlayOptions[] = [];
-      let offset = 0;
-
-      for (const img of prepared) {
-        let left: number;
-        let top: number;
-
-        if (isHorizontal) {
-          left = offset;
-          top = Math.round((canvasHeight - img.height) / 2);
-          offset += img.width + settings.gap;
-        } else {
-          left = Math.round((canvasWidth - img.width) / 2);
-          top = offset;
-          offset += img.height + settings.gap;
-        }
-
-        composites.push({ input: img.buffer, left, top });
-      }
-
-      // Create canvas and composite
       let pipeline = sharp({
         create: {
           width: canvasWidth,
@@ -189,16 +193,41 @@ export function registerStitch(app: FastifyInstance) {
         },
       }).composite(composites);
 
-      // Output in requested format
       if (settings.format === "jpeg") {
-        pipeline = pipeline.jpeg({ quality: 90 });
+        pipeline = pipeline.jpeg({ quality: settings.quality });
       } else if (settings.format === "webp") {
-        pipeline = pipeline.webp({ quality: 90 });
+        pipeline = pipeline.webp({ quality: settings.quality });
       } else {
         pipeline = pipeline.png();
       }
 
-      const result = await pipeline.toBuffer();
+      let result = await pipeline.toBuffer();
+
+      if (settings.cornerRadius > 0) {
+        const meta = await sharp(result).metadata();
+        const w = meta.width!;
+        const h = meta.height!;
+        const r = Math.min(settings.cornerRadius, Math.floor(Math.min(w, h) / 2));
+
+        const mask = Buffer.from(
+          `<svg width="${w}" height="${h}"><rect x="0" y="0" width="${w}" height="${h}" rx="${r}" ry="${r}" fill="white"/></svg>`,
+        );
+
+        result = await sharp(result)
+          .ensureAlpha()
+          .composite([{ input: mask, blend: "dest-in" }])
+          .png()
+          .toBuffer();
+
+        if (settings.format === "jpeg") {
+          result = await sharp(result)
+            .flatten({ background: { r: background.r, g: background.g, b: background.b } })
+            .jpeg({ quality: settings.quality })
+            .toBuffer();
+        } else if (settings.format === "webp") {
+          result = await sharp(result).webp({ quality: settings.quality }).toBuffer();
+        }
+      }
 
       const jobId = randomUUID();
       const workspacePath = await createWorkspace(jobId);
@@ -219,4 +248,131 @@ export function registerStitch(app: FastifyInstance) {
       });
     }
   });
+}
+
+function alignOffset(containerSize: number, itemSize: number, alignment: string): number {
+  if (alignment === "start") return 0;
+  if (alignment === "end") return containerSize - itemSize;
+  return Math.round((containerSize - itemSize) / 2);
+}
+
+async function prepareForHorizontal(
+  images: PreparedImage[],
+  resizeMode: string,
+): Promise<PreparedImage[]> {
+  if (resizeMode === "original") return images;
+
+  const minHeight = Math.min(...images.map((m) => m.height));
+
+  return Promise.all(
+    images.map(async (img) => {
+      if (img.height === minHeight && resizeMode === "fit") return img;
+
+      if (resizeMode === "fit") {
+        const scaledWidth = Math.round((img.width * minHeight) / img.height);
+        const resized = await sharp(img.buffer).resize(scaledWidth, minHeight).toBuffer();
+        return { buffer: resized, width: scaledWidth, height: minHeight };
+      }
+
+      if (resizeMode === "stretch") {
+        const resized = await sharp(img.buffer)
+          .resize(img.width, minHeight, { fit: "fill" })
+          .toBuffer();
+        return { buffer: resized, width: img.width, height: minHeight };
+      }
+
+      if (resizeMode === "crop") {
+        const scaledWidth = Math.round((img.width * minHeight) / img.height);
+        const resized = await sharp(img.buffer)
+          .resize(scaledWidth, minHeight, { fit: "cover" })
+          .toBuffer();
+        return { buffer: resized, width: scaledWidth, height: minHeight };
+      }
+
+      return img;
+    }),
+  );
+}
+
+async function prepareForVertical(
+  images: PreparedImage[],
+  resizeMode: string,
+): Promise<PreparedImage[]> {
+  if (resizeMode === "original") return images;
+
+  const minWidth = Math.min(...images.map((m) => m.width));
+
+  return Promise.all(
+    images.map(async (img) => {
+      if (img.width === minWidth && resizeMode === "fit") return img;
+
+      if (resizeMode === "fit") {
+        const scaledHeight = Math.round((img.height * minWidth) / img.width);
+        const resized = await sharp(img.buffer).resize(minWidth, scaledHeight).toBuffer();
+        return { buffer: resized, width: minWidth, height: scaledHeight };
+      }
+
+      if (resizeMode === "stretch") {
+        const resized = await sharp(img.buffer)
+          .resize(minWidth, img.height, { fit: "fill" })
+          .toBuffer();
+        return { buffer: resized, width: minWidth, height: img.height };
+      }
+
+      if (resizeMode === "crop") {
+        const scaledHeight = Math.round((img.height * minWidth) / img.width);
+        const resized = await sharp(img.buffer)
+          .resize(minWidth, scaledHeight, { fit: "cover" })
+          .toBuffer();
+        return { buffer: resized, width: minWidth, height: scaledHeight };
+      }
+
+      return img;
+    }),
+  );
+}
+
+async function prepareForGrid(
+  images: PreparedImage[],
+  settings: { gridColumns: number; resizeMode: string },
+): Promise<PreparedImage[]> {
+  if (settings.resizeMode === "original") return images;
+
+  const medianWidth = median(images.map((m) => m.width));
+  const medianHeight = median(images.map((m) => m.height));
+
+  return Promise.all(
+    images.map(async (img) => {
+      if (settings.resizeMode === "fit") {
+        const scale = Math.min(medianWidth / img.width, medianHeight / img.height);
+        if (scale >= 1) return img;
+        const newW = Math.round(img.width * scale);
+        const newH = Math.round(img.height * scale);
+        const resized = await sharp(img.buffer).resize(newW, newH).toBuffer();
+        return { buffer: resized, width: newW, height: newH };
+      }
+
+      if (settings.resizeMode === "stretch") {
+        const resized = await sharp(img.buffer)
+          .resize(medianWidth, medianHeight, { fit: "fill" })
+          .toBuffer();
+        return { buffer: resized, width: medianWidth, height: medianHeight };
+      }
+
+      if (settings.resizeMode === "crop") {
+        const resized = await sharp(img.buffer)
+          .resize(medianWidth, medianHeight, { fit: "cover" })
+          .toBuffer();
+        return { buffer: resized, width: medianWidth, height: medianHeight };
+      }
+
+      return img;
+    }),
+  );
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
 }
