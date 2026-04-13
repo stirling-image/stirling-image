@@ -8,13 +8,15 @@ import { sanitizeSvg } from "../../lib/svg-sanitize.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 const settingsSchema = z.object({
-  width: z.number().min(1).max(8192).default(1024),
-  height: z.number().min(1).max(8192).optional(),
+  width: z.number().min(1).max(16384).optional(),
+  height: z.number().min(1).max(16384).optional(),
+  dpi: z.number().min(36).max(1200).default(300),
+  quality: z.number().min(1).max(100).default(90),
   backgroundColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6,8}$/)
     .default("#00000000"),
-  outputFormat: z.enum(["png", "jpg", "webp"]).default("png"),
+  outputFormat: z.enum(["png", "jpg", "webp", "avif", "tiff", "gif", "heif"]).default("png"),
 });
 
 /**
@@ -74,13 +76,12 @@ export function registerSvgToRaster(app: FastifyInstance) {
     }
 
     try {
-      let image = sharp(fileBuffer, { density: 300 }).resize(
-        settings.width,
-        settings.height ?? undefined,
-        { fit: "inside" },
-      );
+      let image = sharp(fileBuffer, { density: settings.dpi });
 
-      // Apply background if not transparent
+      if (settings.width || settings.height) {
+        image = image.resize(settings.width, settings.height, { fit: "inside" });
+      }
+
       if (settings.backgroundColor !== "#00000000") {
         const bgR = parseInt(settings.backgroundColor.slice(1, 3), 16);
         const bgG = parseInt(settings.backgroundColor.slice(3, 5), 16);
@@ -90,23 +91,35 @@ export function registerSvgToRaster(app: FastifyInstance) {
 
       let buffer: Buffer;
       let ext: string;
-      let _contentType: string;
 
       switch (settings.outputFormat) {
         case "jpg":
-          buffer = await image.jpeg({ quality: 90 }).toBuffer();
+          buffer = await image.jpeg({ quality: settings.quality }).toBuffer();
           ext = "jpg";
-          _contentType = "image/jpeg";
           break;
         case "webp":
-          buffer = await image.webp({ quality: 90 }).toBuffer();
+          buffer = await image.webp({ quality: settings.quality }).toBuffer();
           ext = "webp";
-          _contentType = "image/webp";
+          break;
+        case "avif":
+          buffer = await image.avif({ quality: settings.quality }).toBuffer();
+          ext = "avif";
+          break;
+        case "tiff":
+          buffer = await image.tiff({ quality: settings.quality }).toBuffer();
+          ext = "tiff";
+          break;
+        case "gif":
+          buffer = await image.gif().toBuffer();
+          ext = "gif";
+          break;
+        case "heif":
+          buffer = await image.heif({ quality: settings.quality }).toBuffer();
+          ext = "heif";
           break;
         default:
           buffer = await image.png().toBuffer();
           ext = "png";
-          _contentType = "image/png";
           break;
       }
 
@@ -116,9 +129,27 @@ export function registerSvgToRaster(app: FastifyInstance) {
       const outputPath = join(workspacePath, "output", outFilename);
       await writeFile(outputPath, buffer);
 
+      // Generate browser-previewable thumbnail for non-browser formats
+      const NON_PREVIEWABLE = new Set(["tiff", "heif"]);
+      let previewUrl: string | undefined;
+      if (NON_PREVIEWABLE.has(ext)) {
+        try {
+          const previewBuffer = await sharp(buffer)
+            .resize(1200, 1200, { fit: "inside" })
+            .webp({ quality: 80 })
+            .toBuffer();
+          const previewPath = join(workspacePath, "output", "preview.webp");
+          await writeFile(previewPath, previewBuffer);
+          previewUrl = `/api/v1/download/${jobId}/preview.webp`;
+        } catch {
+          // Non-fatal - frontend shows success card fallback
+        }
+      }
+
       return reply.send({
         jobId,
         downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outFilename)}`,
+        previewUrl,
         originalSize: fileBuffer.length,
         processedSize: buffer.length,
       });
