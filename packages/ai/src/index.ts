@@ -4,6 +4,8 @@ export { colorize } from "./colorization.js";
 export type { DetectFacesResult, FaceRegion } from "./face-detection.js";
 export { blurFaces, detectFaces } from "./face-detection.js";
 export { enhanceFaces } from "./face-enhancement.js";
+export type { FaceLandmarkPoint, FaceLandmarks, FaceLandmarksResult } from "./face-landmarks.js";
+export { detectFaceLandmarks } from "./face-landmarks.js";
 export { inpaint } from "./inpainting.js";
 export { noiseRemoval } from "./noise-removal.js";
 export { extractText } from "./ocr.js";
