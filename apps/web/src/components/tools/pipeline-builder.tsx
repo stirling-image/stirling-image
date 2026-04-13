@@ -1,72 +1,179 @@
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { TOOLS } from "@stirling-image/shared";
 import * as icons from "lucide-react";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  Download,
-  FileImage,
-  Loader2,
-  Play,
-  Plus,
-  Save,
-  Upload,
-  X,
-} from "lucide-react";
-import { type SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
+import { GripVertical, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/common/search-bar";
 import { apiGet } from "@/lib/api";
-import { cn, generateId } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import type { PipelineStep } from "@/stores/pipeline-store";
 import { PipelineStepSettings } from "./pipeline-step-settings";
+import { getSettingsSummary } from "./pipeline-step-summary";
 
 /** Tools that can be used as pipeline steps (excludes pipeline/batch/multi-file tools). */
 const PIPELINE_TOOLS_BASE = TOOLS.filter(
   (t) => !["pipeline", "batch", "compare", "find-duplicates", "collage", "compose"].includes(t.id),
 );
 
-export interface PipelineStep {
-  id: string;
-  toolId: string;
-  settings: Record<string, unknown>;
-}
+const iconsMap = icons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
 
 interface PipelineBuilderProps {
   steps: PipelineStep[];
-  onStepsChange: (action: SetStateAction<PipelineStep[]>) => void;
-  onSave: (name: string, description: string) => void;
-  onExecute: (file: File) => void;
-  saving?: boolean;
-  executing?: boolean;
-  executionResult?: {
-    downloadUrl: string;
-    originalSize: number;
-    processedSize: number;
-    stepsCompleted: number;
-  } | null;
-  executionError?: string | null;
+  expandedStepId: string | null;
+  onAddStep: (toolId: string) => void;
+  onRemoveStep: (id: string) => void;
+  onReorderSteps: (activeId: string, overId: string) => void;
+  onUpdateSettings: (id: string, settings: Record<string, unknown>) => void;
+  onToggleStep: (id: string | null) => void;
 }
+
+/* ------------------------------------------------------------------ */
+/*  SortableStep                                                       */
+/* ------------------------------------------------------------------ */
+
+interface SortableStepProps {
+  step: PipelineStep;
+  index: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+  onUpdateSettings: (settings: Record<string, unknown>) => void;
+}
+
+function SortableStep({
+  step,
+  index,
+  isExpanded,
+  onToggle,
+  onRemove,
+  onUpdateSettings,
+}: SortableStepProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: step.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const tool = TOOLS.find((t) => t.id === step.toolId);
+  if (!tool) return null;
+
+  const Icon = iconsMap[tool.icon] || icons.FileImage;
+  const summary = getSettingsSummary(step.toolId, step.settings);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-lg border bg-background overflow-hidden transition-colors",
+        isDragging && "opacity-50",
+        isExpanded ? "border-primary" : "border-border",
+      )}
+    >
+      {/* Header row - click to expand/collapse */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center gap-2 p-3 w-full text-left"
+      >
+        {/* Drag handle */}
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted text-muted-foreground"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+
+        {/* Step number badge */}
+        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">
+          {index + 1}
+        </span>
+
+        {/* Tool icon + name */}
+        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm font-medium text-foreground">{tool.name}</span>
+
+        {/* Settings summary when collapsed */}
+        {!isExpanded && summary && (
+          <span className="text-xs text-muted-foreground truncate ml-1">{summary}</span>
+        )}
+
+        <span className="flex-1" />
+
+        {/* Remove button */}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              onRemove();
+            }
+          }}
+          title="Remove"
+          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+        >
+          <X className="h-4 w-4" />
+        </span>
+      </button>
+
+      {/* Inline settings panel */}
+      <div className={isExpanded ? "border-t border-border p-3 bg-muted/10 space-y-3" : "hidden"}>
+        <PipelineStepSettings
+          toolId={step.toolId}
+          settings={step.settings}
+          onChange={onUpdateSettings}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PipelineBuilder                                                    */
+/* ------------------------------------------------------------------ */
 
 export function PipelineBuilder({
   steps,
-  onStepsChange,
-  onSave,
-  onExecute,
-  saving = false,
-  executing = false,
-  executionResult = null,
-  executionError = null,
+  expandedStepId,
+  onAddStep,
+  onRemoveStep,
+  onReorderSteps,
+  onUpdateSettings,
+  onToggleStep,
 }: PipelineBuilderProps) {
   const [showToolPicker, setShowToolPicker] = useState(false);
-  const [expandedStep, setExpandedStep] = useState<string | null>(null);
-  const [saveName, setSaveName] = useState("");
-  const [saveDescription, setSaveDescription] = useState("");
-  const [showSaveForm, setShowSaveForm] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [toolSearch, setToolSearch] = useState("");
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
   const [experimentalEnabled, setExperimentalEnabled] = useState(false);
   const [pipelineToolIds, setPipelineToolIds] = useState<string[] | null>(null);
-  const [toolSearch, setToolSearch] = useState("");
 
+  /* Fetch settings + pipeline-compatible tool IDs on mount */
   useEffect(() => {
     apiGet<{ settings: Record<string, string> }>("/v1/settings")
       .then((data) => {
@@ -77,7 +184,6 @@ export function PipelineBuilder({
       })
       .catch(() => {});
 
-    // Fetch which tools actually support pipeline execution
     apiGet<{ toolIds: string[] }>("/v1/pipeline/tools")
       .then((data) => setPipelineToolIds(data.toolIds))
       .catch(() => {});
@@ -88,9 +194,7 @@ export function PipelineBuilder({
     return PIPELINE_TOOLS_BASE.filter((t) => {
       if (disabledTools.includes(t.id)) return false;
       if (t.experimental && !experimentalEnabled) return false;
-      // Only show tools that are registered in the pipeline-compatible tool registry
       if (pipelineToolIds && !pipelineToolIds.includes(t.id)) return false;
-      // Search filter
       if (q && !t.name.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) {
         return false;
       }
@@ -98,215 +202,53 @@ export function PipelineBuilder({
     });
   }, [disabledTools, experimentalEnabled, pipelineToolIds, toolSearch]);
 
-  const addStep = useCallback(
-    (toolId: string) => {
-      const step: PipelineStep = {
-        id: generateId(),
-        toolId,
-        settings: {},
-      };
-      onStepsChange((prev) => [...prev, step]);
-      setShowToolPicker(false);
-      setToolSearch("");
-      setExpandedStep(step.id);
-    },
-    [onStepsChange],
+  /* dnd-kit sensors */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const removeStep = useCallback(
-    (id: string) => {
-      onStepsChange((prev) => prev.filter((s) => s.id !== id));
-      setExpandedStep((prev) => (prev === id ? null : prev));
-    },
-    [onStepsChange],
-  );
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      onReorderSteps(String(active.id), String(over.id));
+    }
+  }
 
-  const moveStep = useCallback(
-    (id: string, direction: "up" | "down") => {
-      onStepsChange((prev) => {
-        const idx = prev.findIndex((s) => s.id === id);
-        if (idx < 0) return prev;
-        const newIdx = direction === "up" ? idx - 1 : idx + 1;
-        if (newIdx < 0 || newIdx >= prev.length) return prev;
-        const newSteps = [...prev];
-        [newSteps[idx], newSteps[newIdx]] = [newSteps[newIdx], newSteps[idx]];
-        return newSteps;
-      });
-    },
-    [onStepsChange],
-  );
-
-  const updateStepSettings = useCallback(
-    (id: string, newSettings: Record<string, unknown>) => {
-      onStepsChange((prev) => prev.map((s) => (s.id === id ? { ...s, settings: newSettings } : s)));
-    },
-    [onStepsChange],
-  );
-
-  const handleFileSelect = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,.heic,.heif,.hif";
-    input.onchange = (e) => {
-      const f = (e.target as HTMLInputElement).files?.[0];
-      if (f) setFile(f);
-    };
-    input.click();
-  }, []);
-
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
-  }, []);
-
-  const handleSave = useCallback(() => {
-    if (!saveName.trim()) return;
-    onSave(saveName.trim(), saveDescription.trim());
-    setSaveName("");
-    setSaveDescription("");
-    setShowSaveForm(false);
-  }, [saveName, saveDescription, onSave]);
-
-  const handleExecute = useCallback(() => {
-    if (!file) return;
-    onExecute(file);
-  }, [file, onExecute]);
-
-  const iconsMap = icons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
+  function handleAddStep(toolId: string) {
+    onAddStep(toolId);
+    setShowToolPicker(false);
+    setToolSearch("");
+  }
 
   return (
-    <div className="space-y-6">
-      {/* File Upload Area */}
-      <section
-        aria-label="File upload area"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleFileDrop}
-        className={cn(
-          "rounded-xl border-2 border-dashed p-6 text-center transition-colors",
-          file
-            ? "border-primary/30 bg-primary/5"
-            : "border-border bg-muted/20 hover:border-primary/30",
-        )}
-      >
-        {file ? (
-          <div className="flex items-center justify-center gap-3">
-            <FileImage className="h-5 w-5 text-primary" />
-            <div className="text-sm">
-              <span className="font-medium text-foreground">{file.name}</span>
-              <span className="text-muted-foreground ml-2">
-                ({(file.size / 1024).toFixed(0)} KB)
-              </span>
+    <div className="space-y-2">
+      {/* Sortable step list */}
+      {steps.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          Add steps to build your pipeline
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {steps.map((step, idx) => (
+                <SortableStep
+                  key={step.id}
+                  step={step}
+                  index={idx}
+                  isExpanded={expandedStepId === step.id}
+                  onToggle={() => onToggleStep(expandedStepId === step.id ? null : step.id)}
+                  onRemove={() => onRemoveStep(step.id)}
+                  onUpdateSettings={(s) => onUpdateSettings(step.id, s)}
+                />
+              ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setFile(null)}
-              className="p-1 rounded hover:bg-muted text-muted-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleFileSelect}
-            className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-colors text-sm"
-          >
-            <Upload className="h-4 w-4" />
-            Upload image to process
-          </button>
-        )}
-      </section>
+          </SortableContext>
+        </DndContext>
+      )}
 
-      {/* Pipeline Steps */}
-      <div className="space-y-2">
-        {steps.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Add steps to build your automation pipeline
-          </div>
-        ) : (
-          steps.map((step, idx) => {
-            const tool = TOOLS.find((t) => t.id === step.toolId);
-            if (!tool) return null;
-            const Icon = iconsMap[tool.icon] || icons.FileImage;
-            const isExpanded = expandedStep === step.id;
-
-            return (
-              <div
-                key={step.id}
-                className="rounded-lg border border-border bg-background overflow-hidden"
-              >
-                <div className="flex items-center gap-2 p-3">
-                  {/* Step number */}
-                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">
-                    {idx + 1}
-                  </span>
-
-                  {/* Tool icon + name */}
-                  <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium text-foreground flex-1">{tool.name}</span>
-
-                  {/* Controls */}
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedStep(isExpanded ? null : step.id)}
-                      className="p-1 rounded hover:bg-muted text-muted-foreground"
-                      title="Settings"
-                    >
-                      <ChevronRight
-                        className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")}
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveStep(step.id, "up")}
-                      disabled={idx === 0}
-                      className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                      title="Move up"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveStep(step.id, "down")}
-                      disabled={idx === steps.length - 1}
-                      className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                      title="Move down"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeStep(step.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                      title="Remove"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Settings panel - hidden when collapsed, never unmounted so state persists */}
-                <div
-                  className={
-                    isExpanded ? "border-t border-border p-3 bg-muted/10 space-y-3" : "hidden"
-                  }
-                >
-                  <p className="text-xs text-muted-foreground">{tool.description}</p>
-                  <PipelineStepSettings
-                    toolId={step.toolId}
-                    settings={step.settings}
-                    onChange={(s) => updateStepSettings(step.id, s)}
-                  />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Add Step */}
+      {/* Tool picker */}
       {showToolPicker ? (
         <div className="rounded-lg border border-border bg-background p-3 space-y-2 max-h-80 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
@@ -332,7 +274,7 @@ export function PipelineBuilder({
                 <button
                   key={tool.id}
                   type="button"
-                  onClick={() => addStep(tool.id)}
+                  onClick={() => handleAddStep(tool.id)}
                   className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-muted text-sm text-left transition-colors"
                 >
                   <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -358,106 +300,6 @@ export function PipelineBuilder({
           Add Step
         </button>
       )}
-
-      {/* Execution error */}
-      {executionError && (
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-          <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-            <icons.AlertCircle className="h-5 w-5 shrink-0" />
-            <span className="text-sm font-medium">{executionError}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Execution result */}
-      {executionResult && (
-        <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 space-y-2">
-          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-            <icons.CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium text-sm">
-              Pipeline completed ({executionResult.stepsCompleted} steps)
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Original: {(executionResult.originalSize / 1024).toFixed(0)} KB</span>
-            <span>Processed: {(executionResult.processedSize / 1024).toFixed(0)} KB</span>
-          </div>
-          <a
-            href={executionResult.downloadUrl}
-            download
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            Download Result
-          </a>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleExecute}
-          disabled={steps.length === 0 || !file || executing}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {executing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              Process
-            </>
-          )}
-        </button>
-
-        {!showSaveForm ? (
-          <button
-            type="button"
-            onClick={() => setShowSaveForm(true)}
-            disabled={steps.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
-            Save Pipeline
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              type="text"
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              placeholder="Pipeline name"
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground flex-1"
-            />
-            <input
-              type="text"
-              value={saveDescription}
-              onChange={(e) => setSaveDescription(e.target.value)}
-              placeholder="Description (optional)"
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground flex-1 hidden sm:block"
-            />
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!saveName.trim() || saving}
-              className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowSaveForm(false)}
-              className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
