@@ -20,7 +20,8 @@ export type DisplayMode =
   | "no-comparison"
   | "interactive-crop"
   | "interactive-eraser"
-  | "no-dropzone";
+  | "no-dropzone"
+  | "custom-results";
 
 // ── Crop and eraser prop types ─────────────────────────────────────
 
@@ -120,6 +121,11 @@ const CompareSettings = lazy(() =>
 const FindDuplicatesSettings = lazy(() =>
   import("@/components/tools/find-duplicates-settings").then((m) => ({
     default: m.FindDuplicatesSettings,
+  })),
+);
+const FindDuplicatesResults = lazy(() =>
+  import("@/components/tools/find-duplicates-results").then((m) => ({
+    default: m.FindDuplicatesResults,
   })),
 );
 const ColorPaletteSettings = lazy(() =>
@@ -286,7 +292,14 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   // Utilities
   ["info", { displayMode: "before-after", Settings: InfoSettings }],
   ["compare", { displayMode: "before-after", Settings: CompareSettings }],
-  ["find-duplicates", { displayMode: "before-after", Settings: FindDuplicatesSettings }],
+  [
+    "find-duplicates",
+    {
+      displayMode: "custom-results",
+      Settings: FindDuplicatesSettings,
+      ResultsPanel: FindDuplicatesResults,
+    },
+  ],
   ["color-palette", { displayMode: "before-after", Settings: ColorPaletteSettings }],
   [
     "qr-generate",

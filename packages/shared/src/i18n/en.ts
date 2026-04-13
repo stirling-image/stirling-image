@@ -83,7 +83,7 @@ export const en = {
     compare: { name: "Image Compare", description: "Side-by-side comparison of two images" },
     "find-duplicates": {
       name: "Find Duplicates",
-      description: "Detect duplicate and near-duplicate images",
+      description: "Find duplicate and near-duplicate images with visual comparison",
     },
     "color-palette": { name: "Color Palette", description: "Extract dominant colors from image" },
     "qr-generate": {
