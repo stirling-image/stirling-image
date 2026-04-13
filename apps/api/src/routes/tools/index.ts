@@ -9,6 +9,7 @@ import { registerBulkRename } from "./bulk-rename.js";
 import { registerCollage } from "./collage.js";
 import { registerColorAdjustments } from "./color-adjustments.js";
 import { registerColorPalette } from "./color-palette.js";
+import { registerColorize } from "./colorize.js";
 import { registerCompare } from "./compare.js";
 import { registerCompose } from "./compose.js";
 import { registerCompress } from "./compress.js";
@@ -130,6 +131,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "smart-crop", register: registerSmartCrop },
     { id: "image-enhancement", register: registerImageEnhancement },
     { id: "content-aware-resize", register: registerContentAwareResize },
+    { id: "colorize", register: registerColorize },
   ];
 
   let skipped = 0;

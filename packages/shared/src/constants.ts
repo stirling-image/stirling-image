@@ -177,6 +177,14 @@ export const TOOLS: Tool[] = [
     icon: "Sparkles",
     route: "/image-enhancement",
   },
+  {
+    id: "colorize",
+    name: "AI Colorization",
+    description: "Convert B&W photos to full color with AI",
+    category: "ai",
+    icon: "Palette",
+    route: "/colorize",
+  },
   // Watermark & Overlay
   {
     id: "watermark-text",
@@ -396,4 +404,5 @@ export const PYTHON_SIDECAR_TOOLS = [
   "blur-faces",
   "erase-object",
   "ocr",
+  "colorize",
 ] as const;

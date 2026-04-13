@@ -84,6 +84,10 @@ export const en = {
       name: "Content-Aware Resize",
       description: "Intelligently resize images while preserving important content",
     },
+    colorize: {
+      name: "AI Colorization",
+      description: "Convert black & white photos to full color using AI deep learning models",
+    },
     "watermark-text": { name: "Text Watermark", description: "Add text watermark overlay" },
     "watermark-image": { name: "Image Watermark", description: "Overlay a logo as watermark" },
     "text-overlay": { name: "Text Overlay", description: "Add styled text to images" },
