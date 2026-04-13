@@ -23,6 +23,7 @@ import { registerFavicon } from "./favicon.js";
 import { registerFindDuplicates } from "./find-duplicates.js";
 import { registerGifTools } from "./gif-tools.js";
 import { registerImageEnhancement } from "./image-enhancement.js";
+import { registerImageToBase64 } from "./image-to-base64.js";
 import { registerImageToPdf } from "./image-to-pdf.js";
 import { registerInfo } from "./info.js";
 import { registerNoiseRemoval } from "./noise-removal.js";
@@ -104,6 +105,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "color-palette", register: registerColorPalette },
     { id: "qr-generate", register: registerQrGenerate },
     { id: "barcode-read", register: registerBarcodeRead },
+    { id: "image-to-base64", register: registerImageToBase64 },
 
     // Layout & Composition
     { id: "collage", register: registerCollage },
