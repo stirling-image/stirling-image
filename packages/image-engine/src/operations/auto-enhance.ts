@@ -201,8 +201,8 @@ export function applyCorrections(
   if (toggles.exposure !== false) {
     const adj = corrections.brightness * presets.brightness * scale;
     if (Math.abs(adj) > 2) {
-      const gamma = 1 / (1 + adj / 100);
-      result = result.gamma(clamp(gamma, 0.33, 3.0));
+      const multiplier = clamp(1 + adj / 100, 0.2, 3.0);
+      result = result.modulate({ brightness: multiplier });
     }
   }
 
