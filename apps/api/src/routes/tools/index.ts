@@ -30,6 +30,7 @@ import { registerRemoveBackground } from "./remove-background.js";
 import { registerReplaceColor } from "./replace-color.js";
 import { registerResize } from "./resize.js";
 import { registerRotate } from "./rotate.js";
+import { registerSharpening } from "./sharpening.js";
 import { registerSmartCrop } from "./smart-crop.js";
 import { registerSplit } from "./split.js";
 import { registerStitch } from "./stitch.js";
@@ -84,6 +85,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "strip-metadata", register: registerStripMetadata },
     { id: "edit-metadata", register: registerEditMetadata },
     { id: "color-adjustments", register: registerColorAdjustments },
+    { id: "sharpening", register: registerSharpening },
 
     // Watermark & Overlay
     { id: "watermark-text", register: registerWatermarkText },
