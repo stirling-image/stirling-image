@@ -4,8 +4,11 @@ import { basename, join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { decodeHeic, encodeHeic } from "../../lib/heic-converter.js";
 import { sanitizeSvg } from "../../lib/svg-sanitize.js";
 import { createWorkspace } from "../../lib/workspace.js";
+
+const NON_PREVIEWABLE = new Set(["tiff", "heif"]);
 
 const settingsSchema = z.object({
   width: z.number().min(1).max(16384).optional(),
@@ -113,10 +116,13 @@ export function registerSvgToRaster(app: FastifyInstance) {
           buffer = await image.gif().toBuffer();
           ext = "gif";
           break;
-        case "heif":
-          buffer = await image.heif({ quality: settings.quality }).toBuffer();
+        case "heif": {
+          // Sharp cannot encode HEVC. Convert to PNG first, then use heif-enc.
+          const pngBuffer = await image.png().toBuffer();
+          buffer = await encodeHeic(pngBuffer, settings.quality);
           ext = "heif";
           break;
+        }
         default:
           buffer = await image.png().toBuffer();
           ext = "png";
@@ -129,12 +135,12 @@ export function registerSvgToRaster(app: FastifyInstance) {
       const outputPath = join(workspacePath, "output", outFilename);
       await writeFile(outputPath, buffer);
 
-      // Generate browser-previewable thumbnail for non-browser formats
-      const NON_PREVIEWABLE = new Set(["tiff", "heif"]);
       let previewUrl: string | undefined;
       if (NON_PREVIEWABLE.has(ext)) {
         try {
-          const previewBuffer = await sharp(buffer)
+          // Sharp can't decode HEVC-encoded HEIF; decode first
+          const previewInput = ext === "heif" ? await decodeHeic(buffer) : buffer;
+          const previewBuffer = await sharp(previewInput)
             .resize(1200, 1200, { fit: "inside" })
             .webp({ quality: 80 })
             .toBuffer();
