@@ -1,7 +1,8 @@
-import { Check, ChevronDown, ChevronRight, ClipboardCopy, Download, Loader2 } from "lucide-react";
+import { Check, ClipboardCopy, Download, FileJson, FileText, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { Base64Result } from "@/stores/base64-store";
 import { useBase64Store } from "@/stores/base64-store";
+import { useFileStore } from "@/stores/file-store";
 
 // -- Snippet generators -----------------------------------------------------
 
@@ -52,6 +53,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function downloadFile(content: string, filename: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // -- CopyButton -------------------------------------------------------------
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -75,7 +86,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   );
 }
 
-// -- Single file result -----------------------------------------------------
+// -- Single file result view ------------------------------------------------
 
 function FileResult({ result }: { result: Base64Result }) {
   const [activeTab, setActiveTab] = useState<TabId>("datauri");
@@ -154,118 +165,161 @@ function FileResult({ result }: { result: Base64Result }) {
   );
 }
 
-// -- Batch accordion item ---------------------------------------------------
-
-function BatchItem({
-  result,
-  expanded,
-  onToggle,
-}: {
-  result: Base64Result;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-3 py-2.5 bg-muted/50 hover:bg-muted/80 transition-colors text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-primary flex-shrink-0" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        )}
-        <span className="text-xs font-medium text-foreground truncate">{result.filename}</span>
-        <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
-          {result.width}x{result.height} &middot; {formatBytes(result.originalSize)} &rarr;{" "}
-          {formatBytes(result.encodedSize)}
-        </span>
-      </button>
-      {expanded && (
-        <div className="p-3 border-t border-border">
-          <FileResult result={result} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 // -- Main ResultsPanel ------------------------------------------------------
 
 export function ImageToBase64Results() {
-  const { results, errors, processing, expandedIndex, setExpandedIndex } = useBase64Store();
+  const { results, errors, processing, progress } = useBase64Store();
+  const { entries, selectedIndex, originalBlobUrl, selectedFileName } = useFileStore();
 
+  // -- Processing state: progress bar --
   if (processing) {
+    const pct =
+      progress && progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4 w-72">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Converting to base64...</p>
+          {progress ? (
+            <>
+              <p className="text-sm text-muted-foreground text-center truncate w-full">
+                Converting{" "}
+                <span className="font-medium text-foreground">{progress.currentFile}</span>
+              </p>
+              <div className="w-full">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 text-center">
+                  {progress.completed} of {progress.total} files
+                </p>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Starting conversion...</p>
+          )}
         </div>
       </div>
     );
   }
 
-  if (results.length === 0) {
+  // -- No results yet: show preview of selected image --
+  if (results.length === 0 && errors.length === 0) {
+    if (originalBlobUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+          <img
+            src={originalBlobUrl}
+            alt={selectedFileName ?? "Preview"}
+            className="max-h-[60%] max-w-full rounded-lg object-contain bg-muted"
+          />
+          <p className="text-sm text-muted-foreground text-center">
+            {entries.length > 1
+              ? `${entries.length} files ready. Click "Convert to Base64" to start.`
+              : `Click "Convert to Base64" to convert.`}
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            Upload images and click "Convert to Base64" to get started.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Single file - show directly
-  if (results.length === 1 && errors.length === 0) {
-    return (
-      <div className="p-4 h-full">
-        <FileResult result={results[0]} />
-      </div>
-    );
-  }
-
-  // Batch - accordion view
-  return (
-    <div className="p-4 space-y-2 overflow-auto h-full">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-muted-foreground">
-          {results.length} converted
-          {errors.length > 0 ? `, ${errors.length} failed` : ""}
+        <p className="text-sm text-muted-foreground">
+          Upload images and click "Convert to Base64" to get started.
         </p>
-        <CopyButton
-          text={JSON.stringify(
-            results.map((r) => r.dataUri),
-            null,
-            2,
-          )}
-          label="Copy All as JSON"
-        />
       </div>
+    );
+  }
 
-      {errors.map((err) => (
-        <div
-          key={err.filename}
-          className="border border-red-500/30 rounded-md px-3 py-2 bg-red-500/5"
-        >
-          <p className="text-xs text-red-500">
-            <span className="font-medium">{err.filename}</span>: {err.error}
-          </p>
+  // -- Results ready: find result for the currently selected file --
+  const currentFileName = entries[selectedIndex]?.file.name ?? null;
+  const currentResult = currentFileName
+    ? results.find((r) => r.filename === currentFileName)
+    : null;
+  const currentError = currentFileName ? errors.find((e) => e.filename === currentFileName) : null;
+
+  const hasMultiple = entries.length > 1;
+
+  return (
+    <div className="p-4 flex flex-col h-full">
+      {/* Batch summary bar */}
+      {hasMultiple && (
+        <div className="mb-3 pb-3 border-b border-border">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-muted-foreground">
+              {results.length} of {entries.length} converted
+              {errors.length > 0 ? ` - ${errors.length} failed` : ""}
+            </p>
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            <CopyButton
+              text={JSON.stringify(
+                results.map((r) => r.dataUri),
+                null,
+                2,
+              )}
+              label="Copy All as JSON"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const json = JSON.stringify(
+                  results.map((r) => ({
+                    filename: r.filename,
+                    mimeType: r.mimeType,
+                    width: r.width,
+                    height: r.height,
+                    dataUri: r.dataUri,
+                  })),
+                  null,
+                  2,
+                );
+                downloadFile(json, "base64-all.json", "application/json");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <FileJson className="h-3.5 w-3.5" />
+              Download All as JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const lines = results
+                  .map((r) => `--- ${r.filename} ---\n${r.dataUri}\n`)
+                  .join("\n");
+                downloadFile(lines, "base64-all.txt", "text/plain");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Download All as Text
+            </button>
+          </div>
         </div>
-      ))}
+      )}
 
-      {results.map((result, i) => (
-        <BatchItem
-          key={result.filename}
-          result={result}
-          expanded={expandedIndex === i}
-          onToggle={() => setExpandedIndex(expandedIndex === i ? -1 : i)}
-        />
-      ))}
+      {/* Current file result */}
+      <div className="flex-1 min-h-0">
+        {currentResult ? (
+          <FileResult result={currentResult} />
+        ) : currentError ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-sm text-red-500 font-medium mb-1">{currentError.filename}</p>
+              <p className="text-xs text-red-500/80">{currentError.error}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground">
+              No result for this file. It may not have been processed yet.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

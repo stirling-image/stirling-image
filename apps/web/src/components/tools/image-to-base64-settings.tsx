@@ -13,7 +13,7 @@ const OUTPUT_FORMATS = [
 
 export function ImageToBase64Settings() {
   const { files } = useFileStore();
-  const { processing, setProcessing, setResults, reset } = useBase64Store();
+  const { processing, setProcessing, setProgress, addResult, addError, reset } = useBase64Store();
 
   const [outputFormat, setOutputFormat] = useState("original");
   const [quality, setQuality] = useState(80);
@@ -27,32 +27,44 @@ export function ImageToBase64Settings() {
     setProcessing(true);
     setError(null);
     reset();
+    setProcessing(true);
 
-    try {
-      const formData = new FormData();
-      for (const file of files) {
+    const settings = JSON.stringify({ outputFormat, quality, maxWidth, maxHeight });
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setProgress({ completed: i, total: files.length, currentFile: file.name });
+
+      try {
+        const formData = new FormData();
         formData.append("files", file);
+        formData.append("settings", settings);
+
+        const res = await fetch("/api/v1/tools/image-to-base64", {
+          method: "POST",
+          headers: formatHeaders(),
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          addError({ filename: file.name, error: body.error || `Failed: ${res.status}` });
+          continue;
+        }
+
+        const data = await res.json();
+        for (const r of data.results) addResult(r);
+        for (const e of data.errors) addError(e);
+      } catch (err) {
+        addError({
+          filename: file.name,
+          error: err instanceof Error ? err.message : "Failed to convert",
+        });
       }
-      formData.append("settings", JSON.stringify({ outputFormat, quality, maxWidth, maxHeight }));
-
-      const res = await fetch("/api/v1/tools/image-to-base64", {
-        method: "POST",
-        headers: formatHeaders(),
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Failed: ${res.status}`);
-      }
-
-      const data = await res.json();
-      setResults(data.results, data.errors);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to convert");
-    } finally {
-      setProcessing(false);
     }
+
+    setProgress(null);
+    setProcessing(false);
   };
 
   const hasFiles = files.length > 0;
