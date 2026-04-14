@@ -93,6 +93,5 @@ jobs:
           file: docker/Dockerfile
           push: false
           tags: ashim:ci
-          build-args: SKIP_MODEL_DOWNLOADS=true
           cache-from: type=gha,scope=unified
           cache-to: type=gha,mode=max,scope=unified

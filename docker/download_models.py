@@ -15,8 +15,8 @@ _opener.addheaders = [("User-Agent", "ashim/1.0")]
 urllib.request.install_opener(_opener)
 
 
-def _urlretrieve(url: str, path: str, max_retries: int = 3) -> None:
-    """Download url to path, retrying on transient network errors (5xx, timeout)."""
+def _urlretrieve(url: str, path: str, max_retries: int = 5) -> None:
+    """Download url to path with exponential backoff on transient errors (5xx, timeout)."""
     for attempt in range(1, max_retries + 1):
         try:
             urllib.request.urlretrieve(url, path)
@@ -24,13 +24,45 @@ def _urlretrieve(url: str, path: str, max_retries: int = 3) -> None:
         except urllib.error.HTTPError as e:
             if attempt == max_retries or e.code < 500:
                 raise
-            print(f"  HTTP {e.code} on attempt {attempt}/{max_retries}, retrying in 10s...")
-            time.sleep(10)
+            delay = 10 * (2 ** (attempt - 1))  # 10s, 20s, 40s, 80s
+            print(f"  HTTP {e.code} on attempt {attempt}/{max_retries}, retrying in {delay}s...")
+            time.sleep(delay)
         except (urllib.error.URLError, OSError) as e:
             if attempt == max_retries:
                 raise
-            print(f"  Network error on attempt {attempt}/{max_retries}: {e}, retrying in 10s...")
-            time.sleep(10)
+            delay = 10 * (2 ** (attempt - 1))
+            print(f"  Network error on attempt {attempt}/{max_retries}: {e}, retrying in {delay}s...")
+            time.sleep(delay)
+
+
+def _hf_download(
+    repo_id: str,
+    filename: str,
+    local_dir: str,
+    min_size: int,
+    label: str,
+    repo_type: str = "model",
+) -> str:
+    """Download a file from HuggingFace Hub with built-in retry and CDN routing.
+
+    Uses hf_hub_download which handles retries, resumable downloads, and respects
+    the HF_ENDPOINT env var for mirror support. repo_type can be "model" or "space".
+    """
+    from huggingface_hub import hf_hub_download
+
+    print(f"  Downloading {label} from HuggingFace ({repo_id}/{filename})...")
+    path = hf_hub_download(
+        repo_id=repo_id, filename=filename, local_dir=local_dir, repo_type=repo_type
+    )
+    # hf_hub_download may place the file in a cache subdir; normalise to local_dir/filename
+    dest = os.path.join(local_dir, filename)
+    if path != dest and os.path.exists(path):
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        os.rename(path, dest)
+    size = os.path.getsize(dest)
+    assert size > min_size, f"{label} too small: {size} bytes (expected > {min_size})"
+    print(f"  {label} ready ({size / 1_000_000:.1f} MB)")
+    return dest
 
 # Force CPU mode during build - no GPU driver available at build time.
 # Must be set before any ML library import.
@@ -187,17 +219,11 @@ def download_rembg_models():
 
 
 def download_lama_model():
-    """Download LaMa ONNX inpainting model from HuggingFace."""
+    """Download LaMa ONNX inpainting model from HuggingFace Hub."""
     print("=== Downloading LaMa ONNX model ===")
     os.makedirs(LAMA_MODEL_DIR, exist_ok=True)
-    print(f"  Downloading from {LAMA_MODEL_URL}...")
-    _urlretrieve(LAMA_MODEL_URL, LAMA_MODEL_PATH)
-
-    size = os.path.getsize(LAMA_MODEL_PATH)
-    assert size > LAMA_MIN_SIZE, (
-        f"LaMa model too small: {size} bytes (expected > {LAMA_MIN_SIZE})"
-    )
-    print(f"  lama_fp32.onnx downloaded ({size / 1_000_000:.1f} MB)\n")
+    _hf_download("Carve/LaMa-ONNX", "lama_fp32.onnx", LAMA_MODEL_DIR, LAMA_MIN_SIZE, "LaMa ONNX")
+    print()
 
 
 def download_realesrgan_model():
@@ -349,15 +375,16 @@ def download_scunet_model():
 
 
 def download_nafnet_model():
-    """Download NAFNet SIDD width-64 denoising model."""
-    print(f"Downloading NAFNet model to {NAFNET_MODEL_PATH}...")
+    """Download NAFNet SIDD width-64 denoising model from HuggingFace Hub."""
+    print("=== Downloading NAFNet model ===")
     os.makedirs(NAFNET_MODEL_DIR, exist_ok=True)
-    _urlretrieve(NAFNET_MODEL_URL, NAFNET_MODEL_PATH)
-    size = os.path.getsize(NAFNET_MODEL_PATH)
-    assert size > NAFNET_MIN_SIZE, (
-        f"NAFNet model too small: {size} bytes (expected >{NAFNET_MIN_SIZE})"
+    _hf_download(
+        "mikestealth/nafnet-models",
+        "NAFNet-SIDD-width64.pth",
+        NAFNET_MODEL_DIR,
+        NAFNET_MIN_SIZE,
+        "NAFNet",
     )
-    print(f"  NAFNet model downloaded: {size:,} bytes")
 
 
 def download_facexlib_models():
@@ -394,9 +421,9 @@ def download_opencv_colorize_models():
     print("=== Downloading OpenCV colorization models ===")
     os.makedirs(OPENCV_COLORIZE_DIR, exist_ok=True)
 
+    # Prototxt and cluster-centres file are from GitHub raw content
     for url, path, name in [
         (OPENCV_PROTO_URL, OPENCV_PROTO_PATH, "colorization_deploy_v2.prototxt"),
-        (OPENCV_CAFFE_URL, OPENCV_CAFFE_PATH, "colorization_release_v2.caffemodel"),
         (OPENCV_POINTS_URL, OPENCV_POINTS_PATH, "pts_in_hull.npy"),
     ]:
         print(f"  Downloading {name}...")
@@ -404,10 +431,14 @@ def download_opencv_colorize_models():
         size = os.path.getsize(path)
         print(f"  {name} downloaded ({size / 1_000_000:.1f} MB)")
 
-    # Verify the caffemodel (the big one)
-    size = os.path.getsize(OPENCV_CAFFE_PATH)
-    assert size > OPENCV_CAFFE_MIN_SIZE, (
-        f"Caffemodel too small: {size} bytes (expected > {OPENCV_CAFFE_MIN_SIZE})"
+    # Caffemodel lives in a HuggingFace space — use hf_hub_download for reliability
+    _hf_download(
+        "BilalSardar/Black-N-White-To-Color",
+        "colorization_release_v2.caffemodel",
+        OPENCV_COLORIZE_DIR,
+        OPENCV_CAFFE_MIN_SIZE,
+        "OpenCV caffemodel",
+        repo_type="space",
     )
     print("OpenCV colorization models downloaded.\n")
 
