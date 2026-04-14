@@ -11,6 +11,7 @@ export { editMetadata } from "./operations/edit-metadata.js";
 export { flip } from "./operations/flip.js";
 export { grayscale } from "./operations/grayscale.js";
 export { invert } from "./operations/invert.js";
+export { optimizeForWeb } from "./operations/optimize-for-web.js";
 export { resize } from "./operations/resize.js";
 export { rotate } from "./operations/rotate.js";
 export { saturation } from "./operations/saturation.js";
