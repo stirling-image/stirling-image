@@ -35,6 +35,11 @@ export const en = {
     rotate: { name: "Rotate & Flip", description: "Rotate, flip, and straighten images" },
     convert: { name: "Convert", description: "Convert between image formats" },
     compress: { name: "Compress", description: "Reduce file size by quality or target size" },
+    "optimize-for-web": {
+      name: "Optimize for Web",
+      description:
+        "Optimize images for web with format conversion, quality control, and live preview",
+    },
     "strip-metadata": { name: "Remove Metadata", description: "Remove EXIF, GPS, and camera info" },
     "edit-metadata": {
       name: "Edit Metadata",

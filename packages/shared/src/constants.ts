@@ -56,6 +56,15 @@ export const TOOLS: Tool[] = [
   },
   // Optimization
   {
+    id: "optimize-for-web",
+    name: "Optimize for Web",
+    description:
+      "Optimize images for web with format conversion, quality control, and live preview",
+    category: "optimization",
+    icon: "Globe",
+    route: "/optimize-for-web",
+  },
+  {
     id: "strip-metadata",
     name: "Remove Metadata",
     description: "Remove EXIF, GPS, and camera info",
