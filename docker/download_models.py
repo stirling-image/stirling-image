@@ -73,6 +73,23 @@ FACE_LANDMARKER_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/fac
 FACE_LANDMARKER_MODEL_PATH = os.path.join(MEDIAPIPE_MODEL_DIR, "face_landmarker.task")
 FACE_LANDMARKER_MIN_SIZE = 1_000_000  # ~7 MB
 
+FACEXLIB_MODEL_DIR = "/opt/models/gfpgan/facelib"
+FACEXLIB_DET_URL = "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
+FACEXLIB_DET_PATH = os.path.join(FACEXLIB_MODEL_DIR, "detection_Resnet50_Final.pth")
+FACEXLIB_DET_MIN_SIZE = 100_000_000  # ~104 MB
+FACEXLIB_PARSE_URL = "https://github.com/xinntao/facexlib/releases/download/v0.1.0/parsing_parsenet.pth"
+FACEXLIB_PARSE_PATH = os.path.join(FACEXLIB_MODEL_DIR, "parsing_parsenet.pth")
+FACEXLIB_PARSE_MIN_SIZE = 80_000_000  # ~85 MB
+
+OPENCV_COLORIZE_DIR = "/opt/models/colorize-opencv"
+OPENCV_PROTO_URL = "https://raw.githubusercontent.com/richzhang/colorization/caffe/colorization/models/colorization_deploy_v2.prototxt"
+OPENCV_PROTO_PATH = os.path.join(OPENCV_COLORIZE_DIR, "colorization_deploy_v2.prototxt")
+OPENCV_CAFFE_URL = "http://eecs.berkeley.edu/~rich.zhang/projects/2016_colorization/files/demo_v2/colorization_release_v2.caffemodel"
+OPENCV_CAFFE_PATH = os.path.join(OPENCV_COLORIZE_DIR, "colorization_release_v2.caffemodel")
+OPENCV_CAFFE_MIN_SIZE = 100_000_000  # ~129 MB
+OPENCV_POINTS_URL = "https://raw.githubusercontent.com/richzhang/colorization/caffe/colorization/resources/pts_in_hull.npy"
+OPENCV_POINTS_PATH = os.path.join(OPENCV_COLORIZE_DIR, "pts_in_hull.npy")
+
 REMBG_MODELS = [
     "u2net",
     "isnet-general-use",
@@ -318,6 +335,58 @@ def download_nafnet_model():
     print(f"  NAFNet model downloaded: {size:,} bytes")
 
 
+def download_facexlib_models():
+    """Download face detection and parsing models used by GFPGAN and CodeFormer.
+
+    These are auxiliary models from facexlib that GFPGAN/CodeFormer download
+    on first use via basicsr. Pre-downloading prevents runtime network access.
+    """
+    print("=== Downloading facexlib auxiliary models ===")
+    os.makedirs(FACEXLIB_MODEL_DIR, exist_ok=True)
+
+    print(f"  Downloading detection_Resnet50_Final.pth...")
+    urllib.request.urlretrieve(FACEXLIB_DET_URL, FACEXLIB_DET_PATH)
+    size = os.path.getsize(FACEXLIB_DET_PATH)
+    assert size > FACEXLIB_DET_MIN_SIZE, (
+        f"Face detection model too small: {size} bytes (expected > {FACEXLIB_DET_MIN_SIZE})"
+    )
+    print(f"  detection_Resnet50_Final.pth downloaded ({size / 1_000_000:.1f} MB)")
+
+    print(f"  Downloading parsing_parsenet.pth...")
+    urllib.request.urlretrieve(FACEXLIB_PARSE_URL, FACEXLIB_PARSE_PATH)
+    size = os.path.getsize(FACEXLIB_PARSE_PATH)
+    assert size > FACEXLIB_PARSE_MIN_SIZE, (
+        f"Face parsing model too small: {size} bytes (expected > {FACEXLIB_PARSE_MIN_SIZE})"
+    )
+    print(f"  parsing_parsenet.pth downloaded ({size / 1_000_000:.1f} MB)\n")
+
+
+def download_opencv_colorize_models():
+    """Download OpenCV DNN colorization models (Zhang et al.).
+
+    Three files needed for the lightweight OpenCV colorizer fallback.
+    """
+    print("=== Downloading OpenCV colorization models ===")
+    os.makedirs(OPENCV_COLORIZE_DIR, exist_ok=True)
+
+    for url, path, name in [
+        (OPENCV_PROTO_URL, OPENCV_PROTO_PATH, "colorization_deploy_v2.prototxt"),
+        (OPENCV_CAFFE_URL, OPENCV_CAFFE_PATH, "colorization_release_v2.caffemodel"),
+        (OPENCV_POINTS_URL, OPENCV_POINTS_PATH, "pts_in_hull.npy"),
+    ]:
+        print(f"  Downloading {name}...")
+        urllib.request.urlretrieve(url, path)
+        size = os.path.getsize(path)
+        print(f"  {name} downloaded ({size / 1_000_000:.1f} MB)")
+
+    # Verify the caffemodel (the big one)
+    size = os.path.getsize(OPENCV_CAFFE_PATH)
+    assert size > OPENCV_CAFFE_MIN_SIZE, (
+        f"Caffemodel too small: {size} bytes (expected > {OPENCV_CAFFE_MIN_SIZE})"
+    )
+    print("OpenCV colorization models downloaded.\n")
+
+
 def download_mediapipe_task_models():
     """Download MediaPipe tasks API model files for face detection and landmarks.
 
@@ -485,6 +554,30 @@ def smoke_test():
     assert os.path.getsize(FACE_LANDMARKER_MODEL_PATH) > FACE_LANDMARKER_MIN_SIZE
     print("  MediaPipe face landmarker model verified")
 
+    # Facexlib auxiliary models must exist (for GFPGAN/CodeFormer)
+    assert os.path.exists(FACEXLIB_DET_PATH), (
+        f"Facexlib detection model missing: {FACEXLIB_DET_PATH}"
+    )
+    assert os.path.getsize(FACEXLIB_DET_PATH) > FACEXLIB_DET_MIN_SIZE
+    assert os.path.exists(FACEXLIB_PARSE_PATH), (
+        f"Facexlib parsing model missing: {FACEXLIB_PARSE_PATH}"
+    )
+    assert os.path.getsize(FACEXLIB_PARSE_PATH) > FACEXLIB_PARSE_MIN_SIZE
+    print("  Facexlib auxiliary models verified")
+
+    # OpenCV colorization models must exist
+    assert os.path.exists(OPENCV_PROTO_PATH), (
+        f"OpenCV colorize prototxt missing: {OPENCV_PROTO_PATH}"
+    )
+    assert os.path.exists(OPENCV_CAFFE_PATH), (
+        f"OpenCV colorize caffemodel missing: {OPENCV_CAFFE_PATH}"
+    )
+    assert os.path.getsize(OPENCV_CAFFE_PATH) > OPENCV_CAFFE_MIN_SIZE
+    assert os.path.exists(OPENCV_POINTS_PATH), (
+        f"OpenCV colorize points missing: {OPENCV_POINTS_PATH}"
+    )
+    print("  OpenCV colorization models verified")
+
     print("Smoke test passed.\n")
 
 
@@ -501,6 +594,8 @@ def main():
     download_paddleocr_vl_model()
     download_scunet_model()
     download_nafnet_model()
+    download_facexlib_models()
+    download_opencv_colorize_models()
     download_mediapipe_task_models()
     verify_mediapipe()
     smoke_test()

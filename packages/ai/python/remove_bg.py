@@ -9,6 +9,16 @@ def emit_progress(percent, stage):
     print(json.dumps({"progress": percent, "stage": stage}), file=sys.stderr, flush=True)
 
 
+ALLOWED_MODELS = {
+    "u2net",
+    "isnet-general-use",
+    "bria-rmbg",
+    "birefnet-general-lite",
+    "birefnet-portrait",
+    "birefnet-general",
+    "birefnet-matting",
+}
+
 _matting_registered = False
 
 def _register_matting_session(sessions_class):
@@ -48,6 +58,8 @@ def main():
     settings = json.loads(sys.argv[3]) if len(sys.argv) > 3 else {}
 
     model = settings.get("model", "birefnet-general-lite")
+    if model not in ALLOWED_MODELS:
+        model = "birefnet-general-lite"
 
     # Redirect stdout to stderr so library download/progress output
     # cannot contaminate our JSON result on stdout.

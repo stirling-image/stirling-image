@@ -187,6 +187,11 @@ COPY --from=builder /app/apps/web/dist ./apps/web/dist
 # Create required directories
 RUN mkdir -p /data /data/files /tmp/workspace
 
+# Symlink facexlib models for codeformer-pip (expects gfpgan/weights/ relative to CWD)
+RUN mkdir -p /app/gfpgan/weights/CodeFormer && \
+    ln -sf /opt/models/gfpgan/facelib /app/gfpgan/weights/facelib && \
+    ln -sf /opt/models/codeformer/codeformer.pth /app/gfpgan/weights/CodeFormer/codeformer.pth
+
 # Environment defaults
 ENV PORT=1349 \
     NODE_ENV=production \
