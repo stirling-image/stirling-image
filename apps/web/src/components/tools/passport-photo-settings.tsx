@@ -361,6 +361,7 @@ export function PassportPhotoSettings() {
     setAnalyzing,
     generating,
     setGenerating,
+    zoom,
     adjustX,
     adjustY,
   } = usePassportPhotoStore();
@@ -485,6 +486,7 @@ export function PassportPhotoSettings() {
         bgColor,
         maxFileSizeKb,
         dpi,
+        zoom,
         adjustX,
         adjustY,
         landmarks: analyzeResult.landmarks,
@@ -1063,7 +1065,7 @@ export function PassportPhotoPreview() {
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
       e.preventDefault();
-      setZoom(Math.max(1, Math.min(3, zoom + (e.deltaY > 0 ? -0.1 : 0.1))));
+      setZoom(Math.max(0.5, Math.min(3, zoom + (e.deltaY > 0 ? -0.1 : 0.1))));
     },
     [zoom, setZoom],
   );
@@ -1107,7 +1109,7 @@ export function PassportPhotoPreview() {
       <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
-          onClick={() => setZoom(Math.max(1, zoom - 0.25))}
+          onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
           className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Zoom out"
         >
@@ -1139,11 +1141,9 @@ export function PassportPhotoPreview() {
         </span>
       </div>
 
-      {zoom !== 1 && (
-        <p className="text-[10px] text-muted-foreground text-center -mt-2">
-          Zoom is for inspection only. Download is always the full photo.
-        </p>
-      )}
+      <p className="text-[10px] text-muted-foreground text-center -mt-2">
+        What you see is what you download
+      </p>
 
       {/* Canvas preview */}
       <div className="flex-1 flex items-center justify-center overflow-auto min-h-0 w-full">

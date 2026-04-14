@@ -37,6 +37,7 @@ const generateSettingsSchema = z.object({
   dpi: z.number().min(72).max(600).default(300),
   customWidthMm: z.number().optional(),
   customHeightMm: z.number().optional(),
+  zoom: z.number().min(0.5).max(3).default(1),
   adjustX: z.number().default(0),
   adjustY: z.number().default(0),
   landmarks: landmarksSchema,
@@ -295,6 +296,7 @@ export function registerPassportPhoto(app: FastifyInstance) {
         dpi: userDpi,
         customWidthMm,
         customHeightMm,
+        zoom: userZoom,
         adjustX,
         adjustY,
         landmarks: rawLandmarks,
@@ -358,8 +360,15 @@ export function registerPassportPhoto(app: FastifyInstance) {
         const photoWidthPx = photoHeightPx * aspectRatio;
 
         // Position: eye line should be at eyeLineFromBottom from photo bottom
-        const topY = eyeYPx - photoHeightPx * (1 - docSpec.eyeLineFromBottom);
-        const leftX = faceCenterXPx - photoWidthPx / 2;
+        const baseTopY = eyeYPx - photoHeightPx * (1 - docSpec.eyeLineFromBottom);
+        const baseLeftX = faceCenterXPx - photoWidthPx / 2;
+
+        // Apply zoom: zoom > 1 = tighter crop (less body), zoom < 1 = wider (more body)
+        // The zoomed region is centered on the base crop
+        const zoomedW = photoWidthPx / userZoom;
+        const zoomedH = photoHeightPx / userZoom;
+        const leftX = baseLeftX + (photoWidthPx - zoomedW) / 2;
+        const topY = baseTopY + (photoHeightPx - zoomedH) / 2;
 
         // Parse background color
         const hex = bgColor.replace("#", "");
@@ -381,8 +390,8 @@ export function registerPassportPhoto(app: FastifyInstance) {
         // image with background color so the full intended region is available.
         const rawLeft = Math.round(leftX);
         const rawTop = Math.round(topY);
-        const rawW = Math.round(photoWidthPx);
-        const rawH = Math.round(photoHeightPx);
+        const rawW = Math.round(zoomedW);
+        const rawH = Math.round(zoomedH);
 
         const padLeft = Math.max(0, -rawLeft);
         const padTop = Math.max(0, -rawTop);
