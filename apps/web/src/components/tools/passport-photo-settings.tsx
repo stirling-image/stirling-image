@@ -55,6 +55,7 @@ interface GenerateResult {
 interface ComplianceCheck {
   label: string;
   pass: boolean;
+  detail: string;
 }
 
 // ── Zustand store ─────────────────────────────────────────────────
@@ -261,35 +262,44 @@ function computeCropRegion(
   return { leftX, topY, photoWidthPx, photoHeightPx };
 }
 
-function runComplianceChecks(
-  doc: PassportDocumentSpec,
-  landmarks: FaceLandmarks,
-  imageHeight: number,
-  adjustY: number,
-): ComplianceCheck[] {
-  const crownYPx = (landmarks.crown.y + adjustY) * imageHeight;
-  const chinYPx = (landmarks.chin.y + adjustY) * imageHeight;
-  const headHeightPx = chinYPx - crownYPx;
-  const targetHeadRatio = (doc.headHeightMin + doc.headHeightMax) / 2;
-  const photoHeightPx = headHeightPx / targetHeadRatio;
-
-  const headFraction = headHeightPx / photoHeightPx;
-  const headOk = headFraction >= doc.headHeightMin && headFraction <= doc.headHeightMax;
-
-  const eyeYPx = (landmarks.eyeCenter.y + adjustY) * imageHeight;
-  const topY = eyeYPx - photoHeightPx * (1 - doc.eyeLineFromBottom);
-  const eyeFromBottom = 1 - (eyeYPx - topY) / photoHeightPx;
-  const eyeTolerance = 0.05;
-  const eyeOk =
-    eyeFromBottom >= doc.eyeLineFromBottom - eyeTolerance &&
-    eyeFromBottom <= doc.eyeLineFromBottom + eyeTolerance;
-
+function runComplianceChecks(landmarks: FaceLandmarks): ComplianceCheck[] {
+  // 1. Face centered - is the face horizontally centered in the source photo?
   const centerOk = Math.abs(landmarks.faceCenterX - 0.5) < 0.08;
 
+  // 2. Head level - are the eyes at the same height (no tilt)?
+  const eyeTilt = Math.abs(landmarks.leftEye.y - landmarks.rightEye.y);
+  const levelOk = eyeTilt < 0.02;
+
+  // 3. Looking straight - is the nose centered between the eyes (not turned)?
+  const eyeMidX = (landmarks.leftEye.x + landmarks.rightEye.x) / 2;
+  const noseOffset = Math.abs(landmarks.nose.x - eyeMidX);
+  const straightOk = noseOffset < 0.03;
+
+  // 4. Face size - is the face large enough for a quality crop?
+  const faceHeight = landmarks.chin.y - landmarks.crown.y;
+  const sizeOk = faceHeight > 0.15;
+
   return [
-    { label: "Head height", pass: headOk },
-    { label: "Eye position", pass: eyeOk },
-    { label: "Face centered", pass: centerOk },
+    {
+      label: "Face centered",
+      pass: centerOk,
+      detail: "Face is off-center. Crop or reposition your photo.",
+    },
+    {
+      label: "Head level",
+      pass: levelOk,
+      detail: "Head is tilted. Straighten your head or rotate the photo.",
+    },
+    {
+      label: "Looking straight",
+      pass: straightOk,
+      detail: "Face is turned sideways. Look directly at the camera.",
+    },
+    {
+      label: "Face size",
+      pass: sizeOk,
+      detail: "Face is too small. Get closer to the camera or crop tighter.",
+    },
   ];
 }
 
@@ -893,9 +903,7 @@ export function PassportPhotoPreview() {
   const pxDims = getPixelDimensions(docSpec);
 
   // Compliance checks
-  const complianceChecks = analyzeResult
-    ? runComplianceChecks(docSpec, analyzeResult.landmarks, analyzeResult.imageHeight, adjustY)
-    : [];
+  const complianceChecks = analyzeResult ? runComplianceChecks(analyzeResult.landmarks) : [];
 
   // Render canvas
   const renderCanvas = useCallback(() => {
@@ -958,48 +966,34 @@ export function PassportPhotoPreview() {
     ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, canvasDisplayWidth, canvasDisplayHeight);
 
     // Compliance overlay
-    const checks = runComplianceChecks(docSpec, landmarks, imageHeight, adjustY);
-    const headOk = checks[0].pass;
-    const eyeOk = checks[1].pass;
-    const centerOk = checks[2].pass;
+    const checks = runComplianceChecks(landmarks);
+    const centerOk = checks[0].pass;
+    const levelOk = checks[1].pass;
 
     ctx.setLineDash([6, 4]);
     ctx.lineWidth = 1.5;
 
-    // Helper: convert original-image Y coord to canvas Y coord (zoom-aware)
+    // Helper: convert original-image coords to canvas coords (zoom-aware)
     const toCanvasY = (origY: number) => ((origY - zoomedTop) / zoomedH) * canvasDisplayHeight;
     const toCanvasX = (origX: number) => ((origX - zoomedLeft) / zoomedW) * canvasDisplayWidth;
 
-    // Crown line
-    const crownYCanvas = toCanvasY((landmarks.crown.y + adjustY) * imageHeight);
-    ctx.strokeStyle = headOk ? "#22c55e" : "#ef4444";
-    ctx.beginPath();
-    ctx.moveTo(0, crownYCanvas);
-    ctx.lineTo(canvasDisplayWidth, crownYCanvas);
-    ctx.stroke();
-
-    // Chin line
-    const chinYCanvas = toCanvasY((landmarks.chin.y + adjustY) * imageHeight);
-    ctx.strokeStyle = headOk ? "#22c55e" : "#ef4444";
-    ctx.beginPath();
-    ctx.moveTo(0, chinYCanvas);
-    ctx.lineTo(canvasDisplayWidth, chinYCanvas);
-    ctx.stroke();
-
-    // Eye line
-    const eyeYCanvas = toCanvasY((landmarks.eyeCenter.y + adjustY) * imageHeight);
-    ctx.strokeStyle = eyeOk ? "#3b82f6" : "#ef4444";
-    ctx.beginPath();
-    ctx.moveTo(0, eyeYCanvas);
-    ctx.lineTo(canvasDisplayWidth, eyeYCanvas);
-    ctx.stroke();
-
-    // Center line (vertical)
+    // Center line (vertical) - face centered check
     const centerXCanvas = toCanvasX((landmarks.faceCenterX + adjustX) * imageWidth);
     ctx.strokeStyle = centerOk ? "#f59e0b" : "#ef4444";
     ctx.beginPath();
     ctx.moveTo(centerXCanvas, 0);
     ctx.lineTo(centerXCanvas, canvasDisplayHeight);
+    ctx.stroke();
+
+    // Eye-level indicator - line connecting left eye to right eye
+    const leftEyeX = toCanvasX((landmarks.leftEye.x + adjustX) * imageWidth);
+    const leftEyeY = toCanvasY((landmarks.leftEye.y + adjustY) * imageHeight);
+    const rightEyeX = toCanvasX((landmarks.rightEye.x + adjustX) * imageWidth);
+    const rightEyeY = toCanvasY((landmarks.rightEye.y + adjustY) * imageHeight);
+    ctx.strokeStyle = levelOk ? "#22c55e" : "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(leftEyeX, leftEyeY);
+    ctx.lineTo(rightEyeX, rightEyeY);
     ctx.stroke();
 
     ctx.setLineDash([]);
@@ -1167,15 +1161,18 @@ export function PassportPhotoPreview() {
 
       {/* Compliance checklist */}
       {complianceChecks.length > 0 && (
-        <div className="flex items-center gap-4 shrink-0 py-2">
+        <div className="flex flex-wrap items-center gap-4 shrink-0 py-2">
           {complianceChecks.map((check) => (
             <div key={check.label} className="flex items-center gap-1.5 text-xs">
               {check.pass ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
               ) : (
-                <X className="h-3.5 w-3.5 text-red-500" />
+                <X className="h-3.5 w-3.5 text-red-500 shrink-0" />
               )}
               <span className={check.pass ? "text-foreground" : "text-red-400"}>{check.label}</span>
+              {!check.pass && (
+                <span className="text-muted-foreground text-[10px]">- {check.detail}</span>
+              )}
             </div>
           ))}
         </div>
