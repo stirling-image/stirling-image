@@ -9,6 +9,79 @@ def emit_progress(percent, stage):
     print(json.dumps({"progress": percent, "stage": stage}), file=sys.stderr, flush=True)
 
 
+# ── Model path for new mp.tasks API ─────────────────────────────────
+
+_FACE_MESH_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task"
+_MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".models")
+_FACE_MESH_MODEL_PATH = os.path.join(_MODEL_DIR, "face_landmarker.task")
+
+
+def _ensure_face_mesh_model():
+    """Download the face landmarker model if not present."""
+    if os.path.exists(_FACE_MESH_MODEL_PATH):
+        return _FACE_MESH_MODEL_PATH
+    os.makedirs(_MODEL_DIR, exist_ok=True)
+    import urllib.request
+    emit_progress(15, "Downloading face mesh model")
+    urllib.request.urlretrieve(_FACE_MESH_MODEL_URL, _FACE_MESH_MODEL_PATH)
+    return _FACE_MESH_MODEL_PATH
+
+
+def _mesh_with_solutions(img_array, max_faces=10, min_confidence=0.5):
+    """FaceMesh using legacy mp.solutions API (mediapipe < 0.10.30).
+
+    Returns list of landmark lists. Each landmark has .x, .y attributes.
+    """
+    import mediapipe as mp
+
+    mesh = mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=max_faces,
+        refine_landmarks=True,
+        min_detection_confidence=min_confidence,
+    )
+    results = mesh.process(img_array)
+    mesh.close()
+
+    if not results.multi_face_landmarks:
+        return []
+
+    return [face.landmark for face in results.multi_face_landmarks]
+
+
+def _mesh_with_tasks(img_array, max_faces=10, min_confidence=0.5):
+    """FaceMesh using new mp.tasks API (mediapipe >= 0.10.30).
+
+    Returns list of landmark lists. Each landmark has .x, .y attributes.
+    """
+    import mediapipe as mp
+
+    model_path = _ensure_face_mesh_model()
+    options = mp.tasks.vision.FaceLandmarkerOptions(
+        base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
+        running_mode=mp.tasks.vision.RunningMode.IMAGE,
+        num_faces=max_faces,
+        min_face_detection_confidence=min_confidence,
+    )
+    landmarker = mp.tasks.vision.FaceLandmarker.create_from_options(options)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_array)
+    result = landmarker.detect(mp_image)
+    landmarker.close()
+
+    if not result.face_landmarks:
+        return []
+
+    return result.face_landmarks
+
+
+def _detect_face_mesh(img_array, max_faces=10, min_confidence=0.5):
+    """Detect face mesh, trying legacy API first then falling back to tasks API."""
+    try:
+        return _mesh_with_solutions(img_array, max_faces, min_confidence)
+    except AttributeError:
+        return _mesh_with_tasks(img_array, max_faces, min_confidence)
+
+
 def main():
     input_path = sys.argv[1]
     output_path = sys.argv[2]
@@ -65,27 +138,18 @@ def main():
             format_label = "jpg"
 
         try:
-            import mediapipe as mp
             import numpy as np
             import cv2
 
             emit_progress(25, "Detecting faces")
 
             img_array = np.array(img)
-            mesh = mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=True,
-                max_num_faces=10,
-                refine_landmarks=True,
-                min_detection_confidence=0.5,
-            )
-            results = mesh.process(img_array)
-            mesh.close()
 
-            faces_detected = 0
+            # Try legacy mp.solutions API first, fall back to mp.tasks
+            all_face_landmarks = _detect_face_mesh(img_array)
+
+            faces_detected = len(all_face_landmarks)
             eyes_corrected = 0
-
-            if results.multi_face_landmarks:
-                faces_detected = len(results.multi_face_landmarks)
 
             emit_progress(50, "Analyzing eyes")
 
@@ -95,8 +159,7 @@ def main():
 
             if faces_detected > 0:
                 all_eyes = []
-                for face_landmarks in results.multi_face_landmarks:
-                    landmarks = face_landmarks.landmark
+                for landmarks in all_face_landmarks:
                     for iris_indices in [right_iris, left_iris]:
                         center_idx = iris_indices[0]
                         contour_indices = iris_indices[1:]

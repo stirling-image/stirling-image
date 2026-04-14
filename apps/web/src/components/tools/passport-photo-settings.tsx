@@ -570,7 +570,7 @@ export function PassportPhotoSettings() {
 
         {dropdownOpen && (
           <div
-            className="fixed max-h-64 overflow-auto rounded-lg border border-border shadow-xl bg-white dark:bg-zinc-900"
+            className="fixed max-h-64 overflow-auto rounded-lg border border-border shadow-xl bg-background"
             style={{
               zIndex: 9999,
               top: dropdownPos.top,
@@ -579,7 +579,7 @@ export function PassportPhotoSettings() {
             }}
           >
             {/* Search input */}
-            <div className="sticky top-0 p-2 border-b border-border bg-white dark:bg-zinc-900">
+            <div className="sticky top-0 p-2 border-b border-border bg-background">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input

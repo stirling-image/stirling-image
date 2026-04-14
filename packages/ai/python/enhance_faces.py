@@ -37,45 +37,90 @@ CODEFORMER_MODEL_PATH = os.environ.get(
 )
 
 
+# ── Model path for new mp.tasks API ─────────────────────────────────
+
+_FACE_DETECT_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.task"
+_MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".models")
+_FACE_DETECT_MODEL_PATH = os.path.join(_MODEL_DIR, "blaze_face_short_range.task")
+
+
+def _ensure_face_detect_model():
+    """Download the face detector model if not present."""
+    if os.path.exists(_FACE_DETECT_MODEL_PATH):
+        return _FACE_DETECT_MODEL_PATH
+    os.makedirs(_MODEL_DIR, exist_ok=True)
+    import urllib.request
+    emit_progress(15, "Downloading face detection model")
+    urllib.request.urlretrieve(_FACE_DETECT_MODEL_URL, _FACE_DETECT_MODEL_PATH)
+    return _FACE_DETECT_MODEL_PATH
+
+
 def detect_faces_mediapipe(img_array, sensitivity):
     """Detect faces using MediaPipe with dual-model approach.
 
     Returns a list of {x, y, w, h} dicts for each detected face.
+    Tries legacy mp.solutions API first, falls back to mp.tasks.
     """
     import mediapipe as mp
 
     min_confidence = max(0.1, 1.0 - sensitivity)
-    mp_face = mp.solutions.face_detection
 
-    # Try short-range model first (model_selection=0, best for faces
-    # within ~2m which covers most photos), then fall back to
-    # full-range model (model_selection=1) for distant/group shots.
-    detections = []
-    for model_sel in [0, 1]:
-        detector = mp_face.FaceDetection(
-            model_selection=model_sel,
+    try:
+        mp_face = mp.solutions.face_detection
+
+        # Try short-range model first (model_selection=0, best for faces
+        # within ~2m which covers most photos), then fall back to
+        # full-range model (model_selection=1) for distant/group shots.
+        detections = []
+        for model_sel in [0, 1]:
+            detector = mp_face.FaceDetection(
+                model_selection=model_sel,
+                min_detection_confidence=min_confidence,
+            )
+            results = detector.process(img_array)
+            detector.close()
+            if results.detections:
+                detections = results.detections
+                break
+
+        if not detections:
+            return []
+
+        ih, iw = img_array.shape[:2]
+        faces = []
+        for detection in detections:
+            bbox = detection.location_data.relative_bounding_box
+            faces.append({
+                "x": int(bbox.xmin * iw),
+                "y": int(bbox.ymin * ih),
+                "w": int(bbox.width * iw),
+                "h": int(bbox.height * ih),
+            })
+        return faces
+
+    except AttributeError:
+        # mediapipe >= 0.10.30 removed mp.solutions, use tasks API
+        model_path = _ensure_face_detect_model()
+        options = mp.tasks.vision.FaceDetectorOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
+            running_mode=mp.tasks.vision.RunningMode.IMAGE,
             min_detection_confidence=min_confidence,
         )
-        results = detector.process(img_array)
+        detector = mp.tasks.vision.FaceDetector.create_from_options(options)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_array)
+        result = detector.detect(mp_image)
         detector.close()
-        if results.detections:
-            detections = results.detections
-            break
 
-    if not detections:
-        return []
-
-    ih, iw = img_array.shape[:2]
-    faces = []
-    for detection in detections:
-        bbox = detection.location_data.relative_bounding_box
-        x = int(bbox.xmin * iw)
-        y = int(bbox.ymin * ih)
-        w = int(bbox.width * iw)
-        h = int(bbox.height * ih)
-        faces.append({"x": x, "y": y, "w": w, "h": h})
-
-    return faces
+        faces = []
+        for detection in result.detections:
+            bbox = detection.bounding_box
+            faces.append({
+                "x": bbox.origin_x,
+                "y": bbox.origin_y,
+                "w": bbox.width,
+                "h": bbox.height,
+            })
+        return faces
 
 
 def enhance_with_gfpgan(img_array, only_center_face):

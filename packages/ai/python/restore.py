@@ -217,6 +217,24 @@ def _get_codeformer_path():
     return CODEFORMER_LOCAL_PATH
 
 
+# ── Model path for new mp.tasks API ─────────────────────────────────
+
+_FACE_DETECT_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.task"
+_FACE_DETECT_MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".models")
+_FACE_DETECT_MODEL_PATH = os.path.join(_FACE_DETECT_MODEL_DIR, "blaze_face_short_range.task")
+
+
+def _ensure_face_detect_model():
+    """Download the face detector model if not present."""
+    if os.path.exists(_FACE_DETECT_MODEL_PATH):
+        return _FACE_DETECT_MODEL_PATH
+    os.makedirs(_FACE_DETECT_MODEL_DIR, exist_ok=True)
+    import urllib.request
+    emit_progress(15, "Downloading face detection model")
+    urllib.request.urlretrieve(_FACE_DETECT_MODEL_URL, _FACE_DETECT_MODEL_PATH)
+    return _FACE_DETECT_MODEL_PATH
+
+
 def enhance_faces(img_bgr, fidelity=0.7):
     """Enhance faces in the image using CodeFormer ONNX.
 
@@ -239,20 +257,57 @@ def enhance_faces(img_bgr, fidelity=0.7):
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     ih, iw = img_bgr.shape[:2]
 
-    mp_face = mp.solutions.face_detection
-    detections = []
-    for model_sel in [0, 1]:
-        detector = mp_face.FaceDetection(
-            model_selection=model_sel, min_detection_confidence=0.4
-        )
-        results = detector.process(img_rgb)
-        detector.close()
-        if results.detections:
-            detections = results.detections
-            break
+    try:
+        mp_face = mp.solutions.face_detection
+        detections = []
+        for model_sel in [0, 1]:
+            detector = mp_face.FaceDetection(
+                model_selection=model_sel, min_detection_confidence=0.4
+            )
+            results = detector.process(img_rgb)
+            detector.close()
+            if results.detections:
+                detections = results.detections
+                break
 
-    if not detections:
-        return img_bgr, 0
+        if not detections:
+            return img_bgr, 0
+
+        face_boxes = []
+        for detection in detections:
+            bbox = detection.location_data.relative_bounding_box
+            face_boxes.append({
+                "x": int(bbox.xmin * iw),
+                "y": int(bbox.ymin * ih),
+                "w": int(bbox.width * iw),
+                "h": int(bbox.height * ih),
+            })
+
+    except AttributeError:
+        # mediapipe >= 0.10.30 removed mp.solutions, use tasks API
+        model_path = _ensure_face_detect_model()
+        options = mp.tasks.vision.FaceDetectorOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
+            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            min_detection_confidence=0.4,
+        )
+        fd = mp.tasks.vision.FaceDetector.create_from_options(options)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        result = fd.detect(mp_image)
+        fd.close()
+
+        if not result.detections:
+            return img_bgr, 0
+
+        face_boxes = []
+        for detection in result.detections:
+            bbox = detection.bounding_box
+            face_boxes.append({
+                "x": bbox.origin_x,
+                "y": bbox.origin_y,
+                "w": bbox.width,
+                "h": bbox.height,
+            })
 
     # Load CodeFormer model
     model_path = _get_codeformer_path()
@@ -266,13 +321,11 @@ def enhance_faces(img_bgr, fidelity=0.7):
     result = img_bgr.copy()
     faces_enhanced = 0
 
-    for detection in detections:
-        bbox = detection.location_data.relative_bounding_box
-        # Convert relative coords to absolute
-        x = int(bbox.xmin * iw)
-        y = int(bbox.ymin * ih)
-        w = int(bbox.width * iw)
-        h = int(bbox.height * ih)
+    for face_box in face_boxes:
+        x = face_box["x"]
+        y = face_box["y"]
+        w = face_box["w"]
+        h = face_box["h"]
 
         # Skip very small faces (under 48px) - enhancement won't help
         if w < 48 or h < 48:
