@@ -34,6 +34,9 @@ const generateSettingsSchema = z.object({
   bgColor: z.string().default("#FFFFFF"),
   printLayout: z.string().default("none"),
   maxFileSizeKb: z.number().default(0),
+  dpi: z.number().min(72).max(600).default(300),
+  customWidthMm: z.number().optional(),
+  customHeightMm: z.number().optional(),
   adjustX: z.number().default(0),
   adjustY: z.number().default(0),
   landmarks: landmarksSchema,
@@ -289,6 +292,9 @@ export function registerPassportPhoto(app: FastifyInstance) {
         bgColor,
         printLayout,
         maxFileSizeKb,
+        dpi: userDpi,
+        customWidthMm,
+        customHeightMm,
         adjustX,
         adjustY,
         landmarks: rawLandmarks,
@@ -298,31 +304,51 @@ export function registerPassportPhoto(app: FastifyInstance) {
 
       // Look up country spec
       const countrySpec = PASSPORT_SPECS.find((s) => s.code === countryCode);
-      if (!countrySpec) {
+      if (!countrySpec && !customWidthMm) {
         return reply.status(400).send({ error: `Unknown country code: ${countryCode}` });
       }
 
-      const docSpec = countrySpec.documents.find((d) => d.type === documentType);
-      if (!docSpec) {
-        return reply.status(400).send({
-          error: `No ${documentType} spec found for ${countryCode}`,
-        });
-      }
+      const baseDoc =
+        countrySpec?.documents.find((d) => d.type === documentType) ?? countrySpec?.documents[0];
+      // Build effective doc spec: custom dimensions/DPI override country defaults
+      const docSpec = {
+        ...(baseDoc ?? {
+          headHeightMin: 0.7,
+          headHeightMax: 0.8,
+          eyeLineFromBottom: 0.63,
+          bgColor: "#FFFFFF",
+          bgColors: ["#FFFFFF"],
+          label: "Custom",
+          type: "passport" as const,
+          dpi: 300,
+          width: 35,
+          height: 45,
+        }),
+        width: customWidthMm ?? baseDoc?.width ?? 35,
+        height: customHeightMm ?? baseDoc?.height ?? 45,
+        dpi: userDpi,
+      };
 
       try {
         const workspacePath = getWorkspacePath(jobId);
         const bgRemovedFilename = `${filename.replace(/\.[^.]+$/, "")}_nobg.png`;
 
-        const [bgRemovedBuffer, originalBuffer] = await Promise.all([
-          readFile(join(workspacePath, "output", bgRemovedFilename)),
-          readFile(join(workspacePath, "input", filename)),
-        ]);
+        const bgRemovedBuffer = await readFile(join(workspacePath, "output", bgRemovedFilename));
 
-        // Convert normalized landmarks (0-1) to pixel coordinates
-        const crownYPx = (rawLandmarks.crown.y + adjustY) * imgH;
-        const chinYPx = (rawLandmarks.chin.y + adjustY) * imgH;
-        const eyeYPx = (rawLandmarks.eyeCenter.y + adjustY) * imgH;
-        const faceCenterXPx = (rawLandmarks.faceCenterX + adjustX) * imgW;
+        // Use actual bg-removed image dimensions for crop (may differ from
+        // the original image dimensions reported by the analyze endpoint).
+        const bgMeta = await sharp(bgRemovedBuffer).metadata();
+        const actualW = bgMeta.width ?? imgW;
+        const actualH = bgMeta.height ?? imgH;
+
+        // Convert normalized landmarks (0-1) to pixel coordinates in the
+        // bg-removed image space (scale if dimensions differ from original).
+        const scaleX = actualW / imgW;
+        const scaleY = actualH / imgH;
+        const crownYPx = (rawLandmarks.crown.y + adjustY) * imgH * scaleY;
+        const chinYPx = (rawLandmarks.chin.y + adjustY) * imgH * scaleY;
+        const eyeYPx = (rawLandmarks.eyeCenter.y + adjustY) * imgH * scaleY;
+        const faceCenterXPx = (rawLandmarks.faceCenterX + adjustX) * imgW * scaleX;
 
         // Compute crop region from landmarks
         const targetHeadRatio = (docSpec.headHeightMin + docSpec.headHeightMax) / 2;
@@ -343,11 +369,8 @@ export function registerPassportPhoto(app: FastifyInstance) {
         const bgRgb = { r: bgR, g: bgG, b: bgB, alpha: 1 };
 
         // Composite bg-removed subject onto colored background
-        const bgRemovedMeta = await sharp(bgRemovedBuffer).metadata();
-        const srcW = bgRemovedMeta.width ?? imgW;
-        const srcH = bgRemovedMeta.height ?? imgH;
         const bgLayer = await sharp({
-          create: { width: srcW, height: srcH, channels: 4, background: bgRgb },
+          create: { width: actualW, height: actualH, channels: 4, background: bgRgb },
         })
           .composite([{ input: bgRemovedBuffer, blend: "over" }])
           .png()
@@ -363,8 +386,8 @@ export function registerPassportPhoto(app: FastifyInstance) {
 
         const padLeft = Math.max(0, -rawLeft);
         const padTop = Math.max(0, -rawTop);
-        const padRight = Math.max(0, rawLeft + rawW - srcW);
-        const padBottom = Math.max(0, rawTop + rawH - srcH);
+        const padRight = Math.max(0, rawLeft + rawW - actualW);
+        const padBottom = Math.max(0, rawTop + rawH - actualH);
 
         let sourceForCrop = bgLayer;
         if (padLeft > 0 || padTop > 0 || padRight > 0 || padBottom > 0) {
@@ -425,8 +448,8 @@ export function registerPassportPhoto(app: FastifyInstance) {
             dpi: docSpec.dpi,
           },
           spec: {
-            country: countrySpec.name,
-            countryCode: countrySpec.code,
+            country: countrySpec?.name ?? "Custom",
+            countryCode: countrySpec?.code ?? "CUSTOM",
             documentType: docSpec.type,
             documentLabel: docSpec.label,
           },

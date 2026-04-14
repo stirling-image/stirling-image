@@ -70,6 +70,11 @@ interface PassportPhotoStore {
   setBgColor: (c: string) => void;
   maxFileSizeKb: number;
   setMaxFileSizeKb: (s: number) => void;
+  dpi: number;
+  setDpi: (d: number) => void;
+  customWidthMm: number | null;
+  customHeightMm: number | null;
+  setCustomDimensions: (w: number | null, h: number | null) => void;
   adjustX: number;
   adjustY: number;
   setAdjustX: (x: number) => void;
@@ -88,13 +93,20 @@ const usePassportPhotoStore = create<PassportPhotoStore>((set) => ({
   analyzeResult: null,
   setAnalyzeResult: (analyzeResult) => set({ analyzeResult, generateResult: null }),
   countryCode: "US",
-  setCountryCode: (countryCode) => set({ countryCode, generateResult: null }),
+  setCountryCode: (countryCode) =>
+    set({ countryCode, generateResult: null, customWidthMm: null, customHeightMm: null }),
   documentType: "passport",
   setDocumentType: (documentType) => set({ documentType, generateResult: null }),
   bgColor: "#FFFFFF",
   setBgColor: (bgColor) => set({ bgColor, generateResult: null }),
   maxFileSizeKb: 0,
   setMaxFileSizeKb: (maxFileSizeKb) => set({ maxFileSizeKb }),
+  dpi: 300,
+  setDpi: (dpi) => set({ dpi, generateResult: null }),
+  customWidthMm: null,
+  customHeightMm: null,
+  setCustomDimensions: (customWidthMm, customHeightMm) =>
+    set({ customWidthMm, customHeightMm, countryCode: "CUSTOM", generateResult: null }),
   adjustX: 0,
   adjustY: 0,
   setAdjustX: (adjustX) => set({ adjustX, generateResult: null }),
@@ -149,21 +161,51 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function getDocSpec(countryCode: string, documentType: string): PassportDocumentSpec {
+const CUSTOM_SPEC: PassportSpec = {
+  code: "CUSTOM",
+  name: "Custom",
+  flag: "\u2699\uFE0F",
+  region: "americas",
+  documents: [
+    {
+      type: "passport",
+      label: "Custom",
+      width: 35,
+      height: 45,
+      dpi: 300,
+      headHeightMin: 0.7,
+      headHeightMax: 0.8,
+      eyeLineFromBottom: 0.63,
+      bgColor: "#FFFFFF",
+      bgColors: ["#FFFFFF"],
+    },
+  ],
+};
+
+function getDocSpec(
+  countryCode: string,
+  documentType: string,
+  customW: number | null,
+  customH: number | null,
+  dpi: number,
+): PassportDocumentSpec {
+  if (countryCode === "CUSTOM" && customW && customH) {
+    return { ...CUSTOM_SPEC.documents[0], width: customW, height: customH, dpi };
+  }
   const spec = PASSPORT_SPECS.find((s) => s.code === countryCode) ?? PASSPORT_SPECS[0];
-  return spec.documents.find((d) => d.type === documentType) ?? spec.documents[0];
+  const doc = spec.documents.find((d) => d.type === documentType) ?? spec.documents[0];
+  return { ...doc, dpi };
 }
 
 function getCountrySpec(countryCode: string): PassportSpec {
+  if (countryCode === "CUSTOM") return CUSTOM_SPEC;
   return PASSPORT_SPECS.find((s) => s.code === countryCode) ?? PASSPORT_SPECS[0];
 }
 
-/** Format dimensions as "35x45mm" */
 function formatDimensions(doc: PassportDocumentSpec): string {
   return `${doc.width}x${doc.height}mm`;
 }
 
-/** Get pixel dimensions for a spec */
 function getPixelDimensions(doc: PassportDocumentSpec): { w: number; h: number } {
   const MM_PER_INCH = 25.4;
   return {
@@ -296,6 +338,11 @@ export function PassportPhotoSettings() {
     setBgColor,
     maxFileSizeKb,
     setMaxFileSizeKb,
+    dpi,
+    setDpi,
+    customWidthMm,
+    customHeightMm,
+    setCustomDimensions,
     analyzeResult,
     setAnalyzeResult,
     generateResult,
@@ -319,8 +366,10 @@ export function PassportPhotoSettings() {
     width: 0,
   });
 
-  // Custom file size input
+  // Custom inputs
   const [customSizeInput, setCustomSizeInput] = useState("");
+  const [customWInput, setCustomWInput] = useState("");
+  const [customHInput, setCustomHInput] = useState("");
 
   // Errors
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -328,7 +377,8 @@ export function PassportPhotoSettings() {
 
   // Derived state
   const selectedSpec = getCountrySpec(countryCode);
-  const docSpec = getDocSpec(countryCode, documentType);
+  const isCustom = countryCode === "CUSTOM";
+  const docSpec = getDocSpec(countryCode, documentType, customWidthMm, customHeightMm, dpi);
   const hasFile = files.length > 0;
   const uniqueDocTypes = [...new Set(selectedSpec.documents.map((d) => d.type))];
   const pxDims = getPixelDimensions(docSpec);
@@ -417,16 +467,19 @@ export function PassportPhotoSettings() {
 
     try {
       const headers = formatHeaders({ "Content-Type": "application/json" });
-      const body = {
+      const body: Record<string, unknown> = {
         jobId: analyzeResult.jobId,
         filename: analyzeResult.filename,
-        countryCode,
+        countryCode: isCustom ? "US" : countryCode,
         documentType,
         bgColor,
         maxFileSizeKb,
+        dpi,
         adjustX,
         adjustY,
         landmarks: analyzeResult.landmarks,
+        ...(isCustom && customWidthMm ? { customWidthMm } : {}),
+        ...(isCustom && customHeightMm ? { customHeightMm } : {}),
         imageWidth: analyzeResult.imageWidth,
         imageHeight: analyzeResult.imageHeight,
       };
@@ -530,6 +583,25 @@ export function PassportPhotoSettings() {
 
             {/* Country list */}
             <div className="py-1">
+              {/* Custom option */}
+              {!filteredSpecs && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDimensions(customWidthMm ?? 35, customHeightMm ?? 45);
+                    setDropdownOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors border-b border-border ${
+                    isCustom ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <span>{"\u2699\uFE0F"}</span>
+                  <span className="flex-1 text-left">Custom Dimensions</span>
+                  {isCustom && <Check className="h-3 w-3 text-primary shrink-0" />}
+                </button>
+              )}
+
               {filteredSpecs ? (
                 filteredSpecs.length > 0 ? (
                   filteredSpecs.map((spec) => (
@@ -599,6 +671,60 @@ export function PassportPhotoSettings() {
           </div>
         </>
       )}
+
+      {/* Custom dimensions input */}
+      {isCustom && (
+        <>
+          <SectionLabel>Dimensions (mm)</SectionLabel>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={customWInput || String(customWidthMm ?? 35)}
+              onChange={(e) => {
+                setCustomWInput(e.target.value);
+                const v = Number.parseInt(e.target.value, 10);
+                if (v > 0) setCustomDimensions(v, customHeightMm ?? 45);
+              }}
+              placeholder="Width"
+              min="10"
+              max="200"
+              className="flex-1 px-2 py-1.5 rounded border border-border bg-background text-xs text-foreground"
+            />
+            <span className="text-muted-foreground text-xs">{"\u00D7"}</span>
+            <input
+              type="number"
+              value={customHInput || String(customHeightMm ?? 45)}
+              onChange={(e) => {
+                setCustomHInput(e.target.value);
+                const v = Number.parseInt(e.target.value, 10);
+                if (v > 0) setCustomDimensions(customWidthMm ?? 35, v);
+              }}
+              placeholder="Height"
+              min="10"
+              max="200"
+              className="flex-1 px-2 py-1.5 rounded border border-border bg-background text-xs text-foreground"
+            />
+            <span className="text-muted-foreground text-xs">mm</span>
+          </div>
+        </>
+      )}
+
+      {/* DPI */}
+      <SectionLabel>DPI</SectionLabel>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={dpi}
+          onChange={(e) => {
+            const v = Number.parseInt(e.target.value, 10);
+            if (v >= 72 && v <= 600) setDpi(v);
+          }}
+          min="72"
+          max="600"
+          className="w-20 px-2 py-1.5 rounded border border-border bg-background text-xs text-foreground"
+        />
+        <span className="text-xs text-muted-foreground">pixels per inch</span>
+      </div>
 
       {/* Background color */}
       <SectionLabel>Background Color</SectionLabel>
@@ -743,6 +869,9 @@ export function PassportPhotoPreview() {
     countryCode,
     documentType,
     bgColor,
+    dpi,
+    customWidthMm,
+    customHeightMm,
     adjustX,
     adjustY,
     setAdjustX,
@@ -760,7 +889,7 @@ export function PassportPhotoPreview() {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; ax: number; ay: number } | null>(null);
 
-  const docSpec = getDocSpec(countryCode, documentType);
+  const docSpec = getDocSpec(countryCode, documentType, customWidthMm, customHeightMm, dpi);
   const pxDims = getPixelDimensions(docSpec);
 
   // Compliance checks
