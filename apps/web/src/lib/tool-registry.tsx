@@ -155,6 +155,16 @@ const BarcodeReadSettings = lazy(() =>
     default: m.BarcodeReadSettings,
   })),
 );
+const ImageToBase64Settings = lazy(() =>
+  import("@/components/tools/image-to-base64-settings").then((m) => ({
+    default: m.ImageToBase64Settings,
+  })),
+);
+const ImageToBase64Results = lazy(() =>
+  import("@/components/tools/image-to-base64-results").then((m) => ({
+    default: m.ImageToBase64Results,
+  })),
+);
 const CollageSettings = lazy(() =>
   import("@/components/tools/collage-settings").then((m) => ({ default: m.CollageSettings })),
 );
@@ -344,6 +354,14 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
     { displayMode: "no-dropzone", Settings: QrGenerateSettings, ResultsPanel: QrGeneratePreview },
   ],
   ["barcode-read", { displayMode: "before-after", Settings: BarcodeReadSettings }],
+  [
+    "image-to-base64",
+    {
+      displayMode: "custom-results",
+      Settings: ImageToBase64Settings,
+      ResultsPanel: ImageToBase64Results,
+    },
+  ],
 
   // Layout & Composition
   ["collage", { displayMode: "before-after", Settings: CollageSettings }],
