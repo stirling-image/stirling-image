@@ -951,12 +951,18 @@ export function PassportPhotoPreview() {
     const scaleX = img.naturalWidth / imageWidth;
     const scaleY = img.naturalHeight / imageHeight;
 
-    const srcX = crop.leftX * scaleX;
-    const srcY = crop.topY * scaleY;
-    const srcW = crop.photoWidthPx * scaleX;
-    const srcH = crop.photoHeightPx * scaleY;
+    // When zoom > 1, show a zoomed-in sub-region for visual inspection.
+    // The download always uses the full crop (zoom=1).
+    const zoomedW = crop.photoWidthPx / zoom;
+    const zoomedH = crop.photoHeightPx / zoom;
+    const zoomedLeft = crop.leftX + (crop.photoWidthPx - zoomedW) / 2;
+    const zoomedTop = crop.topY + (crop.photoHeightPx - zoomedH) / 2;
 
-    // Draw preview image onto full canvas - this is exactly what gets downloaded
+    const srcX = zoomedLeft * scaleX;
+    const srcY = zoomedTop * scaleY;
+    const srcW = zoomedW * scaleX;
+    const srcH = zoomedH * scaleY;
+
     ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, canvasDisplayWidth, canvasDisplayHeight);
 
     // Compliance overlay
@@ -967,11 +973,9 @@ export function PassportPhotoPreview() {
     ctx.setLineDash([6, 4]);
     ctx.lineWidth = 1.5;
 
-    // Helper: convert original-image coords to canvas coords
-    const toCanvasY = (origY: number) =>
-      ((origY - crop.topY) / crop.photoHeightPx) * canvasDisplayHeight;
-    const toCanvasX = (origX: number) =>
-      ((origX - crop.leftX) / crop.photoWidthPx) * canvasDisplayWidth;
+    // Helper: convert original-image coords to canvas coords (zoom-aware)
+    const toCanvasY = (origY: number) => ((origY - zoomedTop) / zoomedH) * canvasDisplayHeight;
+    const toCanvasX = (origX: number) => ((origX - zoomedLeft) / zoomedW) * canvasDisplayWidth;
 
     // Center line (vertical) - face centered check
     const centerXCanvas = toCanvasX((landmarks.faceCenterX + adjustX) * imageWidth);
@@ -1055,6 +1059,15 @@ export function PassportPhotoPreview() {
     };
   }, [dragging, setAdjustX, setAdjustY]);
 
+  // Wheel zoom (visual inspection only, does not affect download)
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      setZoom(Math.max(1, Math.min(3, zoom + (e.deltaY > 0 ? -0.1 : 0.1))));
+    },
+    [zoom, setZoom],
+  );
+
   // No file / no analysis state
   if (!analyzeResult && !analyzing) {
     return (
@@ -1090,21 +1103,65 @@ export function PassportPhotoPreview() {
   return (
     <div ref={containerRef} className="flex flex-col items-center h-full w-full p-4 gap-3">
       {/* Output dimensions */}
-      <div className="text-xs text-muted-foreground shrink-0">
-        Output: {pxDims.w}x{pxDims.h}px - what you see is what you download
+      {/* Zoom controls + dimensions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setZoom(Math.max(1, zoom - 0.25))}
+          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Zoom out"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </button>
+        <span className="text-xs text-muted-foreground w-12 text-center tabular-nums">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Zoom in"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </button>
+        {zoom !== 1 && (
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Reset to 100%"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <span className="text-[10px] text-muted-foreground ml-auto">
+          {pxDims.w}x{pxDims.h}px
+        </span>
       </div>
 
-      {/* Canvas - WYSIWYG preview */}
+      {zoom !== 1 && (
+        <p className="text-[10px] text-muted-foreground text-center -mt-2">
+          Zoom is for inspection only. Download is always the full photo.
+        </p>
+      )}
+
+      {/* Canvas preview */}
       <div className="flex-1 flex items-center justify-center overflow-auto min-h-0 w-full">
         <div className="relative">
           <canvas
             ref={canvasRef}
             className={`rounded-lg border border-border shadow-md ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
             onMouseDown={handleMouseDown}
+            onWheel={handleWheel}
           />
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md">
-            <Move className="h-3 w-3" />
-            Drag to adjust position
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+            <div className="flex items-center gap-1 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md">
+              <Move className="h-3 w-3" />
+              Drag to adjust
+            </div>
+            <div className="bg-black/50 text-white text-[10px] px-2 py-1 rounded-md">
+              Scroll to zoom
+            </div>
           </div>
         </div>
       </div>
