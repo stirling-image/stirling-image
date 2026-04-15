@@ -23,34 +23,81 @@ export function WatermarkImageSettings() {
     setError(null);
     setDownloadUrl(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", files[0]);
-      formData.append("watermark", watermarkFile);
-      formData.append("settings", JSON.stringify({ position, opacity, scale }));
+    const settingsJson = JSON.stringify({ position, opacity, scale });
 
-      const res = await fetch("/api/v1/tools/watermark-image", {
-        method: "POST",
-        headers: formatHeaders(),
-        body: formData,
-      });
+    if (files.length === 1) {
+      try {
+        const formData = new FormData();
+        formData.append("file", files[0]);
+        formData.append("watermark", watermarkFile);
+        formData.append("settings", settingsJson);
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Processing failed: ${res.status}`);
+        const res = await fetch("/api/v1/tools/watermark-image", {
+          method: "POST",
+          headers: formatHeaders(),
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Processing failed: ${res.status}`);
+        }
+
+        const result = await res.json();
+        setJobId(result.jobId);
+        setProcessedUrl(result.downloadUrl);
+        setDownloadUrl(result.downloadUrl);
+        setOriginalSize(result.originalSize);
+        setProcessedSize(result.processedSize);
+        setSizes(result.originalSize, result.processedSize);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Processing failed");
+      } finally {
+        setProcessing(false);
       }
+    } else {
+      // Multiple files: process each one individually, writing results to each entry
+      try {
+        const store = useFileStore.getState();
+        for (let i = 0; i < files.length; i++) {
+          store.updateEntry(i, { status: "processing", error: null });
+          try {
+            const formData = new FormData();
+            formData.append("file", files[i]);
+            formData.append("watermark", watermarkFile);
+            formData.append("settings", settingsJson);
 
-      const result = await res.json();
-      setJobId(result.jobId);
-      setProcessedUrl(result.downloadUrl);
-      setDownloadUrl(result.downloadUrl);
-      setOriginalSize(result.originalSize);
-      setProcessedSize(result.processedSize);
-      setSizes(result.originalSize, result.processedSize);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Processing failed");
-    } finally {
-      setProcessing(false);
+            const res = await fetch("/api/v1/tools/watermark-image", {
+              method: "POST",
+              headers: formatHeaders(),
+              body: formData,
+            });
+
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              store.updateEntry(i, { status: "failed", error: body.error || "Processing failed" });
+              continue;
+            }
+
+            const result = await res.json();
+            store.updateEntry(i, {
+              processedUrl: result.downloadUrl,
+              processedPreviewUrl: result.previewUrl ?? null,
+              processedFilename: null,
+              status: "completed",
+              originalSize: result.originalSize,
+              processedSize: result.processedSize,
+            });
+          } catch (err) {
+            store.updateEntry(i, {
+              status: "failed",
+              error: err instanceof Error ? err.message : "Processing failed",
+            });
+          }
+        }
+      } finally {
+        setProcessing(false);
+      }
     }
   };
 
@@ -148,7 +195,11 @@ export function WatermarkImageSettings() {
         className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-        {processing ? "Processing..." : "Apply Watermark"}
+        {processing
+          ? "Processing..."
+          : files.length > 1
+            ? `Apply Watermark (${files.length} files)`
+            : "Apply Watermark"}
       </button>
 
       {downloadUrl && (
