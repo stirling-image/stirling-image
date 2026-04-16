@@ -27,3 +27,11 @@ features:
   - title: Teams & Access Control
     details: Multi-user support with admin/user roles, team grouping, per-resource permissions, and audit logging for all sensitive actions.
 ---
+
+<div class="quick-start-banner">
+
+```bash
+docker run -d --name ashim -p 1349:1349 -v ashim-data:/data ghcr.io/ashim-hq/ashim:latest
+```
+
+</div>

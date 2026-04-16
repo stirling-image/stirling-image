@@ -5,7 +5,7 @@ ashim ships as a single Docker image that works on all platforms.
 ## Quick start
 
 ```bash
-docker run -d -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
+docker run -d --name ashim -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
 The app is available at `http://localhost:1349`.
@@ -15,7 +15,7 @@ The app is available at `http://localhost:1349`.
 The image includes CUDA support on amd64. If you have an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed, add `--gpus all`:
 
 ```bash
-docker run -d --gpus all -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
+docker run -d --name ashim --gpus all -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
 The image auto-detects your GPU at runtime. Without `--gpus all`, it runs on CPU. Same image either way.
