@@ -46,3 +46,4 @@ audit_report.md
 .worktrees/
 .release-version
 .models
+docs/specs/
