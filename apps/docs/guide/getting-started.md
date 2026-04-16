@@ -3,19 +3,17 @@
 ## Quick Start
 
 ```bash
-docker run -d -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
+docker run -d -p 1349:1349 -v ashim-data:/data ghcr.io/ashim-hq/ashim:latest
 ```
 
 Open [http://localhost:1349](http://localhost:1349) in your browser.
 
-::: tip Prefer GitHub Container Registry?
-Pull from GHCR instead of Docker Hub:
-
+::: tip Also on Docker Hub
 ```bash
-docker run -d -p 1349:1349 -v ashim-data:/data ghcr.io/ashim-hq/ashim:latest
+docker run -d -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
-Both registries publish the same image on every release. GHCR can be faster if you are on a network where Docker Hub is rate-limited.
+Both registries publish the same image on every release.
 :::
 
 **Default credentials:**
@@ -42,7 +40,7 @@ Requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud
 ```yaml
 services:
   ashim:
-    image: ashimhq/ashim:latest  # or ghcr.io/ashim-hq/ashim:latest
+    image: ghcr.io/ashim-hq/ashim:latest  # or ashimhq/ashim:latest
     ports:
       - "1349:1349"
     volumes:
