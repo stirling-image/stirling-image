@@ -1,5 +1,5 @@
 import { extname } from "node:path";
-import { convert } from "@stirling-image/image-engine";
+import { convert } from "@ashim/image-engine";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
@@ -15,10 +15,11 @@ const FORMAT_CONTENT_TYPES: Record<string, string> = {
   tiff: "image/tiff",
   gif: "image/gif",
   heic: "image/heic",
+  heif: "image/heif",
 };
 
 const settingsSchema = z.object({
-  format: z.enum(["jpg", "png", "webp", "avif", "tiff", "gif", "heic"]),
+  format: z.enum(["jpg", "png", "webp", "avif", "tiff", "gif", "heic", "heif"]),
   quality: z.number().min(1).max(100).optional(),
 });
 
@@ -31,7 +32,7 @@ export function registerConvert(app: FastifyInstance) {
       const image = sharp(inputBuffer, sharpOpts);
 
       let buffer: Buffer;
-      if (settings.format === "heic") {
+      if (settings.format === "heic" || settings.format === "heif") {
         // Sharp cannot encode HEVC. Convert to PNG first, then use heif-enc.
         const pngBuffer = await image.png().toBuffer();
         buffer = await encodeHeic(pngBuffer, settings.quality);

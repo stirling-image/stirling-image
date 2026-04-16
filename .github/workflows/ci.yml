@@ -3,8 +3,20 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "images/**"
+      - "apps/docs/**"
+      - "docs/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "images/**"
+      - "apps/docs/**"
+      - "docs/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,8 +61,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install libheif tools (for HEIC tests)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libheif-examples libheif-plugin-x265 libheif-plugin-libde265
+      - name: Install system dependencies (HEIC + ExifTool)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libheif-examples libheif-plugin-x265 libheif-plugin-libde265 libimage-exiftool-perl
 
       - uses: pnpm/action-setup@v4
 
@@ -92,6 +104,7 @@ jobs:
           context: .
           file: docker/Dockerfile
           push: false
-          tags: stirling-image:ci
+          tags: ashim:ci
+          build-args: SKIP_MODEL_DOWNLOADS=true
           cache-from: type=gha,scope=unified
           cache-to: type=gha,mode=max,scope=unified

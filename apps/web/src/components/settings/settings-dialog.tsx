@@ -1,4 +1,4 @@
-import { APP_VERSION, CATEGORIES, TOOLS } from "@stirling-image/shared";
+import { APP_VERSION, CATEGORIES, TOOLS } from "@ashim/shared";
 import {
   Check,
   Copy,
@@ -182,7 +182,7 @@ function GeneralSection() {
         // Fallback to localStorage if session endpoint fails
         setUser({
           id: 0,
-          username: localStorage.getItem("stirling-username") || "",
+          username: localStorage.getItem("ashim-username") || "",
           role: "unknown",
         });
       })
@@ -191,7 +191,7 @@ function GeneralSection() {
 
   const handleLogout = () => {
     clearToken();
-    localStorage.removeItem("stirling-username");
+    localStorage.removeItem("ashim-username");
     window.location.href = "/login";
   };
 
@@ -239,7 +239,7 @@ function GeneralSection() {
       </SettingRow>
 
       {/* Version */}
-      <SettingRow label="App Version" description="Current version of Stirling Image">
+      <SettingRow label="App Version" description="Current version of ashim">
         <span className="text-sm font-mono text-muted-foreground">{APP_VERSION}</span>
       </SettingRow>
     </div>
@@ -260,7 +260,7 @@ function SystemSection() {
       .catch(() => {
         // Fallback defaults if endpoint not ready
         setSettings({
-          appName: "Stirling Image",
+          appName: "ashim",
           fileUploadLimitMb: "100",
           defaultTheme: "system",
           defaultLocale: "en",
@@ -1184,7 +1184,7 @@ function ApiKeysSection() {
       <div>
         <h3 className="text-lg font-semibold text-foreground">API Keys</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage API keys for programmatic access to Stirling Image.
+          Manage API keys for programmatic access to ashim.
         </p>
       </div>
 
@@ -1708,7 +1708,7 @@ function AboutSection() {
         <div className="flex items-center gap-3">
           <GemLogo className="h-8 w-8 text-primary" />
           <div className="text-2xl font-bold text-foreground">
-            Stirling <span className="text-primary">Image</span>
+            <span className="text-primary">ashim</span>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -1725,7 +1725,7 @@ function AboutSection() {
         <h4 className="text-sm font-medium text-foreground">Links</h4>
         <div className="flex flex-col gap-1.5">
           <a
-            href="https://github.com/stirling-image/stirling-image"
+            href="https://github.com/ashim-hq/ashim"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
@@ -1733,7 +1733,7 @@ function AboutSection() {
             GitHub Repository
           </a>
           <a
-            href="https://stirling-image.github.io/stirling-image/"
+            href="https://ashim-hq.github.io/ashim/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"

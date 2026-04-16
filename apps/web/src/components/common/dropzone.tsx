@@ -10,7 +10,15 @@ interface DropzoneProps {
   currentFiles?: File[];
 }
 
+// Browsers may not map .heic/.heif to image/* in file pickers.
+// Append explicit extensions so they are selectable.
+function expandAccept(accept?: string): string | undefined {
+  if (!accept?.includes("image/*")) return accept;
+  return `${accept},.heic,.heif,.hif`;
+}
+
 export function Dropzone({ onFiles, accept, multiple = true, currentFiles = [] }: DropzoneProps) {
+  const resolvedAccept = expandAccept(accept);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDrag = useCallback((e: DragEvent) => {
@@ -35,7 +43,7 @@ export function Dropzone({ onFiles, accept, multiple = true, currentFiles = [] }
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = multiple;
-    if (accept) input.accept = accept;
+    if (resolvedAccept) input.accept = resolvedAccept;
     input.onchange = (e) => {
       const files = Array.from((e.target as HTMLInputElement).files || []);
       if (files.length > 0) onFiles?.(files);
@@ -61,7 +69,7 @@ export function Dropzone({ onFiles, accept, multiple = true, currentFiles = [] }
     >
       <div className="flex flex-col items-center gap-4 p-8">
         <div className="text-3xl font-bold text-muted-foreground/30">
-          Stirling <span className="text-primary/30">Image</span>
+          <span className="text-primary/30">ashim</span>
         </div>
         <button
           type="button"

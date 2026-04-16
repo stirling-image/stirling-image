@@ -5,12 +5,22 @@ import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 export interface BlurFacesControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function BlurFacesControls({ onChange }: BlurFacesControlsProps) {
+export function BlurFacesControls({ settings: initialSettings, onChange }: BlurFacesControlsProps) {
   const [blurRadius, setBlurRadius] = useState(30);
   const [sensitivity, setSensitivity] = useState(50);
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.blurRadius != null) setBlurRadius(Number(initialSettings.blurRadius));
+    if (initialSettings.sensitivity != null)
+      setSensitivity(Number(initialSettings.sensitivity) * 100);
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

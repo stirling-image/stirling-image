@@ -154,11 +154,13 @@ function detectMagicBytes(buffer: Buffer): string | null {
         const brand = buffer.slice(8, 12).toString("ascii");
         if (brand !== "avif" && brand !== "avis") continue;
       }
-      // For ftyp, verify HEIF/HEIC brand at bytes 8-11
+      // For ftyp, verify HEIF/HEIC brand at bytes 8-11.
+      // Covers HEVC still (heic/heix), HEVC sequence (hevc/hevx),
+      // generic HEIF still/sequence (mif1/msf1), and multi-layer profiles.
       if (entry.format === "heif") {
         if (buffer.length < 12) continue;
         const brand = buffer.slice(8, 12).toString("ascii");
-        if (brand !== "heic" && brand !== "heix" && brand !== "mif1") continue;
+        if (!["heic", "heix", "mif1", "msf1", "hevc", "hevx"].includes(brand)) continue;
       }
       return entry.format;
     }

@@ -1,6 +1,6 @@
 {
-  "name": "@stirling-image/shared",
-  "version": "1.14.0",
+  "name": "@ashim/shared",
+  "version": "1.15.2",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",

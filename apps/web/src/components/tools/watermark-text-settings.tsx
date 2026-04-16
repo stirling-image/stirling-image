@@ -7,16 +7,32 @@ import { useFileStore } from "@/stores/file-store";
 type Position = "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "tiled";
 
 export interface WatermarkTextControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function WatermarkTextControls({ onChange }: WatermarkTextControlsProps) {
+export function WatermarkTextControls({
+  settings: initialSettings,
+  onChange,
+}: WatermarkTextControlsProps) {
   const [text, setText] = useState("Sample Watermark");
   const [fontSize, setFontSize] = useState(48);
   const [color, setColor] = useState("#000000");
   const [opacity, setOpacity] = useState(50);
   const [position, setPosition] = useState<Position>("center");
   const [rotation, setRotation] = useState(0);
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.text != null) setText(String(initialSettings.text));
+    if (initialSettings.fontSize != null) setFontSize(Number(initialSettings.fontSize));
+    if (initialSettings.color != null) setColor(String(initialSettings.color));
+    if (initialSettings.opacity != null) setOpacity(Number(initialSettings.opacity));
+    if (initialSettings.position != null) setPosition(initialSettings.position as Position);
+    if (initialSettings.rotation != null) setRotation(Number(initialSettings.rotation));
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

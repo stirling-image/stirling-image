@@ -1,12 +1,18 @@
-import { TOOLS } from "@stirling-image/shared";
-import * as icons from "lucide-react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { TOOLS } from "@ashim/shared";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileImage,
+  Loader2,
+} from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
 import { useParams } from "react-router-dom";
 import { BeforeAfterSlider } from "@/components/common/before-after-slider";
 import { Dropzone } from "@/components/common/dropzone";
-import { ImageViewer } from "@/components/common/image-viewer";
+import { type BgPreviewState, ImageViewer } from "@/components/common/image-viewer";
 import { ReviewPanel } from "@/components/common/review-panel";
 import { SideBySideComparison } from "@/components/common/side-by-side-comparison";
 import { ThumbnailStrip } from "@/components/common/thumbnail-strip";
@@ -17,8 +23,31 @@ import { EraserCanvas } from "@/components/tools/eraser-canvas";
 import type { PreviewTransform } from "@/components/tools/rotate-settings";
 import { useMobile } from "@/hooks/use-mobile";
 import { formatFileSize } from "@/lib/download";
+import { ICON_MAP } from "@/lib/icon-map";
 import { getToolRegistryEntry } from "@/lib/tool-registry";
 import { useFileStore } from "@/stores/file-store";
+
+/** Formats that browsers can render in <img> tags. */
+const BROWSER_PREVIEWABLE_EXTS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "ico",
+  "avif",
+]);
+
+function canBrowserPreview(url: string, filename?: string | null): boolean {
+  // Blob URLs are always renderable in <img> tags — no extension to check
+  if (url.startsWith("blob:")) return true;
+  // For batch results, check the stored filename (has extension) rather than the blob URL
+  const source = filename ?? url;
+  const ext = decodeURIComponent(source).split(".").pop()?.toLowerCase() ?? "";
+  return BROWSER_PREVIEWABLE_EXTS.has(ext);
+}
 
 /** File selection indicator shown in left panel */
 function FileSelectionInfo({
@@ -84,6 +113,7 @@ export function ToolPage() {
     addFiles,
     reset,
     processedUrl,
+    processedPreviewUrl,
     originalBlobUrl,
     originalSize,
     processedSize,
@@ -96,6 +126,7 @@ export function ToolPage() {
     setSelectedIndex,
     navigateNext,
     navigatePrev,
+    currentEntry,
   } = useFileStore();
   const isMobile = useMobile();
   const hasMultiple = entries.length > 1;
@@ -117,6 +148,8 @@ export function ToolPage() {
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(true);
   const [previewTransform, setPreviewTransform] = useState<PreviewTransform | null>(null);
   const [previewFilter, setPreviewFilter] = useState<string>("");
+  const [imageWrapperStyle, setImageWrapperStyle] = useState<React.CSSProperties | null>(null);
+  const [bgPreview, setBgPreview] = useState<BgPreviewState | null>(null);
 
   const [cropCrop, setCropCrop] = useState<Crop>({
     unit: "%",
@@ -146,6 +179,8 @@ export function ToolPage() {
   const eraserRef = useRef<EraserCanvasRef | null>(null);
   const [eraserHasStrokes, setEraserHasStrokes] = useState(false);
   const [eraserBrushSize, setEraserBrushSize] = useState(30);
+  // Center of the painted mask as a 0-100 percentage — used to init the slider at the right spot
+  const [eraserSliderInitPos, setEraserSliderInitPos] = useState<number | null>(null);
 
   // Reset crop state when the image changes
   useEffect(() => {
@@ -155,6 +190,7 @@ export function ToolPage() {
 
   const handleFiles = useCallback(
     (newFiles: File[]) => {
+      setEraserSliderInitPos(null);
       reset();
       setFiles(newFiles);
     },
@@ -163,13 +199,14 @@ export function ToolPage() {
 
   const handleUndo = useCallback(() => {
     undoProcessing();
+    setEraserSliderInitPos(null);
   }, [undoProcessing]);
 
   const handleAddMore = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
-    input.accept = "image/*";
+    input.accept = "image/*,.heic,.heif,.hif";
     input.onchange = (e) => {
       const newFiles = Array.from((e.target as HTMLInputElement).files || []);
       if (newFiles.length > 0) addFiles(newFiles);
@@ -198,8 +235,7 @@ export function ToolPage() {
   }
 
   const IconComponent =
-    (icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[tool.icon] ||
-    icons.FileImage;
+    (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ?? FileImage;
 
   const hasFile = files.length > 0;
   const hasProcessed = !!processedUrl;
@@ -207,16 +243,27 @@ export function ToolPage() {
   const isNoDropzone = displayMode === "no-dropzone";
   const isLivePreview = registryEntry.livePreview ?? false;
 
-  // Derive processed file info from context
-  const processedFileName = selectedFileName ? `processed-${selectedFileName}` : "processed-image";
-  const processedFileType = selectedFileName
-    ? selectedFileName.split(".").pop()?.toUpperCase() || "IMAGE"
-    : "IMAGE";
+  // Derive processed file info: use stored filename for batch results (blob URLs),
+  // fall back to parsing the download URL for single-file results
+  const processedFileName =
+    currentEntry?.processedFilename ??
+    (processedUrl
+      ? decodeURIComponent(processedUrl.split("/").pop() ?? "processed-image")
+      : "processed-image");
+  const processedFileType = processedFileName.split(".").pop()?.toUpperCase() || "IMAGE";
+  const isProcessedPreviewable = processedUrl
+    ? canBrowserPreview(processedUrl, currentEntry?.processedFilename)
+    : false;
+  // Use server-generated preview for non-previewable formats (HEIC, TIFF).
+  // Always a string when hasProcessed is true (processedUrl is non-null).
+  const displayUrl = (processedPreviewUrl ?? processedUrl) as string;
 
   // Build settings props
   const settingsProps = {
     onPreviewTransform: isLivePreview ? setPreviewTransform : undefined,
     onPreviewFilter: isLivePreview ? setPreviewFilter : undefined,
+    onImageStyle: isLivePreview ? setImageWrapperStyle : undefined,
+    onBgPreview: setBgPreview,
     cropProps:
       displayMode === "interactive-crop"
         ? {
@@ -233,6 +280,7 @@ export function ToolPage() {
             hasStrokes: eraserHasStrokes,
             brushSize: eraserBrushSize,
             onBrushSizeChange: setEraserBrushSize,
+            onMaskCenter: setEraserSliderInitPos,
           }
         : undefined,
   };
@@ -242,10 +290,42 @@ export function ToolPage() {
   // Render the image viewer based on display mode
   function renderImageArea() {
     if (isNoDropzone) {
+      if (registryEntry?.ResultsPanel) {
+        const Panel = registryEntry.ResultsPanel;
+        return (
+          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+            <Panel />
+          </Suspense>
+        );
+      }
       return (
         <div className="text-center text-muted-foreground">
           <p className="text-sm">Configure settings and generate.</p>
         </div>
+      );
+    }
+
+    // Show error state for failed batch files (before interactive canvas blocks,
+    // which also match !hasProcessed and would show the canvas instead of the error)
+    if (hasFile && !hasProcessed && currentEntry?.status === "failed") {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 h-full text-center px-4">
+          <p className="text-sm text-red-500">
+            {currentEntry.error ?? "Processing failed for this file"}
+          </p>
+        </div>
+      );
+    }
+
+    // Custom results panel (find-duplicates, etc.)
+    if (displayMode === "custom-results" && registryEntry?.ResultsPanel) {
+      if (!hasFile)
+        return <Dropzone onFiles={handleFiles} accept="image/*" multiple currentFiles={files} />;
+      const ResultsPanel = registryEntry.ResultsPanel;
+      return (
+        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+          <ResultsPanel />
+        </Suspense>
       );
     }
 
@@ -274,39 +354,126 @@ export function ToolPage() {
       );
     }
 
-    if (hasProcessed && originalBlobUrl && displayMode === "side-by-side") {
+    // After erasing: compare clean original vs inpainted result.
+    // Initialise the divider at the center of the painted area so the comparison
+    // lands right where the object was removed.
+    if (displayMode === "interactive-eraser" && hasProcessed && originalBlobUrl) {
       return (
-        <SideBySideComparison
+        <BeforeAfterSlider
           beforeSrc={originalBlobUrl}
-          afterSrc={processedUrl}
+          afterSrc={displayUrl}
           beforeSize={originalSize ?? undefined}
           afterSize={processedSize ?? undefined}
+          initialPosition={eraserSliderInitPos ?? 50}
         />
+      );
+    }
+
+    if (displayMode === "interactive-split" && hasFile && originalBlobUrl) {
+      if (registryEntry?.ResultsPanel) {
+        const Panel = registryEntry.ResultsPanel;
+        return (
+          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+            <Panel />
+          </Suspense>
+        );
+      }
+    }
+
+    // Non-previewable format with no server-generated preview - show success card
+    if (hasProcessed && !isProcessedPreviewable && !processedPreviewUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Conversion complete</p>
+            <p className="text-xs text-muted-foreground mt-1">{processedFileName}</p>
+            {processedSize != null && (
+              <p className="text-xs text-muted-foreground">
+                {formatFileSize(processedSize)} · {processedFileType}
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            {processedFileType} files cannot be previewed in the browser. Use the download button to
+            save your file.
+          </p>
+        </div>
       );
     }
 
     if (
       hasProcessed &&
       originalBlobUrl &&
-      (displayMode === "live-preview" || displayMode === "no-comparison")
+      (displayMode === "side-by-side" || displayMode === "interactive-crop")
     ) {
       return (
-        <ImageViewer
-          src={processedUrl}
-          filename={processedFileName}
-          fileSize={processedSize ?? 0}
+        <SideBySideComparison
+          beforeSrc={originalBlobUrl}
+          afterSrc={displayUrl}
+          beforeSize={originalSize ?? undefined}
+          afterSize={processedSize ?? undefined}
         />
       );
     }
 
+    if (hasProcessed && originalBlobUrl && displayMode === "no-comparison") {
+      return (
+        <ImageViewer src={displayUrl} filename={processedFileName} fileSize={processedSize ?? 0} />
+      );
+    }
+
+    // For live-preview tools: keep showing the CSS-styled original so WYSIWYG.
+    // The server-rendered result is available via download.
+    if (hasProcessed && originalBlobUrl && displayMode === "live-preview" && imageWrapperStyle) {
+      return (
+        <ImageViewer
+          src={originalBlobUrl}
+          filename={selectedFileName ?? files[0].name}
+          fileSize={selectedFileSize ?? files[0].size}
+          imageWrapperStyle={imageWrapperStyle}
+        />
+      );
+    }
+
+    if (hasProcessed && originalBlobUrl && displayMode === "live-preview") {
+      return (
+        <ImageViewer src={displayUrl} filename={processedFileName} fileSize={processedSize ?? 0} />
+      );
+    }
+
     if (hasProcessed && originalBlobUrl) {
+      // When bg preview state is set (remove-background effects mode),
+      // show the ImageViewer with layered CSS preview instead of before/after slider
+      if (bgPreview) {
+        return (
+          <ImageViewer
+            src={displayUrl}
+            filename={processedFileName}
+            fileSize={processedSize ?? 0}
+            bgPreview={bgPreview}
+          />
+        );
+      }
       return (
         <BeforeAfterSlider
           beforeSrc={originalBlobUrl}
-          afterSrc={processedUrl}
+          afterSrc={displayUrl}
           beforeSize={originalSize ?? undefined}
           afterSize={processedSize ?? undefined}
         />
+      );
+    }
+
+    if (hasFile && currentEntry?.previewLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+          <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+          <p className="text-sm text-muted-foreground">Generating preview...</p>
+          <p className="text-xs text-muted-foreground/60">{selectedFileName}</p>
+        </div>
       );
     }
 
@@ -324,6 +491,7 @@ export function ToolPage() {
               }
             : {})}
           {...(isLivePreview && previewFilter ? { cssFilter: previewFilter } : {})}
+          {...(isLivePreview && imageWrapperStyle ? { imageWrapperStyle } : {})}
         />
       );
     }
@@ -390,13 +558,25 @@ export function ToolPage() {
           </Suspense>
         </div>
 
+        {/* Batch download — shown right after settings for easy access */}
+        {entries.length > 1 && hasProcessed && batchZipBlob && (
+          <button
+            type="button"
+            onClick={handleDownloadAll}
+            className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
+          >
+            <Download className="h-4 w-4" />
+            Download All (ZIP)
+          </button>
+        )}
+
         {hasProcessed && processedSize != null && (
           <ReviewPanel
             filename={processedFileName}
             fileSize={processedSize}
             fileType={processedFileType}
             downloadUrl={processedUrl}
-            previewUrl={processedUrl}
+            previewUrl={isProcessedPreviewable ? processedUrl : (processedPreviewUrl ?? undefined)}
             onUndo={handleUndo}
             currentToolId={tool?.id ?? ""}
           />
@@ -470,21 +650,6 @@ export function ToolPage() {
           </div>
 
           {renderSettingsContent()}
-
-          {/* Batch download */}
-          {entries.length > 1 && hasProcessed && batchZipBlob && (
-            <div className="space-y-2">
-              <div className="border-t border-border pt-2" />
-              <button
-                type="button"
-                onClick={handleDownloadAll}
-                className="w-full py-2 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-1.5 text-xs font-medium hover:bg-primary/90"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download All (ZIP)
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Main area: image viewer */}

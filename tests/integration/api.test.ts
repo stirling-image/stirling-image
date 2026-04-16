@@ -1,5 +1,5 @@
 /**
- * Integration tests for the Stirling-Image API.
+ * Integration tests for the ashim API.
  *
  * These tests build a real Fastify server backed by an in-memory SQLite DB
  * and exercise every endpoint with real HTTP-like requests via `app.inject()`.
@@ -1754,6 +1754,131 @@ describe("POST /api/v1/tools/stitch", () => {
 
     expect(res.statusCode).toBe(200);
   });
+
+  it("stitches in grid mode with 2 columns", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "file", filename: "c.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "d.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ direction: "grid", gridColumns: 2 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.jobId).toBeDefined();
+    expect(body.downloadUrl).toMatch(/\/api\/v1\/download\//);
+  });
+
+  it("applies alignment setting", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ alignment: "start" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("applies border and cornerRadius", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ border: 20, cornerRadius: 10 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("respects quality setting for jpeg", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "settings", content: JSON.stringify({ format: "jpeg", quality: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("handles resizeMode stretch", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ resizeMode: "stretch" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("handles resizeMode crop", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { name: "settings", content: JSON.stringify({ resizeMode: "crop" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/stitch",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2595,6 +2720,7 @@ describe("Pipeline", () => {
       expect(toolIds).toContain("remove-background");
       expect(toolIds).toContain("upscale");
       expect(toolIds).toContain("blur-faces");
+      expect(toolIds).toContain("noise-removal");
     });
 
     it("excludes tools that are not pipeline-compatible", async () => {
@@ -2637,6 +2763,128 @@ describe("Pipeline", () => {
         expect(JSON.parse(res.body).error).toContain("not found");
       });
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OCR API
+// ═══════════════════════════════════════════════════════════════════════════
+describe("OCR API", () => {
+  describe("POST /api/v1/tools/ocr", () => {
+    it("accepts quality param and returns text without engine field", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-test.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ quality: "fast" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // OCR may fail with 422 if Python sidecar/engines are not installed (CI)
+      if (res.statusCode === 200) {
+        const body = JSON.parse(res.body);
+        expect(body.text).toBeDefined();
+        expect(body.jobId).toBeDefined();
+        expect(body).not.toHaveProperty("engine");
+      } else {
+        // 422 = OCR engine not available, which is acceptable in test environments
+        expect(res.statusCode).toBe(422);
+      }
+    });
+
+    it("backward compat: old engine param is still accepted", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        {
+          name: "file",
+          filename: "ocr-compat.png",
+          contentType: "image/png",
+          content: PNG_200x150,
+        },
+        { name: "settings", content: JSON.stringify({ engine: "tesseract" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // Should not be a 400 — engine param must still be accepted
+      expect(res.statusCode).not.toBe(400);
+      // Either succeeds (200) or OCR engine unavailable (422)
+      expect([200, 422]).toContain(res.statusCode);
+    });
+
+    it("accepts language auto and enhance params", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-lang.png", contentType: "image/png", content: PNG_200x150 },
+        {
+          name: "settings",
+          content: JSON.stringify({ quality: "balanced", language: "auto", enhance: true }),
+        },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+
+      // All three params should be accepted without validation errors
+      expect(res.statusCode).not.toBe(400);
+      expect([200, 422]).toContain(res.statusCode);
+    });
+
+    it("returns 400 for invalid quality value", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "file", filename: "ocr-bad.png", contentType: "image/png", content: PNG_200x150 },
+        { name: "settings", content: JSON.stringify({ quality: "ultra" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("returns 400 when no file is provided", async () => {
+      const { body: payload, contentType } = createMultipartPayload([
+        { name: "settings", content: JSON.stringify({ quality: "fast" }) },
+      ]);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/ocr",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        payload,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toMatch(/no image/i);
+    });
   });
 });
 
@@ -3106,6 +3354,98 @@ describe("Smart crop format preservation", () => {
     });
     expect(res.statusCode).toBe(200);
   });
+
+  it("subject mode with entropy strategy", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "subject", strategy: "entropy", width: 50, height: 50 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("subject mode with padding", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "subject", width: 50, height: 50, padding: 10 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
+
+  it("trim mode with new mode name", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.png", contentType: "image/png", content: PNG_200x150 },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "trim", threshold: 30 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.png/);
+  });
+
+  it("defaults to subject mode when no mode specified", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ width: 50, height: 50 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/smart-crop",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3549,7 +3889,7 @@ describe("Edit metadata", () => {
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.exif).toBeUndefined();
+      expect(body.exif).toBeNull();
     });
 
     it("rejects request with no file", async () => {
@@ -3611,5 +3951,218 @@ describe("Edit metadata", () => {
       });
       expect(res.statusCode).toBe(200);
     });
+  });
+});
+
+describe("Image Enhancement", () => {
+  it("POST /api/v1/tools/image-enhancement processes an image", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG_200x150 },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          mode: "auto",
+          intensity: 50,
+          corrections: {
+            exposure: true,
+            contrast: true,
+            whiteBalance: true,
+            saturation: true,
+            sharpness: true,
+            denoise: true,
+          },
+        }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.jobId).toBeDefined();
+    expect(body.downloadUrl).toBeDefined();
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  it("POST /api/v1/tools/image-enhancement/analyze returns analysis data", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG_200x150 },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement/analyze",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.scores).toBeDefined();
+    expect(body.corrections).toBeDefined();
+    expect(body.issues).toBeInstanceOf(Array);
+    expect(body.suggestedMode).toBeDefined();
+    expect(typeof body.scores.exposure).toBe("number");
+  });
+
+  it("preserves JPEG format through enhancement", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          mode: "auto",
+          intensity: 50,
+        }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.downloadUrl).toMatch(/\.jpg/);
+  });
+
+  it("rejects empty file", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "empty.png", contentType: "image/png", content: Buffer.alloc(0) },
+      {
+        name: "settings",
+        content: JSON.stringify({ mode: "auto" }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOISE REMOVAL
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Noise Removal", () => {
+  it("POST /api/v1/tools/noise-removal processes with quick tier", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "noisy.png", contentType: "image/png", content: PNG_200x150 },
+      {
+        name: "settings",
+        content: JSON.stringify({ tier: "quick", strength: 50 }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/noise-removal",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    // Either succeeds or Python sidecar unavailable in test env
+    expect(res.statusCode).not.toBe(400);
+    expect([200, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      expect(res.headers["content-type"]).toMatch(/^image\//);
+      expect(res.headers["content-disposition"]).toMatch(/attachment/);
+    }
+  });
+
+  it("returns 400 when no file is provided", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      {
+        name: "settings",
+        content: JSON.stringify({ tier: "quick", strength: 50 }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/noise-removal",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 for empty file", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "empty.png", contentType: "image/png", content: Buffer.alloc(0) },
+      {
+        name: "settings",
+        content: JSON.stringify({ tier: "quick" }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/noise-removal",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("accepts JPEG input", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "noisy.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      {
+        name: "settings",
+        content: JSON.stringify({ tier: "quick", strength: 30 }),
+      },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/noise-removal",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    expect(res.statusCode).not.toBe(400);
+    expect([200, 422]).toContain(res.statusCode);
+  });
+
+  it("uses default settings when none provided", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "noisy.png", contentType: "image/png", content: PNG_200x150 },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/noise-removal",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      payload,
+    });
+    // Defaults should be accepted without validation errors
+    expect(res.statusCode).not.toBe(400);
+    expect([200, 422]).toContain(res.statusCode);
   });
 });

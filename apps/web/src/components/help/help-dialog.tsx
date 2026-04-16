@@ -1,4 +1,4 @@
-import { APP_VERSION } from "@stirling-image/shared";
+import { APP_VERSION } from "@ashim/shared";
 import { BookOpen, ExternalLink, Github, Keyboard, X } from "lucide-react";
 import { useEffect } from "react";
 import { formatShortcut } from "@/hooks/use-keyboard-shortcuts";
@@ -99,7 +99,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <a
-                href="https://github.com/stirling-image/stirling-image"
+                href="https://github.com/ashim-hq/ashim"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -108,7 +108,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
-                href="https://github.com/stirling-image/stirling-image/issues"
+                href="https://github.com/ashim-hq/ashim/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -117,7 +117,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
-                href="https://stirling-image.github.io/stirling-image/"
+                href="https://ashim-hq.github.io/ashim/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -139,7 +139,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
 
           {/* Version */}
           <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-            Stirling Image v{APP_VERSION}
+            ashim v{APP_VERSION}
           </div>
         </div>
       </div>

@@ -16,10 +16,7 @@ const TOOLS_WITH_DROPZONE = [
   { id: "bulk-rename", name: "Bulk Rename" },
   { id: "image-to-pdf", name: "Image to PDF" },
   { id: "favicon", name: "Favicon" },
-  { id: "brightness-contrast", name: "Brightness" },
-  { id: "saturation", name: "Saturation" },
-  { id: "color-channels", name: "Color Channels" },
-  { id: "color-effects", name: "Color Effects" },
+  { id: "adjust-colors", name: "Adjust Colors" },
   { id: "replace-color", name: "Replace" },
   { id: "remove-background", name: "Remove Background" },
   { id: "upscale", name: "Upscal" },
@@ -37,11 +34,13 @@ const TOOLS_WITH_DROPZONE = [
   { id: "color-palette", name: "Color Palette" },
   { id: "barcode-read", name: "Barcode" },
   { id: "collage", name: "Collage" },
+  { id: "stitch", name: "Stitch" },
   { id: "split", name: "Image Splitting" },
   { id: "border", name: "Border" },
   { id: "svg-to-raster", name: "SVG to Raster" },
   { id: "vectorize", name: "Image to SVG" },
   { id: "gif-tools", name: "GIF" },
+  { id: "noise-removal", name: "Noise Removal" },
 ];
 
 const TOOLS_WITHOUT_DROPZONE = [{ id: "qr-generate", name: "QR Code" }];
@@ -88,11 +87,12 @@ test.describe("Tool pages accept file upload", () => {
     "compress",
     "convert",
     "strip-metadata",
-    "brightness-contrast",
+    "adjust-colors",
     "watermark-text",
     "info",
     "border",
     "vectorize",
+    "gif-tools",
   ];
 
   for (const toolId of REPRESENTATIVE_TOOLS) {

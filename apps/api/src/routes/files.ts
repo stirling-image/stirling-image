@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import sharp from "sharp";
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
+import { decodeHeic } from "../lib/heic-converter.js";
 import { createWorkspace, getWorkspacePath } from "../lib/workspace.js";
 
 /**
@@ -120,6 +122,36 @@ export async function fileRoutes(app: FastifyInstance): Promise<void> {
         .send(buffer);
     },
   );
+
+  // ── POST /api/v1/preview ──────────────────────────────────────
+  // Returns a WebP preview for formats browsers can't display (HEIC/HEIF).
+  app.post("/api/v1/preview", async (request: FastifyRequest, reply: FastifyReply) => {
+    const data = await request.file();
+    if (!data) {
+      return reply.status(400).send({ error: "No file provided" });
+    }
+    let buffer = await data.toBuffer();
+
+    const validation = await validateImageBuffer(buffer);
+    if (!validation.valid) {
+      return reply.status(400).send({ error: validation.reason });
+    }
+
+    // Decode HEIC/HEIF via system decoder
+    if (validation.format === "heif") {
+      try {
+        buffer = await decodeHeic(buffer);
+      } catch {
+        return reply.status(422).send({ error: "Failed to decode HEIC/HEIF file" });
+      }
+    }
+
+    const webp = await sharp(buffer)
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    return reply.header("Content-Type", "image/webp").send(webp);
+  });
 }
 
 function getContentType(ext: string): string {

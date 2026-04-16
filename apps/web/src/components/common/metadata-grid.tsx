@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import { formatExifValue, SKIP_KEYS, UNSAFE_ROUND_TRIP_KEYS } from "@/lib/metadata-utils";
+import { formatExifValue, SKIP_KEYS } from "@/lib/metadata-utils";
 
 export function MetadataGrid({
   data,
@@ -29,7 +29,7 @@ export function MetadataGrid({
     >
       {entries.map(([k, v]) => {
         const isRemoved = removedKeys?.has(k);
-        const canRemove = onRemove && !UNSAFE_ROUND_TRIP_KEYS.has(k);
+        const canRemove = !!onRemove;
         return (
           <div key={k} className="contents">
             <div

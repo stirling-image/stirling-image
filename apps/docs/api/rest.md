@@ -1,106 +1,322 @@
-# REST API
+# REST API Reference
 
-The API server runs on port 1349 by default and serves all endpoints under `/api`.
+Interactive API docs with request/response examples are available at [http://localhost:1349/api/docs](http://localhost:1349/api/docs).
 
-::: tip Full API Reference
-Your Stirling Image instance includes a complete interactive API reference at `/api/docs` (e.g. `http://your-host:1349/api/docs`) with all 67 endpoints, request/response schemas, and examples.
-:::
-
-::: info LLM-friendly docs
-Need to feed these docs to an AI assistant? Use [`/llms.txt`](/llms.txt) for an index or [`/llms-full.txt`](/llms-full.txt) for the complete documentation in a single file. On a running instance, these are also available at `/llms.txt` and `/llms-full.txt`.
-:::
-
-This page covers the basics of using the API. For per-endpoint details (every parameter, schema, and response), see the interactive docs at `/api/docs`.
+Machine-readable specs:
+- `/api/v1/openapi.yaml` - OpenAPI 3.1 spec
+- `/llms.txt` - LLM-friendly summary
+- `/llms-full.txt` - Complete LLM-friendly docs
 
 ## Authentication
 
-Two methods:
+All endpoints require authentication unless `AUTH_ENABLED=false`.
 
-1. **Session token** -- `POST /api/auth/login` with `{ "username", "password" }`. Returns a `token`. Pass as `Authorization: Bearer <token>`.
-2. **API key** -- Generate via Settings UI or `POST /api/v1/api-keys`. Prefixed with `si_`. Pass as `Authorization: Bearer si_...`.
+### Session Token
 
-Public endpoints (no auth required): health check, login, API docs, downloads, job progress.
+```bash
+# Login
+curl -X POST http://localhost:1349/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}'
+# Returns: {"token":"<session-token>"}
 
-## Using a tool
+# Use token
+curl http://localhost:1349/api/v1/tools/resize \
+  -H "Authorization: Bearer <session-token>"
+```
+
+Sessions expire after 24 hours.
+
+### API Keys
+
+```bash
+# Create a key (returns key once - store it)
+curl -X POST http://localhost:1349/api/v1/api-keys \
+  -H "Authorization: Bearer <session-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-script"}'
+# Returns: {"key":"si_<96 hex chars>","id":"...","name":"my-script"}
+
+# Use the key
+curl http://localhost:1349/api/v1/tools/resize \
+  -H "Authorization: Bearer si_<your-key>"
+```
+
+Keys are prefixed `si_` and stored as SHA-256 hashes - the raw key is shown once and never retrievable again.
+
+### Auth Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/auth/login` | Public | Login, get session token |
+| `POST` | `/api/auth/logout` | Auth | Destroy current session |
+| `GET` | `/api/auth/session` | Auth | Validate current session |
+| `POST` | `/api/auth/change-password` | Auth | Change own password (invalidates all other sessions + API keys) |
+| `GET` | `/api/auth/users` | Admin | List all users |
+| `POST` | `/api/auth/register` | Admin | Create a new user |
+| `PUT` | `/api/auth/users/:id` | Admin | Update user role or team |
+| `POST` | `/api/auth/users/:id/reset-password` | Admin | Reset user's password |
+| `DELETE` | `/api/auth/users/:id` | Admin | Delete a user |
+
+### Permissions
+
+| Permission | Admin | User |
+|-----------|:-----:|:----:|
+| Use tools | ✓ | ✓ |
+| Own files/pipelines/API keys | ✓ | ✓ |
+| See all users' files/pipelines/keys | ✓ | - |
+| Write settings | ✓ | - |
+| Manage users & teams | ✓ | - |
+| Manage branding | ✓ | - |
+
+## Using Tools
 
 Every tool follows the same pattern:
 
-```
-POST /api/v1/tools/:toolId
-Content-Type: multipart/form-data
-```
+```bash
+# Single file
+curl -X POST http://localhost:1349/api/v1/tools/<toolId> \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@input.jpg" \
+  -F 'settings={"width":800,"height":600}'
 
-Send a multipart request with:
-- `file` -- the image
-- `settings` -- JSON string with tool-specific options
-
-```json
-{
-  "jobId": "abc123",
-  "downloadUrl": "/api/v1/download/abc123/output.png",
-  "originalSize": 245000,
-  "processedSize": 180000
-}
+# Batch (returns ZIP)
+curl -X POST http://localhost:1349/api/v1/tools/<toolId>/batch \
+  -H "Authorization: Bearer <token>" \
+  -F "files=@a.jpg" \
+  -F "files=@b.jpg" \
+  -F 'settings={...}'
 ```
 
-### Tool IDs
+- Upload is `multipart/form-data`.
+- `settings` is a JSON string with tool-specific options.
+- Response is the processed file directly (or a ZIP for batch).
+- Progress is tracked via SSE (see [Progress Tracking](#progress-tracking)).
 
-| Category | Tools |
-|----------|-------|
-| **Essentials** | `resize`, `crop`, `rotate`, `convert`, `compress` |
-| **Optimization** | `strip-metadata`, `bulk-rename`, `image-to-pdf`, `favicon` |
-| **Adjustments** | `brightness-contrast`, `saturation`, `color-channels`, `color-effects`, `replace-color` |
-| **AI** | `remove-background`, `upscale`, `erase-object`, `ocr`, `blur-faces`, `smart-crop` |
-| **Watermark** | `watermark-text`, `watermark-image`, `text-overlay`, `compose` |
-| **Utilities** | `info`, `compare`, `find-duplicates`, `color-palette`, `qr-generate`, `barcode-read` |
-| **Layout** | `collage`, `split`, `border` |
-| **Format** | `svg-to-raster`, `vectorize`, `gif-tools` |
+## Tools Reference
 
-Each tool's specific settings are documented in the interactive API reference at `/api/docs` on your running instance.
+### Essentials
 
-## Batch processing
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `resize` | Resize | `width`, `height`, `fit` (cover/contain/fill/inside/outside), `percentage`, `withoutEnlargement`, plus 23 social media presets |
+| `crop` | Crop | `left`, `top`, `width`, `height`, `aspectRatio`, `shape` (rectangle/circle/rounded) |
+| `rotate` | Rotate & Flip | `angle`, `flip` (horizontal/vertical/both), `background` |
+| `convert` | Convert | `format` (jpeg/png/webp/avif/tiff/gif/heif), `quality` |
+| `compress` | Compress | `quality` (1–100), `format`, `targetSizeKB` |
 
+### Optimization
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `optimize-for-web` | Optimize for Web | `format` (auto/jpeg/webp/avif), `quality`, `maxWidthPx`, `stripMetadata` |
+| `strip-metadata` | Strip Metadata | - |
+| `edit-metadata` | Edit Metadata | `title`, `description`, `author`, `copyright`, `keywords`, `gps` (lat/lon), `dateTime` |
+| `bulk-rename` | Bulk Rename | `pattern` (supports `{n}`, `{date}`, `{original}`), `startIndex`, `padding` |
+| `image-to-pdf` | Image to PDF | `pageSize` (A4/Letter/…), `orientation`, `margin`, `fitMode` |
+| `favicon` | Favicon Generator | `padding`, `backgroundColor`, `borderRadius` - generates all standard sizes |
+
+### Adjustments
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `color-adjustments` | Adjust Colors | `brightness`, `contrast`, `exposure`, `saturation`, `temperature`, `sharpness`, `vibrance`, effects (grayscale/sepia/invert/vignette) |
+| `sharpening` | Sharpening | `mode` (adaptive/unsharp/highpass), `amount`, `radius`, `threshold` |
+| `replace-color` | Replace Color | `targetColor`, `replacementColor`, `tolerance`, `invert` |
+
+### AI Tools
+
+All AI tools run on your hardware (CPU or NVIDIA GPU). No internet required.
+
+| Tool ID | Name | AI Model | Key settings |
+|---------|------|---------|-------------|
+| `remove-background` | Remove Background | rembg (BiRefNet / U2-Net) | `model`, `alphaMattingForeground`, `alphaMattingBackground`, `returnMask`, background color/image |
+| `upscale` | Image Upscaling | RealESRGAN | `scale` (2/4), `model`, `faceEnhance`, `denoise`, `format`, `quality` |
+| `erase-object` | Object Eraser | LaMa (ONNX) | `maskData` (base64 PNG), `maskThreshold` |
+| `ocr` | OCR / Text Extraction | PaddleOCR / Tesseract | `quality` (fast/balanced/best), `language`, `enhance` |
+| `blur-faces` | Face / PII Blur | MediaPipe | `blurRadius`, `sensitivity` |
+| `smart-crop` | Smart Crop | MediaPipe + Sharp | `mode` (subject/face/trim), `width`, `height`, `facePreset` (close-up/head-and-shoulders/upper-body/half-body) |
+| `image-enhancement` | Image Enhancement | Analysis-based | `mode` (auto/exposure/contrast/color/sharpness), `strength` |
+| `enhance-faces` | Face Enhancement | GFPGAN / CodeFormer | `model` (gfpgan/codeformer), `strength`, `sensitivity`, `centerFace` |
+| `colorize` | AI Colorization | DDColor | `intensity`, `model` |
+| `noise-removal` | Noise Removal | Tiered denoising | `quality` (fast/balanced/best), `strength`, `preserveDetail`, `colorNoise` |
+| `red-eye-removal` | Red Eye Removal | Face landmark + color analysis | `sensitivity`, `strength` |
+| `restore-photo` | Photo Restoration | Multi-step pipeline | `mode` (auto/light/heavy), `scratchRemoval`, `faceEnhancement`, `fidelity`, `denoise`, `denoiseStrength`, `colorize` |
+| `passport-photo` | Passport Photo | MediaPipe landmarks | `country` (37 countries), `printLayout` (4x6/A4/none), `backgroundColor` |
+| `content-aware-resize` | Content-Aware Resize | Seam carving (caire) | `width`, `height`, `protectFaces`, `blurRadius`, `sobelThreshold`, `square` |
+
+### Watermark & Overlay
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `watermark-text` | Text Watermark | `text`, `font`, `fontSize`, `color`, `opacity`, `position`, `rotation`, `tile` |
+| `watermark-image` | Image Watermark | `opacity`, `position`, `scale` - second file is the watermark |
+| `text-overlay` | Text Overlay | `text`, `font`, `fontSize`, `color`, `x`, `y`, `background`, `padding`, `borderRadius` |
+| `compose` | Image Composition | `x`, `y`, `opacity`, `blend` - second file is layered on top |
+
+### Utilities
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `info` | Image Info | - (returns width, height, format, size, channels, hasAlpha, DPI, EXIF) |
+| `compare` | Image Compare | `mode` (side-by-side/overlay/diff), `diffThreshold` - second file is the comparison target |
+| `find-duplicates` | Find Duplicates | `threshold` (perceptual hash distance, default 8) - multi-file |
+| `color-palette` | Color Palette | `count` (dominant color count), `format` (hex/rgb) |
+| `qr-generate` | QR Code Generator | `data`, `size`, `margin`, `colorDark`, `colorLight`, `errorCorrectionLevel`, `dotStyle`, `cornerStyle`, `logo` (optional file) |
+| `barcode-read` | Barcode Reader | - (auto-detects QR, EAN, Code128, DataMatrix, etc.) |
+| `image-to-base64` | Image to Base64 | `format` (data-uri/plain), `mimeType` |
+
+### Layout & Composition
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `collage` | Collage / Grid | `template` (25+ layouts), `gap`, `backgroundColor`, `borderRadius` - multi-file |
+| `stitch` | Stitch / Combine | `direction` (horizontal/vertical/grid), `gap`, `backgroundColor`, `alignment` - multi-file |
+| `split` | Image Splitting | `mode` (grid/rows/cols), `rows`, `cols`, `tileWidth`, `tileHeight` |
+| `border` | Border & Frame | `width`, `color`, `style` (solid/gradient/pattern), `borderRadius`, `padding`, `shadow` |
+
+### Format & Conversion
+
+| Tool ID | Name | Key settings |
+|---------|------|-------------|
+| `svg-to-raster` | SVG to Raster | `format` (png/jpeg/webp/avif/tiff/gif/heif), `width`, `height`, `scale`, `dpi`, `background` |
+| `vectorize` | Image to SVG | `colorMode` (bw/color), `threshold`, `colorPrecision`, `filterSpeckle`, `pathMode` (none/polygon/spline) |
+| `gif-tools` | GIF Tools | `action` (resize/optimize/reverse/speed/extract-frames/rotate/add-text), action-specific params |
+| `pdf-to-image` | PDF to Image | `pages` (all/range), `format`, `dpi`, `quality` |
+
+## Batch Processing
+
+Apply any tool to multiple files at once. Returns a ZIP archive.
+
+```bash
+curl -X POST http://localhost:1349/api/v1/tools/compress/batch \
+  -H "Authorization: Bearer <token>" \
+  -F "files=@a.jpg" \
+  -F "files=@b.jpg" \
+  -F "files=@c.jpg" \
+  -F 'settings={"quality":80}'
 ```
-POST /api/v1/tools/:toolId/batch
-```
 
-Send multiple files with the same settings. Returns a ZIP. Use the `X-Job-Id` header to track progress.
+Limits: up to **200 files** per batch. Concurrency controlled by `CONCURRENT_JOBS` (default: 3).
 
 ## Pipelines
 
-Chain tools into reusable workflows.
+### Execute a pipeline
 
-```
-POST /api/v1/pipeline/execute   -- Run a pipeline (multipart: file + steps JSON)
-POST /api/v1/pipeline/save      -- Save a named pipeline
-GET  /api/v1/pipeline/list      -- List saved pipelines
-DELETE /api/v1/pipeline/:id     -- Delete a pipeline
+```bash
+# Single file
+curl -X POST http://localhost:1349/api/v1/pipeline/execute \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@input.jpg" \
+  -F 'pipeline=[
+    {"toolId":"resize","settings":{"width":1200}},
+    {"toolId":"compress","settings":{"quality":80}},
+    {"toolId":"watermark-text","settings":{"text":"© 2025"}}
+  ]'
+
+# Batch (multiple files → ZIP)
+curl -X POST http://localhost:1349/api/v1/pipeline/batch \
+  -H "Authorization: Bearer <token>" \
+  -F "files=@a.jpg" \
+  -F "files=@b.jpg" \
+  -F 'pipeline=[{"toolId":"resize","settings":{"width":800}}]'
 ```
 
-Example steps:
+Each step's output is the next step's input. Up to **20 steps** per pipeline.
+
+### Save and manage pipelines
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/pipeline/save` | Save a named pipeline (`name`, `description`, `steps`) |
+| `GET` | `/api/v1/pipeline/list` | List saved pipelines (admins see all; users see own) |
+| `DELETE` | `/api/v1/pipeline/:id` | Delete (owner or admin) |
+| `GET` | `/api/v1/pipeline/tools` | List tool IDs valid for pipeline steps |
+
+## Progress Tracking
+
+Long-running jobs (AI tools, batch, pipelines) emit real-time progress via Server-Sent Events:
+
+```bash
+# Connect to the SSE stream (jobId returned in X-Job-Id response header)
+curl -N http://localhost:1349/api/v1/jobs/<jobId>/progress \
+  -H "Authorization: Bearer <token>"
+```
+
+Event format:
+```
+data: {"progress":42,"status":"processing","message":"Upscaling frame 2/5"}
+data: {"progress":100,"status":"completed"}
+```
+
+## File Library
+
+Persistent file storage with version history.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/upload` | Upload files to workspace |
+| `GET` | `/api/v1/files` | List saved files (paginated, with search) |
+| `GET` | `/api/v1/files/:id` | Get file metadata + version chain |
+| `GET` | `/api/v1/files/:id/download` | Download file |
+| `GET` | `/api/v1/files/:id/thumbnail` | Get 300px JPEG thumbnail |
+| `DELETE` | `/api/v1/files/:id` | Delete file (and its version chain) |
+
+To auto-save a tool result to the library, include `fileId` in the settings payload referencing an existing library file. The processed result will be saved as a new version.
+
+## API Key Management
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/v1/api-keys` | Auth | Generate new key - shown once |
+| `GET` | `/api/v1/api-keys` | Auth | List keys (name, id, lastUsedAt - not raw key) |
+| `DELETE` | `/api/v1/api-keys/:id` | Auth | Delete key |
+
+## Teams
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `GET` | `/api/v1/teams` | Auth | List teams |
+| `POST` | `/api/v1/teams` | Admin | Create team |
+| `PUT` | `/api/v1/teams/:id` | Admin | Rename team |
+| `DELETE` | `/api/v1/teams/:id` | Admin | Delete team (cannot delete default team or teams with members) |
+
+## Branding
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/v1/branding/logo` | Admin | Upload custom logo (max 500 KB, converted to 128×128 PNG) |
+| `GET` | `/api/v1/branding/logo` | Public | Serve current logo |
+| `DELETE` | `/api/v1/branding/logo` | Admin | Remove custom logo |
+
+## Settings
+
+Runtime key-value configuration (read by any authenticated user, write by admin only).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/settings` | Get all settings |
+| `PUT` | `/api/v1/settings/:key` | Set a value |
+
+Known keys: `disabledTools` (JSON array of tool IDs), `enableExperimentalTools` (bool string), `loginAttemptLimit` (number), `customLogo` (managed via branding endpoint).
+
+## Error Responses
+
+All errors return JSON:
 
 ```json
-[
-  { "toolId": "resize", "settings": { "width": 200, "height": 200, "fit": "cover" } },
-  { "toolId": "compress", "settings": { "quality": 80 } },
-  { "toolId": "convert", "settings": { "format": "webp" } }
-]
+{
+  "error": "Human-readable message",
+  "code": "MACHINE_READABLE_CODE"
+}
 ```
 
-## Progress tracking (SSE)
-
-For long-running jobs (AI tools, batch processing):
-
-```
-GET /api/v1/jobs/:jobId/progress
-```
-
-Returns a Server-Sent Events stream with `{ status, progress, completedFiles, failedFiles }`.
-
-## Error responses
-
-```json
-{ "statusCode": 400, "error": "Bad Request", "message": "Invalid image format" }
-```
-
-Status codes: `400` invalid input, `401` not authenticated, `403` not authorized, `413` file too large, `429` rate limited, `500` server error.
+| Status | Meaning |
+|--------|---------|
+| 400 | Invalid request / validation failed |
+| 401 | Not authenticated |
+| 403 | Insufficient permissions |
+| 404 | Resource not found |
+| 413 | File too large (see `MAX_UPLOAD_SIZE_MB`) |
+| 429 | Rate limited (see `RATE_LIMIT_PER_MIN`) |
+| 500 | Internal server error |

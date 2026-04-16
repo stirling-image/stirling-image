@@ -9,7 +9,6 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: "utilities", name: "Utilities", icon: "Wrench", color: "#6366F1" },
   { id: "layout", name: "Layout & Composition", icon: "LayoutGrid", color: "#EC4899" },
   { id: "format", name: "Format & Conversion", icon: "FileType", color: "#14B8A6" },
-  { id: "automation", name: "Automation", icon: "Workflow", color: "#F97316" },
 ];
 
 export const TOOLS: Tool[] = [
@@ -56,8 +55,17 @@ export const TOOLS: Tool[] = [
   },
   // Optimization
   {
+    id: "optimize-for-web",
+    name: "Optimize for Web",
+    description:
+      "Optimize images for web with format conversion, quality control, and live preview",
+    category: "optimization",
+    icon: "Globe",
+    route: "/optimize-for-web",
+  },
+  {
     id: "strip-metadata",
-    name: "Strip Metadata",
+    name: "Remove Metadata",
     description: "Remove EXIF, GPS, and camera info",
     category: "optimization",
     icon: "ShieldOff",
@@ -97,36 +105,20 @@ export const TOOLS: Tool[] = [
   },
   // Adjustments
   {
-    id: "brightness-contrast",
-    name: "Brightness & Contrast",
-    description: "Adjust brightness and contrast levels",
+    id: "adjust-colors",
+    name: "Adjust Colors",
+    description: "Brightness, contrast, exposure, saturation, temperature, sharpness, and effects",
     category: "adjustments",
-    icon: "Sun",
-    route: "/brightness-contrast",
+    icon: "SlidersHorizontal",
+    route: "/adjust-colors",
   },
   {
-    id: "saturation",
-    name: "Saturation & Exposure",
-    description: "Adjust color saturation and exposure",
+    id: "sharpening",
+    name: "Sharpening",
+    description: "Adaptive, unsharp mask, and high-pass sharpening with presets",
     category: "adjustments",
-    icon: "Palette",
-    route: "/saturation",
-  },
-  {
-    id: "color-channels",
-    name: "Color Channels",
-    description: "Adjust individual R, G, B channels",
-    category: "adjustments",
-    icon: "CircleDot",
-    route: "/color-channels",
-  },
-  {
-    id: "color-effects",
-    name: "Color Effects",
-    description: "Grayscale, Sepia, Invert, Tint",
-    category: "adjustments",
-    icon: "Paintbrush",
-    route: "/color-effects",
+    icon: "Focus",
+    route: "/sharpening",
   },
   {
     id: "replace-color",
@@ -156,7 +148,7 @@ export const TOOLS: Tool[] = [
   {
     id: "erase-object",
     name: "Object Eraser",
-    description: "Paint over unwanted elements",
+    description: "Remove unwanted objects with AI",
     category: "ai",
     icon: "Wand2",
     route: "/erase-object",
@@ -180,10 +172,66 @@ export const TOOLS: Tool[] = [
   {
     id: "smart-crop",
     name: "Smart Crop",
-    description: "AI detects subject and crops optimally",
+    description: "Smart subject, face, or trim-based cropping",
     category: "ai",
     icon: "Focus",
     route: "/smart-crop",
+  },
+  {
+    id: "image-enhancement",
+    name: "Image Enhancement",
+    description: "One-click auto-improve with smart analysis",
+    category: "ai",
+    icon: "Sparkles",
+    route: "/image-enhancement",
+  },
+  {
+    id: "enhance-faces",
+    name: "Face Enhancement",
+    description: "Restore and enhance faces with AI",
+    category: "ai",
+    icon: "ScanFace",
+    route: "/enhance-faces",
+  },
+  {
+    id: "colorize",
+    name: "AI Colorization",
+    description: "Convert B&W photos to full color with AI",
+    category: "ai",
+    icon: "Palette",
+    route: "/colorize",
+  },
+  {
+    id: "noise-removal",
+    name: "Noise Removal",
+    description: "AI-powered noise and grain removal",
+    category: "ai",
+    icon: "Sparkles",
+    route: "/noise-removal",
+  },
+  {
+    id: "red-eye-removal",
+    name: "Red Eye Removal",
+    description: "AI-detect and fix red eye in flash photos",
+    category: "ai",
+    icon: "Eye",
+    route: "/red-eye-removal",
+  },
+  {
+    id: "restore-photo",
+    name: "Photo Restoration",
+    description: "Fix scratches, tears, and damage on old photos with AI",
+    category: "ai",
+    icon: "Undo2",
+    route: "/restore-photo",
+  },
+  {
+    id: "passport-photo",
+    name: "Passport Photo",
+    description: "AI-powered passport and ID photo generator",
+    category: "ai",
+    icon: "UserCheck",
+    route: "/passport-photo",
   },
   // Watermark & Overlay
   {
@@ -254,7 +302,7 @@ export const TOOLS: Tool[] = [
   {
     id: "qr-generate",
     name: "QR Code Generator",
-    description: "Generate QR codes from text or URLs",
+    description: "Generate styled QR codes with custom colors, patterns, and logos",
     category: "utilities",
     icon: "QrCode",
     route: "/qr-generate",
@@ -262,24 +310,32 @@ export const TOOLS: Tool[] = [
   {
     id: "barcode-read",
     name: "Barcode Reader",
-    description: "Read QR codes and barcodes from images",
+    description: "Scan images for QR codes, barcodes, and 2D codes",
     category: "utilities",
     icon: "ScanLine",
     route: "/barcode-read",
+  },
+  {
+    id: "image-to-base64",
+    name: "Image to Base64",
+    description: "Convert images to base64 strings for embedding in HTML, CSS, and more",
+    category: "utilities",
+    icon: "Code",
+    route: "/image-to-base64",
   },
   // Layout & Composition
   {
     id: "collage",
     name: "Collage / Grid",
-    description: "Combine images into a grid layout",
+    description: "Combine images into beautiful grid collages with 25+ templates",
     category: "layout",
     icon: "LayoutGrid",
     route: "/collage",
   },
   {
     id: "stitch",
-    name: "Stitch",
-    description: "Join images side by side or top to bottom",
+    name: "Stitch / Combine",
+    description: "Join images side by side, stacked, or in a grid",
     category: "layout",
     icon: "Columns",
     route: "/stitch",
@@ -287,7 +343,7 @@ export const TOOLS: Tool[] = [
   {
     id: "split",
     name: "Image Splitting",
-    description: "Split image into grid parts",
+    description: "Split images into grid tiles or by pixel size with live preview",
     category: "layout",
     icon: "Grid3x3",
     route: "/split",
@@ -304,7 +360,7 @@ export const TOOLS: Tool[] = [
   {
     id: "svg-to-raster",
     name: "SVG to Raster",
-    description: "Convert SVG to PNG/JPG at custom resolution",
+    description: "Convert SVG to PNG, JPEG, WebP, AVIF, TIFF, GIF, or HEIF at custom scale and DPI",
     category: "format",
     icon: "FileImage",
     route: "/svg-to-raster",
@@ -320,7 +376,8 @@ export const TOOLS: Tool[] = [
   {
     id: "gif-tools",
     name: "GIF Tools",
-    description: "Resize/crop/convert animated GIFs",
+    description:
+      "Resize, optimize, change speed, reverse, extract frames, and rotate animated GIFs",
     category: "format",
     icon: "Film",
     route: "/gif-tools",
@@ -332,23 +389,6 @@ export const TOOLS: Tool[] = [
     category: "format",
     icon: "FileOutput",
     route: "/pdf-to-image",
-  },
-  // Automation
-  {
-    id: "pipeline",
-    name: "Pipeline Builder",
-    description: "Chain multiple tools into a workflow",
-    category: "automation",
-    icon: "Workflow",
-    route: "/pipeline",
-  },
-  {
-    id: "batch",
-    name: "Batch Processing",
-    description: "Apply any tool to multiple images",
-    category: "automation",
-    icon: "FolderInput",
-    route: "/batch",
   },
 ];
 
@@ -378,12 +418,773 @@ export const SOCIAL_MEDIA_PRESETS: SocialMediaPreset[] = [
   { platform: "Threads", name: "Post Image", width: 1080, height: 1080 },
 ];
 
-export const APP_VERSION = "1.14.0";
+export interface SmartCropFacePreset {
+  id: string;
+  label: string;
+  multiplier: number;
+}
+
+export const SMART_CROP_FACE_PRESETS: SmartCropFacePreset[] = [
+  { id: "closeup", label: "Close-up", multiplier: 1.8 },
+  { id: "head-shoulders", label: "Head & Shoulders", multiplier: 2.8 },
+  { id: "upper-body", label: "Upper Body", multiplier: 4.5 },
+  { id: "half-body", label: "Half Body", multiplier: 7.0 },
+];
+
+// ---------------------------------------------------------------------------
+// Passport / ID Photo Specs
+// ---------------------------------------------------------------------------
+
+export type PassportRegion = "americas" | "europe" | "asia" | "africa" | "oceania" | "middle-east";
+
+export interface PassportDocumentSpec {
+  type: string;
+  label: string;
+  width: number; // mm
+  height: number; // mm
+  dpi: number;
+  headHeightMin: number; // fraction of photo height
+  headHeightMax: number; // fraction of photo height
+  eyeLineFromBottom: number; // fraction of photo height
+  bgColor: string; // default background hex
+  bgColors: string[]; // allowed background colors
+}
+
+export interface PassportSpec {
+  code: string;
+  name: string;
+  flag: string;
+  region: PassportRegion;
+  documents: PassportDocumentSpec[];
+}
+
+export const PASSPORT_SPECS: PassportSpec[] = [
+  // Americas
+  {
+    code: "US",
+    name: "United States",
+    flag: "🇺🇸",
+    region: "americas",
+    documents: [
+      {
+        type: "passport",
+        label: "US Passport",
+        width: 51,
+        height: 51,
+        dpi: 300,
+        headHeightMin: 0.5,
+        headHeightMax: 0.69,
+        eyeLineFromBottom: 0.56,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "CA",
+    name: "Canada",
+    flag: "🇨🇦",
+    region: "americas",
+    documents: [
+      {
+        type: "passport",
+        label: "Canadian Passport",
+        width: 50,
+        height: 70,
+        dpi: 300,
+        headHeightMin: 0.44,
+        headHeightMax: 0.51,
+        eyeLineFromBottom: 0.55,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "BR",
+    name: "Brazil",
+    flag: "🇧🇷",
+    region: "americas",
+    documents: [
+      {
+        type: "passport",
+        label: "Brazilian Passport",
+        width: 50,
+        height: 70,
+        dpi: 300,
+        headHeightMin: 0.5,
+        headHeightMax: 0.69,
+        eyeLineFromBottom: 0.56,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "MX",
+    name: "Mexico",
+    flag: "🇲🇽",
+    region: "americas",
+    documents: [
+      {
+        type: "passport",
+        label: "Mexican Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  // Europe
+  {
+    code: "GB",
+    name: "United Kingdom",
+    flag: "🇬🇧",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "UK Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#D4D4D4",
+        bgColors: ["#D4D4D4"],
+      },
+    ],
+  },
+  {
+    code: "EU",
+    name: "European Union",
+    flag: "🇪🇺",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "EU Passport (ICAO)",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF", "#D4D4D4"],
+      },
+    ],
+  },
+  {
+    code: "DE",
+    name: "Germany",
+    flag: "🇩🇪",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "German Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#D4D4D4",
+        bgColors: ["#D4D4D4"],
+      },
+    ],
+  },
+  {
+    code: "FR",
+    name: "France",
+    flag: "🇫🇷",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "French Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#D4D4D4",
+        bgColors: ["#D4D4D4", "#BFDBFE"],
+      },
+    ],
+  },
+  {
+    code: "RU",
+    name: "Russia",
+    flag: "🇷🇺",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Russian Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "TR",
+    name: "Turkey",
+    flag: "🇹🇷",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Turkish Passport",
+        width: 50,
+        height: 60,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "IE",
+    name: "Ireland",
+    flag: "\u{1F1EE}\u{1F1EA}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Irish Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "IT",
+    name: "Italy",
+    flag: "\u{1F1EE}\u{1F1F9}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Italian Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "ES",
+    name: "Spain",
+    flag: "\u{1F1EA}\u{1F1F8}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Spanish Passport",
+        width: 26,
+        height: 32,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "NL",
+    name: "Netherlands",
+    flag: "\u{1F1F3}\u{1F1F1}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Dutch Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "PL",
+    name: "Poland",
+    flag: "\u{1F1F5}\u{1F1F1}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Polish Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "SE",
+    name: "Sweden",
+    flag: "\u{1F1F8}\u{1F1EA}",
+    region: "europe",
+    documents: [
+      {
+        type: "passport",
+        label: "Swedish Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  // Asia
+  {
+    code: "IN",
+    name: "India",
+    flag: "🇮🇳",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Indian Passport",
+        width: 51,
+        height: 51,
+        dpi: 300,
+        headHeightMin: 0.5,
+        headHeightMax: 0.69,
+        eyeLineFromBottom: 0.56,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "CN",
+    name: "China",
+    flag: "🇨🇳",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Chinese Passport",
+        width: 33,
+        height: 48,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "JP",
+    name: "Japan",
+    flag: "🇯🇵",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Japanese Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "KR",
+    name: "South Korea",
+    flag: "🇰🇷",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Korean Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "TH",
+    name: "Thailand",
+    flag: "🇹🇭",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Thai Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "PH",
+    name: "Philippines",
+    flag: "🇵🇭",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Philippine Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "ID",
+    name: "Indonesia",
+    flag: "🇮🇩",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Indonesian Passport",
+        width: 30,
+        height: 40,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#EF4444",
+        bgColors: ["#EF4444"],
+      },
+    ],
+  },
+  {
+    code: "SG",
+    name: "Singapore",
+    flag: "\u{1F1F8}\u{1F1EC}",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Singapore Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "MY",
+    name: "Malaysia",
+    flag: "\u{1F1F2}\u{1F1FE}",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Malaysian Passport",
+        width: 35,
+        height: 50,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "VN",
+    name: "Vietnam",
+    flag: "\u{1F1FB}\u{1F1F3}",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Vietnamese Passport",
+        width: 40,
+        height: 60,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "PK",
+    name: "Pakistan",
+    flag: "\u{1F1F5}\u{1F1F0}",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Pakistani Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF", "#BFDBFE"],
+      },
+    ],
+  },
+  {
+    code: "BD",
+    name: "Bangladesh",
+    flag: "\u{1F1E7}\u{1F1E9}",
+    region: "asia",
+    documents: [
+      {
+        type: "passport",
+        label: "Bangladeshi Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  // Oceania
+  {
+    code: "AU",
+    name: "Australia",
+    flag: "🇦🇺",
+    region: "oceania",
+    documents: [
+      {
+        type: "passport",
+        label: "Australian Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "NZ",
+    name: "New Zealand",
+    flag: "\u{1F1F3}\u{1F1FF}",
+    region: "oceania",
+    documents: [
+      {
+        type: "passport",
+        label: "New Zealand Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  // Middle East
+  {
+    code: "SA",
+    name: "Saudi Arabia",
+    flag: "🇸🇦",
+    region: "middle-east",
+    documents: [
+      {
+        type: "passport",
+        label: "Saudi Passport",
+        width: 40,
+        height: 60,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "AE",
+    name: "United Arab Emirates",
+    flag: "\u{1F1E6}\u{1F1EA}",
+    region: "middle-east",
+    documents: [
+      {
+        type: "passport",
+        label: "UAE Passport",
+        width: 43,
+        height: 55,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  // Africa
+  {
+    code: "NG",
+    name: "Nigeria",
+    flag: "🇳🇬",
+    region: "africa",
+    documents: [
+      {
+        type: "passport",
+        label: "Nigerian Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "EG",
+    name: "Egypt",
+    flag: "\u{1F1EA}\u{1F1EC}",
+    region: "africa",
+    documents: [
+      {
+        type: "passport",
+        label: "Egyptian Passport",
+        width: 40,
+        height: 60,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+  {
+    code: "ZA",
+    name: "South Africa",
+    flag: "\u{1F1FF}\u{1F1E6}",
+    region: "africa",
+    documents: [
+      {
+        type: "passport",
+        label: "South African Passport",
+        width: 35,
+        height: 45,
+        dpi: 300,
+        headHeightMin: 0.7,
+        headHeightMax: 0.8,
+        eyeLineFromBottom: 0.63,
+        bgColor: "#FFFFFF",
+        bgColors: ["#FFFFFF"],
+      },
+    ],
+  },
+];
+
+export interface PrintLayout {
+  id: string;
+  label: string;
+  width: number; // mm
+  height: number; // mm
+}
+
+export const PRINT_LAYOUTS: PrintLayout[] = [
+  { id: "4x6", label: "4x6 inch", width: 102, height: 152 },
+  { id: "a4", label: "A4", width: 210, height: 297 },
+  { id: "none", label: "None", width: 0, height: 0 },
+];
+
+export const APP_VERSION = "1.15.2";
 
 /**
  * Tool IDs that require the Python sidecar (AI/ML tools).
- * Used by the API to register 501 stubs in lite mode,
- * and by the frontend for progress/timeout behavior.
+ * Used by the frontend for progress/timeout behavior.
  */
 export const PYTHON_SIDECAR_TOOLS = [
   "remove-background",
@@ -391,5 +1192,10 @@ export const PYTHON_SIDECAR_TOOLS = [
   "blur-faces",
   "erase-object",
   "ocr",
-  "content-aware-resize",
+  "colorize",
+  "enhance-faces",
+  "noise-removal",
+  "red-eye-removal",
+  "restore-photo",
+  "passport-photo",
 ] as const;

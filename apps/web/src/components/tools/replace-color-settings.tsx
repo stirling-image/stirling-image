@@ -5,14 +5,29 @@ import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 export interface ReplaceColorControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function ReplaceColorControls({ onChange }: ReplaceColorControlsProps) {
+export function ReplaceColorControls({
+  settings: initialSettings,
+  onChange,
+}: ReplaceColorControlsProps) {
   const [sourceColor, setSourceColor] = useState("#FF0000");
   const [targetColor, setTargetColor] = useState("#00FF00");
   const [makeTransparent, setMakeTransparent] = useState(false);
   const [tolerance, setTolerance] = useState(30);
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.sourceColor != null) setSourceColor(String(initialSettings.sourceColor));
+    if (initialSettings.targetColor != null) setTargetColor(String(initialSettings.targetColor));
+    if (initialSettings.makeTransparent != null)
+      setMakeTransparent(Boolean(initialSettings.makeTransparent));
+    if (initialSettings.tolerance != null) setTolerance(Number(initialSettings.tolerance));
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

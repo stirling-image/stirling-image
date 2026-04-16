@@ -1,9 +1,27 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useCallback } from "react";
 import { BeforeAfterSlider } from "@/components/common/before-after-slider";
 import { ImageViewer } from "@/components/common/image-viewer";
 import { ThumbnailStrip } from "@/components/common/thumbnail-strip";
 import { useFileStore } from "@/stores/file-store";
+
+const BROWSER_PREVIEWABLE_EXTS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "ico",
+  "avif",
+]);
+
+function canBrowserPreview(url: string): boolean {
+  if (url.startsWith("blob:")) return true;
+  const ext = decodeURIComponent(url).split(".").pop()?.toLowerCase() ?? "";
+  return BROWSER_PREVIEWABLE_EXTS.has(ext);
+}
 
 export function MultiImageViewer() {
   const { entries, selectedIndex, setSelectedIndex, navigateNext, navigatePrev } = useFileStore();
@@ -29,6 +47,16 @@ export function MultiImageViewer() {
   const hasNext = selectedIndex < entries.length - 1;
 
   const hasProcessed = !!currentEntry.processedUrl;
+  const isPreviewable =
+    hasProcessed && currentEntry.processedUrl
+      ? canBrowserPreview(currentEntry.processedUrl)
+      : false;
+  const displayUrl = currentEntry.processedPreviewUrl ?? currentEntry.processedUrl;
+
+  const processedFilename = currentEntry.processedUrl
+    ? decodeURIComponent(currentEntry.processedUrl.split("/").pop() ?? "processed")
+    : "processed";
+  const processedExt = processedFilename.split(".").pop()?.toUpperCase() || "FILE";
 
   return (
     <section
@@ -49,13 +77,28 @@ export function MultiImageViewer() {
           </button>
         )}
         <div className="w-full h-full min-h-0">
-          {hasProcessed ? (
+          {hasProcessed && !isPreviewable && !currentEntry.processedPreviewUrl ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-sm font-medium">{processedFilename}</p>
+              <p className="text-xs text-muted-foreground">
+                {processedExt} files cannot be previewed in the browser.
+              </p>
+            </div>
+          ) : hasProcessed ? (
             <BeforeAfterSlider
               beforeSrc={currentEntry.blobUrl}
-              afterSrc={currentEntry.processedUrl ?? ""}
+              afterSrc={displayUrl ?? ""}
               beforeSize={currentEntry.originalSize}
               afterSize={currentEntry.processedSize ?? undefined}
             />
+          ) : currentEntry.previewLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+              <p className="text-sm text-muted-foreground">Generating preview...</p>
+            </div>
           ) : (
             <ImageViewer
               src={currentEntry.blobUrl}

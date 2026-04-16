@@ -36,7 +36,9 @@ export function CompareSettings() {
       const result = await res.json();
       setSimilarity(result.similarity);
       setDownloadUrl(result.downloadUrl);
-      setProcessedUrl(result.downloadUrl);
+      // Show the second image in the slider (not the diff) so the user can
+      // visually compare their two originals. The diff is still downloadable.
+      setProcessedUrl(URL.createObjectURL(secondFile));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Comparison failed");
     } finally {

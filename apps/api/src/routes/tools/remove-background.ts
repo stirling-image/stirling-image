@@ -1,20 +1,43 @@
 import { randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { removeBackground } from "@stirling-image/ai";
+import { removeBackground } from "@ashim/ai";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { autoOrient } from "../../lib/auto-orient.js";
+import { applyEffects } from "../../lib/bg-effects.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
-import { createWorkspace } from "../../lib/workspace.js";
+import { decodeHeic } from "../../lib/heic-converter.js";
+import { createWorkspace, getWorkspacePath } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 import { registerToolProcessFn } from "../tool-factory.js";
 
+const settingsSchema = z.object({
+  model: z.string().optional(),
+  backgroundType: z.enum(["transparent", "color", "gradient", "blur", "image"]).optional(),
+  backgroundColor: z.string().optional(),
+  gradientColor1: z.string().optional(),
+  gradientColor2: z.string().optional(),
+  gradientAngle: z.number().optional(),
+  blurEnabled: z.boolean().optional(),
+  blurIntensity: z.number().min(0).max(100).optional(),
+  shadowEnabled: z.boolean().optional(),
+  shadowOpacity: z.number().min(0).max(100).optional(),
+});
+
 /**
- * AI background removal route.
- * Uses Python + rembg under the hood.
+ * AI background removal with two-phase flow:
+ *
+ * Phase 1 (POST /remove-background): Python/rembg removes background.
+ *   Returns transparent PNG + caches mask & original for effects re-apply.
+ *   Also returns maskUrl and originalUrl for frontend CSS preview.
+ *
+ * Phase 2 (POST /remove-background/effects): Node.js/Sharp applies effects.
+ *   Uses cached mask + original. No AI re-run. Instant response.
+ *   Called when user adjusts blur/shadow/background and clicks download.
  */
 export function registerRemoveBackground(app: FastifyInstance) {
+  // ── Phase 1: Background removal ──────────────────────────────────
   app.post(
     "/api/v1/tools/remove-background",
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -28,9 +51,7 @@ export function registerRemoveBackground(app: FastifyInstance) {
         for await (const part of parts) {
           if (part.type === "file") {
             const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
+            for await (const chunk of part.file) chunks.push(chunk);
             fileBuffer = Buffer.concat(chunks);
             filename = basename(part.filename ?? "image");
           } else if (part.fieldname === "settings") {
@@ -58,7 +79,14 @@ export function registerRemoveBackground(app: FastifyInstance) {
       try {
         const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
 
-        // Auto-orient to fix EXIF rotation before processing
+        // Decode HEIC/HEIF before processing
+        if (validation.format === "heif") {
+          fileBuffer = await decodeHeic(fileBuffer);
+          const ext = filename.match(/\.[^.]+$/)?.[0];
+          if (ext) filename = `${filename.slice(0, -ext.length)}.png`;
+        }
+
+        // Auto-orient to fix EXIF rotation
         fileBuffer = await autoOrient(fileBuffer);
 
         request.log.info(
@@ -72,7 +100,7 @@ export function registerRemoveBackground(app: FastifyInstance) {
         const inputPath = join(workspacePath, "input", filename);
         await writeFile(inputPath, fileBuffer);
 
-        // Process
+        // Progress callback
         const jobIdForProgress = clientJobId;
         const onProgress = jobIdForProgress
           ? (percent: number, stage: string) => {
@@ -80,22 +108,24 @@ export function registerRemoveBackground(app: FastifyInstance) {
                 jobId: jobIdForProgress,
                 phase: "processing",
                 stage,
-                percent,
+                percent: Math.min(percent, 95),
               });
             }
           : undefined;
 
-        const resultBuffer = await removeBackground(
+        // Phase 1: AI background removal -> transparent PNG
+        const transparentResult = await removeBackground(
           fileBuffer,
           join(workspacePath, "output"),
-          { model: settings.model, backgroundColor: settings.backgroundColor },
+          { model: settings.model },
           onProgress,
         );
 
-        // Save output
-        const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_nobg.png`;
-        const outputPath = join(workspacePath, "output", outputFilename);
-        await writeFile(outputPath, resultBuffer);
+        // Cache the mask (transparent PNG) and original for effects re-apply
+        const maskFilename = `${filename.replace(/\.[^.]+$/, "")}_mask.png`;
+        const originalFilename = `${filename.replace(/\.[^.]+$/, "")}_original.png`;
+        await writeFile(join(workspacePath, "output", maskFilename), transparentResult);
+        await writeFile(join(workspacePath, "output", originalFilename), fileBuffer);
 
         if (clientJobId) {
           updateSingleFileProgress({
@@ -107,9 +137,14 @@ export function registerRemoveBackground(app: FastifyInstance) {
 
         return reply.send({
           jobId,
-          downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outputFilename)}`,
+          // The mask (transparent PNG) is the main preview
+          downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(maskFilename)}`,
+          // Separate URLs for frontend CSS preview compositing
+          maskUrl: `/api/v1/download/${jobId}/${encodeURIComponent(maskFilename)}`,
+          originalUrl: `/api/v1/download/${jobId}/${encodeURIComponent(originalFilename)}`,
           originalSize: fileBuffer.length,
-          processedSize: resultBuffer.length,
+          processedSize: transparentResult.length,
+          filename,
         });
       } catch (err) {
         request.log.error({ err, toolId: "remove-background" }, "Background removal failed");
@@ -121,23 +156,124 @@ export function registerRemoveBackground(app: FastifyInstance) {
     },
   );
 
-  // Register in the pipeline/batch registry so this tool can be used
-  // as a step in automation pipelines (without progress callbacks).
+  // ── Phase 2: Effects-only (no AI re-run) ─────────────────────────
+  app.post(
+    "/api/v1/tools/remove-background/effects",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      let settingsRaw: string | null = null;
+      let bgImageBuffer: Buffer | null = null;
+
+      try {
+        const parts = request.parts();
+        for await (const part of parts) {
+          if (part.type === "file" && part.fieldname === "backgroundImage") {
+            const chunks: Buffer[] = [];
+            for await (const chunk of part.file) chunks.push(chunk);
+            bgImageBuffer = Buffer.concat(chunks);
+          } else if (part.type === "field" && part.fieldname === "settings") {
+            settingsRaw = part.value as string;
+          }
+        }
+      } catch (err) {
+        return reply.status(400).send({
+          error: "Failed to parse request",
+          details: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      if (!settingsRaw) {
+        return reply.status(400).send({ error: "No settings provided" });
+      }
+
+      try {
+        const settings = JSON.parse(settingsRaw);
+        const { jobId, filename } = settings;
+
+        if (!jobId || !filename) {
+          return reply.status(400).send({ error: "jobId and filename are required" });
+        }
+
+        const workspacePath = getWorkspacePath(jobId);
+
+        const baseName = filename.replace(/\.[^.]+$/, "");
+        const maskPath = join(workspacePath, "output", `${baseName}_mask.png`);
+        const originalPath = join(workspacePath, "output", `${baseName}_original.png`);
+
+        const [maskBuffer, originalBuffer] = await Promise.all([
+          readFile(maskPath),
+          readFile(originalPath),
+        ]);
+
+        // Decode HEIC/HEIF background image if needed
+        if (bgImageBuffer) {
+          const bgValidation = await validateImageBuffer(bgImageBuffer);
+          if (bgValidation.valid && bgValidation.format === "heif") {
+            bgImageBuffer = await decodeHeic(bgImageBuffer);
+          }
+        }
+
+        // Apply effects using cached mask + original
+        const resultBuffer = await applyEffects(maskBuffer, originalBuffer, {
+          backgroundType: settings.backgroundType,
+          backgroundColor: settings.backgroundColor,
+          gradientColor1: settings.gradientColor1,
+          gradientColor2: settings.gradientColor2,
+          gradientAngle: settings.gradientAngle,
+          backgroundImageBuffer: bgImageBuffer ?? undefined,
+          blurEnabled: settings.blurEnabled,
+          blurIntensity: settings.blurIntensity,
+          shadowEnabled: settings.shadowEnabled,
+          shadowOpacity: settings.shadowOpacity,
+        });
+
+        // Save the final output
+        const outputFilename = `${baseName}_nobg.png`;
+        const outputPath = join(workspacePath, "output", outputFilename);
+        await writeFile(outputPath, resultBuffer);
+
+        return reply.send({
+          jobId,
+          downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outputFilename)}`,
+          processedSize: resultBuffer.length,
+        });
+      } catch (err) {
+        request.log.error({ err }, "Effects processing failed");
+        return reply.status(422).send({
+          error: "Effects processing failed",
+          details: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    },
+  );
+
+  // ── Pipeline/batch registry ──────────────────────────────────────
   registerToolProcessFn({
     toolId: "remove-background",
-    settingsSchema: z.object({
-      model: z.string().optional(),
-      backgroundColor: z.string().optional(),
-    }),
+    settingsSchema,
     process: async (inputBuffer, settings, filename) => {
-      const s = settings as { model?: string; backgroundColor?: string };
+      const s = settings as z.infer<typeof settingsSchema>;
       const orientedBuffer = await autoOrient(inputBuffer);
       const jobId = randomUUID();
       const workspacePath = await createWorkspace(jobId);
-      const resultBuffer = await removeBackground(orientedBuffer, join(workspacePath, "output"), {
-        model: s.model,
+
+      const transparentResult = await removeBackground(
+        orientedBuffer,
+        join(workspacePath, "output"),
+        { model: s.model },
+      );
+
+      const resultBuffer = await applyEffects(transparentResult, orientedBuffer, {
+        backgroundType: s.backgroundType,
         backgroundColor: s.backgroundColor,
+        gradientColor1: s.gradientColor1,
+        gradientColor2: s.gradientColor2,
+        gradientAngle: s.gradientAngle,
+        blurEnabled: s.blurEnabled,
+        blurIntensity: s.blurIntensity,
+        shadowEnabled: s.shadowEnabled,
+        shadowOpacity: s.shadowOpacity,
       });
+
       const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_nobg.png`;
       return { buffer: resultBuffer, filename: outputFilename, contentType: "image/png" };
     },

@@ -5,10 +5,14 @@ import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 export interface TextOverlayControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function TextOverlayControls({ onChange }: TextOverlayControlsProps) {
+export function TextOverlayControls({
+  settings: initialSettings,
+  onChange,
+}: TextOverlayControlsProps) {
   const [text, setText] = useState("Your Text Here");
   const [fontSize, setFontSize] = useState(48);
   const [color, setColor] = useState("#FFFFFF");
@@ -16,6 +20,22 @@ export function TextOverlayControls({ onChange }: TextOverlayControlsProps) {
   const [backgroundBox, setBackgroundBox] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState("#000000");
   const [shadow, setShadow] = useState(true);
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.text != null) setText(String(initialSettings.text));
+    if (initialSettings.fontSize != null) setFontSize(Number(initialSettings.fontSize));
+    if (initialSettings.color != null) setColor(String(initialSettings.color));
+    if (initialSettings.position != null)
+      setPosition(initialSettings.position as "top" | "center" | "bottom");
+    if (initialSettings.backgroundBox != null)
+      setBackgroundBox(Boolean(initialSettings.backgroundBox));
+    if (initialSettings.backgroundColor != null)
+      setBackgroundColor(String(initialSettings.backgroundColor));
+    if (initialSettings.shadow != null) setShadow(Boolean(initialSettings.shadow));
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { parseExif, parseGps, parseXmp, stripMetadata } from "@stirling-image/image-engine";
+import { parseExif, parseGps, parseXmp, stripMetadata } from "@ashim/image-engine";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";

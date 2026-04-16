@@ -1,4 +1,4 @@
-import { crop } from "@stirling-image/image-engine";
+import { crop } from "@ashim/image-engine";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
@@ -6,10 +6,11 @@ import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createToolRoute } from "../tool-factory.js";
 
 const settingsSchema = z.object({
-  left: z.number().int().min(0),
-  top: z.number().int().min(0),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
+  left: z.number().min(0),
+  top: z.number().min(0),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  unit: z.enum(["px", "percent"]).optional(),
 });
 
 export function registerCrop(app: FastifyInstance) {

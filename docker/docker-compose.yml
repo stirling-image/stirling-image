@@ -1,15 +1,15 @@
 services:
-  stirling-image:
+  ashim:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: stirlingimage/stirling-image:latest
-    container_name: stirling-image
+    image: ashimhq/ashim:latest
+    container_name: ashim
     ports:
       - "1349:1349"
     volumes:
-      - stirling-data:/data
-      - stirling-workspace:/tmp/workspace
+      - ashim-data:/data
+      - ashim-workspace:/tmp/workspace
     environment:
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin
@@ -22,5 +22,5 @@ services:
         max-file: "3"
 
 volumes:
-  stirling-data:
-  stirling-workspace:
+  ashim-data:
+  ashim-workspace:

@@ -1,15 +1,20 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import sharp from "sharp";
 import { type ProgressCallback, runPythonWithProgress } from "./bridge.js";
 
+export type OcrQuality = "fast" | "balanced" | "best";
+
 export interface OcrOptions {
-  engine?: "tesseract" | "paddleocr";
+  quality?: OcrQuality;
   language?: string;
+  enhance?: boolean;
+  /** @deprecated Use quality instead. Kept for backward compat. */
+  engine?: "tesseract" | "paddleocr";
 }
 
 export interface OcrResult {
   text: string;
-  engine: string;
 }
 
 export async function extractText(
@@ -20,9 +25,14 @@ export async function extractText(
 ): Promise<OcrResult> {
   const inputPath = join(outputDir, "input_ocr.png");
 
-  await writeFile(inputPath, inputBuffer);
+  // Convert any input format (HEIC, AVIF, WebP, TIFF, etc.) to PNG
+  // so Tesseract and PaddleOCR can read it reliably.
+  const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+  await writeFile(inputPath, pngBuffer);
+
   const { stdout } = await runPythonWithProgress("ocr.py", [inputPath, JSON.stringify(options)], {
     onProgress,
+    timeout: 600_000, // 10 min timeout for VLM on CPU
   });
 
   const result = JSON.parse(stdout);
@@ -32,6 +42,5 @@ export async function extractText(
 
   return {
     text: result.text,
-    engine: result.engine,
   };
 }

@@ -35,22 +35,29 @@ export const en = {
     rotate: { name: "Rotate & Flip", description: "Rotate, flip, and straighten images" },
     convert: { name: "Convert", description: "Convert between image formats" },
     compress: { name: "Compress", description: "Reduce file size by quality or target size" },
-    "strip-metadata": { name: "Strip Metadata", description: "Remove EXIF, GPS, and camera info" },
-    "edit-metadata": { name: "Edit Metadata", description: "Edit EXIF, GPS, and camera info" },
+    "optimize-for-web": {
+      name: "Optimize for Web",
+      description:
+        "Optimize images for web with format conversion, quality control, and live preview",
+    },
+    "strip-metadata": { name: "Remove Metadata", description: "Remove EXIF, GPS, and camera info" },
+    "edit-metadata": {
+      name: "Edit Metadata",
+      description: "Edit EXIF, IPTC, XMP, GPS, keywords, and dates",
+    },
     "bulk-rename": { name: "Bulk Rename", description: "Rename multiple files with patterns" },
     "image-to-pdf": { name: "Image to PDF", description: "Combine images into a PDF document" },
     "pdf-to-image": { name: "PDF to Image", description: "Convert PDF pages to images" },
     favicon: { name: "Favicon Generator", description: "Generate all favicon and app icon sizes" },
-    "brightness-contrast": {
-      name: "Brightness & Contrast",
-      description: "Adjust brightness and contrast levels",
+    "adjust-colors": {
+      name: "Adjust Colors",
+      description:
+        "Brightness, contrast, exposure, saturation, temperature, sharpness, and effects",
     },
-    saturation: {
-      name: "Saturation & Exposure",
-      description: "Adjust color saturation and exposure",
+    sharpening: {
+      name: "Sharpening",
+      description: "Adaptive, unsharp mask, and high-pass sharpening with presets",
     },
-    "color-channels": { name: "Color Channels", description: "Adjust individual R, G, B channels" },
-    "color-effects": { name: "Color Effects", description: "Grayscale, Sepia, Invert, Tint" },
     "replace-color": {
       name: "Replace & Invert Color",
       description: "Replace specific colors or invert",
@@ -60,16 +67,52 @@ export const en = {
       description: "AI-powered background removal",
     },
     upscale: { name: "Image Upscaling", description: "AI super-resolution enhancement" },
-    "erase-object": { name: "Object Eraser", description: "Paint over unwanted elements" },
-    ocr: { name: "OCR / Text Extraction", description: "Extract text from images" },
+    "erase-object": { name: "Object Eraser", description: "Remove unwanted objects with AI" },
+    ocr: {
+      name: "OCR / Text Extraction",
+      description: "Extract text from images with AI-powered accuracy",
+    },
     "blur-faces": {
       name: "Face / PII Blur",
       description: "Auto-detect and blur faces and sensitive info",
     },
-    "smart-crop": { name: "Smart Crop", description: "AI detects subject and crops optimally" },
+    "enhance-faces": {
+      name: "Face Enhancement",
+      description: "Restore and enhance faces with AI",
+    },
+    "smart-crop": {
+      name: "Smart Crop",
+      description: "Smart subject, face, or trim-based cropping",
+    },
+    "image-enhancement": {
+      name: "Image Enhancement",
+      description:
+        "One-click auto-improve with smart exposure, contrast, color, and sharpness correction",
+    },
+    "noise-removal": {
+      name: "Noise Removal",
+      description: "AI-powered noise and grain removal",
+    },
+    "red-eye-removal": {
+      name: "Red Eye Removal",
+      description: "AI-powered red eye detection and correction for flash photos",
+    },
+    "restore-photo": {
+      name: "Photo Restoration",
+      description: "Fix scratches, tears, and damage on old photos with AI",
+    },
     "content-aware-resize": {
       name: "Content-Aware Resize",
       description: "Intelligently resize images while preserving important content",
+    },
+    colorize: {
+      name: "AI Colorization",
+      description: "Convert black & white photos to full color using AI deep learning models",
+    },
+    "passport-photo": {
+      name: "Passport Photo",
+      description:
+        "Create government-compliant passport, visa, and ID photos with auto face detection",
     },
     "watermark-text": { name: "Text Watermark", description: "Add text watermark overlay" },
     "watermark-image": { name: "Image Watermark", description: "Overlay a logo as watermark" },
@@ -84,22 +127,43 @@ export const en = {
     "color-palette": { name: "Color Palette", description: "Extract dominant colors from image" },
     "qr-generate": {
       name: "QR Code Generator",
-      description: "Generate QR codes from text or URLs",
+      description: "Generate styled QR codes with custom colors, patterns, and logos",
     },
     "barcode-read": {
       name: "Barcode Reader",
-      description: "Read QR codes and barcodes from images",
+      description: "Scan images for QR codes, barcodes, and 2D codes",
     },
-    collage: { name: "Collage / Grid", description: "Combine images into a grid layout" },
-    stitch: { name: "Stitch", description: "Join images side by side or top to bottom" },
-    split: { name: "Image Splitting", description: "Split image into grid parts" },
-    border: { name: "Border & Frame", description: "Add borders, rounded corners, shadows" },
+    collage: {
+      name: "Collage / Grid",
+      description: "Combine images into beautiful grid collages with 25+ templates",
+    },
+    stitch: {
+      name: "Stitch / Combine",
+      description: "Join images side by side, stacked, or in a grid",
+    },
+    split: {
+      name: "Image Splitting",
+      description: "Split images into grid tiles or by pixel size with live preview",
+    },
+    border: {
+      name: "Border & Frame",
+      description: "Add borders, padding, rounded corners, and shadows with one-click presets",
+    },
     "svg-to-raster": {
       name: "SVG to Raster",
-      description: "Convert SVG to PNG/JPG at custom resolution",
+      description:
+        "Convert SVG to PNG, JPEG, WebP, AVIF, TIFF, GIF, or HEIF at custom scale and DPI",
     },
-    vectorize: { name: "Image to SVG", description: "Vectorize images using tracing" },
-    "gif-tools": { name: "GIF Tools", description: "Resize/crop/convert animated GIFs" },
+    vectorize: { name: "Image to SVG", description: "Convert images to scalable vector graphics" },
+    "gif-tools": {
+      name: "GIF Tools",
+      description:
+        "Resize, optimize, change speed, reverse, extract frames, and rotate animated GIFs",
+    },
+    "image-to-base64": {
+      name: "Image to Base64",
+      description: "Convert images to base64 strings for embedding in HTML, CSS, and more",
+    },
     pipeline: { name: "Pipeline Builder", description: "Chain multiple tools into a workflow" },
     batch: { name: "Batch Processing", description: "Apply any tool to multiple images" },
   },
@@ -130,7 +194,7 @@ export const en = {
     regenerateKey: "Regenerate",
     copyKey: "Copy Key",
     aboutDescription:
-      "Stirling Image is a self-hosted, privacy-first image processing suite with 30+ tools.",
+      "ashim is a self-hosted, privacy-first image processing suite with 30+ tools.",
     aboutLinks: "Links",
     github: "GitHub",
     documentation: "Documentation",

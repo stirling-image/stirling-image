@@ -7,6 +7,7 @@
 import type React from "react";
 import { lazy } from "react";
 import type { Crop } from "react-image-crop";
+import type { BgPreviewState } from "@/components/common/image-viewer";
 import type { EraserCanvasRef } from "@/components/tools/eraser-canvas";
 import type { PreviewTransform } from "@/components/tools/rotate-settings";
 
@@ -19,7 +20,9 @@ export type DisplayMode =
   | "no-comparison"
   | "interactive-crop"
   | "interactive-eraser"
-  | "no-dropzone";
+  | "interactive-split"
+  | "no-dropzone"
+  | "custom-results";
 
 // ── Crop and eraser prop types ─────────────────────────────────────
 
@@ -40,6 +43,7 @@ export interface EraserProps {
   hasStrokes: boolean;
   brushSize: number;
   onBrushSizeChange: (size: number) => void;
+  onMaskCenter?: (centerPct: number) => void;
 }
 
 // ── Registry entry ─────────────────────────────────────────────────
@@ -53,9 +57,13 @@ export interface ToolRegistryEntry {
   Settings: React.ComponentType<{
     onPreviewTransform?: (t: PreviewTransform) => void;
     onPreviewFilter?: (filter: string) => void;
+    onBgPreview?: (state: BgPreviewState | null) => void;
+    onImageStyle?: (style: React.CSSProperties | null) => void;
     cropProps?: CropProps;
     eraserProps?: EraserProps;
   }>;
+  /** Optional panel for tools that render custom content in the main area. */
+  ResultsPanel?: React.ComponentType;
 }
 
 // ── Lazy-loaded settings components ────────────────────────────────
@@ -76,6 +84,11 @@ const ConvertSettings = lazy(() =>
 const CompressSettings = lazy(() =>
   import("@/components/tools/compress-settings").then((m) => ({ default: m.CompressSettings })),
 );
+const OptimizeForWebSettings = lazy(() =>
+  import("@/components/tools/optimize-for-web-settings").then((m) => ({
+    default: m.OptimizeForWebSettings,
+  })),
+);
 const StripMetadataSettings = lazy(() =>
   import("@/components/tools/strip-metadata-settings").then((m) => ({
     default: m.StripMetadataSettings,
@@ -88,6 +101,11 @@ const EditMetadataSettings = lazy(() =>
 );
 const ColorSettings = lazy(() =>
   import("@/components/tools/color-settings").then((m) => ({ default: m.ColorSettings })),
+);
+const SharpeningSettings = lazy(() =>
+  import("@/components/tools/sharpening-settings").then((m) => ({
+    default: m.SharpeningSettings,
+  })),
 );
 const WatermarkTextSettings = lazy(() =>
   import("@/components/tools/watermark-text-settings").then((m) => ({
@@ -118,6 +136,11 @@ const FindDuplicatesSettings = lazy(() =>
     default: m.FindDuplicatesSettings,
   })),
 );
+const FindDuplicatesResults = lazy(() =>
+  import("@/components/tools/find-duplicates-results").then((m) => ({
+    default: m.FindDuplicatesResults,
+  })),
+);
 const ColorPaletteSettings = lazy(() =>
   import("@/components/tools/color-palette-settings").then((m) => ({
     default: m.ColorPaletteSettings,
@@ -128,19 +151,40 @@ const QrGenerateSettings = lazy(() =>
     default: m.QrGenerateSettings,
   })),
 );
+const QrGeneratePreview = lazy(() =>
+  import("@/components/tools/qr-generate-preview").then((m) => ({
+    default: m.QrGeneratePreview,
+  })),
+);
 const BarcodeReadSettings = lazy(() =>
   import("@/components/tools/barcode-read-settings").then((m) => ({
     default: m.BarcodeReadSettings,
   })),
 );
+const ImageToBase64Settings = lazy(() =>
+  import("@/components/tools/image-to-base64-settings").then((m) => ({
+    default: m.ImageToBase64Settings,
+  })),
+);
+const ImageToBase64Results = lazy(() =>
+  import("@/components/tools/image-to-base64-results").then((m) => ({
+    default: m.ImageToBase64Results,
+  })),
+);
 const CollageSettings = lazy(() =>
   import("@/components/tools/collage-settings").then((m) => ({ default: m.CollageSettings })),
+);
+const CollagePreview = lazy(() =>
+  import("@/components/tools/collage-preview").then((m) => ({ default: m.CollagePreview })),
 );
 const StitchSettings = lazy(() =>
   import("@/components/tools/stitch-settings").then((m) => ({ default: m.StitchSettings })),
 );
 const SplitSettings = lazy(() =>
   import("@/components/tools/split-settings").then((m) => ({ default: m.SplitSettings })),
+);
+const SplitCanvas = lazy(() =>
+  import("@/components/tools/split-canvas").then((m) => ({ default: m.SplitCanvas })),
 );
 const BorderSettings = lazy(() =>
   import("@/components/tools/border-settings").then((m) => ({ default: m.BorderSettings })),
@@ -178,6 +222,11 @@ const PdfToImageSettings = lazy(() =>
     default: m.PdfToImageSettings,
   })),
 );
+const PdfToImagePreview = lazy(() =>
+  import("@/components/tools/pdf-to-image-preview").then((m) => ({
+    default: m.PdfToImagePreview,
+  })),
+);
 const ReplaceColorSettings = lazy(() =>
   import("@/components/tools/replace-color-settings").then((m) => ({
     default: m.ReplaceColorSettings,
@@ -199,6 +248,11 @@ const BlurFacesSettings = lazy(() =>
     default: m.BlurFacesSettings,
   })),
 );
+const EnhanceFacesSettings = lazy(() =>
+  import("@/components/tools/enhance-faces-settings").then((m) => ({
+    default: m.EnhanceFacesSettings,
+  })),
+);
 const EraseObjectSettings = lazy(() =>
   import("@/components/tools/erase-object-settings").then((m) => ({
     default: m.EraseObjectSettings,
@@ -207,6 +261,41 @@ const EraseObjectSettings = lazy(() =>
 const SmartCropSettings = lazy(() =>
   import("@/components/tools/smart-crop-settings").then((m) => ({
     default: m.SmartCropSettings,
+  })),
+);
+const ImageEnhancementSettings = lazy(() =>
+  import("@/components/tools/image-enhancement-settings").then((m) => ({
+    default: m.ImageEnhancementSettings,
+  })),
+);
+const ColorizeSettings = lazy(() =>
+  import("@/components/tools/colorize-settings").then((m) => ({
+    default: m.ColorizeSettings,
+  })),
+);
+const NoiseRemovalSettings = lazy(() =>
+  import("@/components/tools/noise-removal-settings").then((m) => ({
+    default: m.NoiseRemovalSettings,
+  })),
+);
+const PassportPhotoSettings = lazy(() =>
+  import("@/components/tools/passport-photo-settings").then((m) => ({
+    default: m.PassportPhotoSettings,
+  })),
+);
+const PassportPhotoPreview = lazy(() =>
+  import("@/components/tools/passport-photo-settings").then((m) => ({
+    default: m.PassportPhotoPreview,
+  })),
+);
+const RedEyeRemovalSettings = lazy(() =>
+  import("@/components/tools/red-eye-removal-settings").then((m) => ({
+    default: m.RedEyeRemovalSettings,
+  })),
+);
+const RestorePhotoSettings = lazy(() =>
+  import("@/components/tools/restore-photo-settings").then((m) => ({
+    default: m.RestorePhotoSettings,
   })),
 );
 
@@ -253,18 +342,18 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ["strip-metadata", { displayMode: "no-comparison", Settings: StripMetadataSettings }],
   ["edit-metadata", { displayMode: "no-comparison", Settings: EditMetadataSettings }],
 
-  // Color adjustments (all share ColorSettings with different toolId)
-  ...(["brightness-contrast", "saturation", "color-channels", "color-effects"] as const).map(
-    (id) =>
-      [
-        id,
-        {
-          displayMode: "live-preview" as DisplayMode,
-          livePreview: true,
-          Settings: makeColorSettingsComponent(id) as never,
-        },
-      ] as const,
-  ),
+  // Color adjustments (consolidated)
+  [
+    "adjust-colors",
+    {
+      displayMode: "live-preview" as DisplayMode,
+      livePreview: true,
+      Settings: makeColorSettingsComponent("adjust-colors") as never,
+    },
+  ],
+
+  // Sharpening
+  ["sharpening", { displayMode: "before-after", Settings: SharpeningSettings }],
 
   // Watermark & Overlay
   ["watermark-text", { displayMode: "before-after", Settings: WatermarkTextSettings }],
@@ -275,16 +364,40 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   // Utilities
   ["info", { displayMode: "before-after", Settings: InfoSettings }],
   ["compare", { displayMode: "before-after", Settings: CompareSettings }],
-  ["find-duplicates", { displayMode: "before-after", Settings: FindDuplicatesSettings }],
+  [
+    "find-duplicates",
+    {
+      displayMode: "custom-results",
+      Settings: FindDuplicatesSettings,
+      ResultsPanel: FindDuplicatesResults,
+    },
+  ],
   ["color-palette", { displayMode: "before-after", Settings: ColorPaletteSettings }],
-  ["qr-generate", { displayMode: "no-dropzone", Settings: QrGenerateSettings }],
+  [
+    "qr-generate",
+    { displayMode: "no-dropzone", Settings: QrGenerateSettings, ResultsPanel: QrGeneratePreview },
+  ],
   ["barcode-read", { displayMode: "before-after", Settings: BarcodeReadSettings }],
+  [
+    "image-to-base64",
+    {
+      displayMode: "custom-results",
+      Settings: ImageToBase64Settings,
+      ResultsPanel: ImageToBase64Results,
+    },
+  ],
 
   // Layout & Composition
-  ["collage", { displayMode: "before-after", Settings: CollageSettings }],
+  [
+    "collage",
+    { displayMode: "no-dropzone", Settings: CollageSettings, ResultsPanel: CollagePreview },
+  ],
   ["stitch", { displayMode: "no-comparison", Settings: StitchSettings }],
-  ["split", { displayMode: "before-after", Settings: SplitSettings }],
-  ["border", { displayMode: "before-after", Settings: BorderSettings }],
+  [
+    "split",
+    { displayMode: "interactive-split", Settings: SplitSettings, ResultsPanel: SplitCanvas },
+  ],
+  ["border", { displayMode: "live-preview", livePreview: true, Settings: BorderSettings as never }],
 
   // Format & Conversion
   ["svg-to-raster", { displayMode: "before-after", Settings: SvgToRasterSettings }],
@@ -295,7 +408,11 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ["bulk-rename", { displayMode: "before-after", Settings: BulkRenameSettings }],
   ["favicon", { displayMode: "before-after", Settings: FaviconSettings }],
   ["image-to-pdf", { displayMode: "before-after", Settings: ImageToPdfSettings }],
-  ["pdf-to-image", { displayMode: "no-dropzone", Settings: PdfToImageSettings }],
+  ["optimize-for-web", { displayMode: "before-after", Settings: OptimizeForWebSettings }],
+  [
+    "pdf-to-image",
+    { displayMode: "no-dropzone", Settings: PdfToImageSettings, ResultsPanel: PdfToImagePreview },
+  ],
 
   // Adjustments extra
   ["replace-color", { displayMode: "before-after", Settings: ReplaceColorSettings }],
@@ -305,6 +422,7 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
   ["upscale", { displayMode: "before-after", Settings: UpscaleSettings }],
   ["ocr", { displayMode: "before-after", Settings: OcrSettings }],
   ["blur-faces", { displayMode: "before-after", Settings: BlurFacesSettings }],
+  ["enhance-faces", { displayMode: "before-after", Settings: EnhanceFacesSettings }],
   [
     "erase-object",
     {
@@ -313,6 +431,26 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
     },
   ],
   ["smart-crop", { displayMode: "before-after", Settings: SmartCropSettings }],
+  [
+    "image-enhancement",
+    {
+      displayMode: "before-after" as DisplayMode,
+      livePreview: true,
+      Settings: ImageEnhancementSettings as never,
+    },
+  ],
+  ["colorize", { displayMode: "before-after", Settings: ColorizeSettings }],
+  ["noise-removal", { displayMode: "before-after", Settings: NoiseRemovalSettings }],
+  [
+    "passport-photo",
+    {
+      displayMode: "custom-results",
+      Settings: PassportPhotoSettings,
+      ResultsPanel: PassportPhotoPreview,
+    },
+  ],
+  ["red-eye-removal", { displayMode: "before-after", Settings: RedEyeRemovalSettings }],
+  ["restore-photo", { displayMode: "before-after", Settings: RestorePhotoSettings }],
 ]);
 
 export function getToolRegistryEntry(toolId: string): ToolRegistryEntry | undefined {

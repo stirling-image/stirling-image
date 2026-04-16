@@ -1,6 +1,6 @@
 # Configuration
 
-All configuration is done through environment variables. Every variable has a sensible default, so Stirling Image works out of the box without setting any of them.
+All configuration is done through environment variables. Every variable has a sensible default, so ashim works out of the box without setting any of them.
 
 ## Environment variables
 
@@ -18,13 +18,15 @@ All configuration is done through environment variables. Every variable has a se
 | `AUTH_ENABLED` | `false` | Set to `true` to require login. The Docker image defaults to `true`. |
 | `DEFAULT_USERNAME` | `admin` | Username for the initial admin account. Only used on first run. |
 | `DEFAULT_PASSWORD` | `admin` | Password for the initial admin account. Change this after first login. |
+| `MAX_USERS` | `5` | Maximum number of registered user accounts |
+| `SKIP_MUST_CHANGE_PASSWORD` | - | Set to any non-empty value to bypass the forced password-change prompt on first login |
 
 ### Storage
 
 | Variable | Default | Description |
 |---|---|---|
 | `STORAGE_MODE` | `local` | `local` or `s3`. Only local storage is currently implemented. |
-| `DB_PATH` | `./data/stirling.db` | Path to the SQLite database file. |
+| `DB_PATH` | `./data/ashim.db` | Path to the SQLite database file. |
 | `WORKSPACE_PATH` | `./tmp/workspace` | Directory for temporary files during processing. Cleaned up automatically. |
 | `FILES_STORAGE_PATH` | `./data/files` | Directory for persistent user files (uploaded images, saved results). |
 
@@ -48,7 +50,7 @@ All configuration is done through environment variables. Every variable has a se
 
 | Variable | Default | Description |
 |---|---|---|
-| `APP_NAME` | `Stirling Image` | Display name shown in the UI. |
+| `APP_NAME` | `ashim` | Display name shown in the UI. |
 | `DEFAULT_THEME` | `light` | Default theme for new sessions. `light` or `dark`. |
 | `DEFAULT_LOCALE` | `en` | Default interface language. |
 
@@ -56,13 +58,13 @@ All configuration is done through environment variables. Every variable has a se
 
 ```yaml
 services:
-  stirling-image:
-    image: stirlingimage/stirling-image:latest
+  ashim:
+    image: ashimhq/ashim:latest
     ports:
       - "1349:1349"
     volumes:
-      - stirling-data:/data
-      - stirling-workspace:/tmp/workspace
+      - ashim-data:/data
+      - ashim-workspace:/tmp/workspace
     environment:
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin

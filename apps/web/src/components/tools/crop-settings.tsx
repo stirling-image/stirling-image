@@ -40,6 +40,10 @@ export function CropSettings({
 
   const { crop, aspect, showGrid, imgDimensions } = cropState;
 
+  const [customMode, setCustomMode] = useState(false);
+  const [customW, setCustomW] = useState("3");
+  const [customH, setCustomH] = useState("2");
+
   // Convert percentage crop to pixel values
   const toPixels = useCallback(
     (c: Crop) => {
@@ -94,6 +98,7 @@ export function CropSettings({
 
   const handleAspectSelect = useCallback(
     (value: number | undefined) => {
+      setCustomMode(false);
       onAspectChange(value);
       // When selecting an aspect ratio, adjust the current crop to match
       if (value && imgDimensions) {
@@ -121,6 +126,42 @@ export function CropSettings({
     [onAspectChange, onCropChange, imgDimensions],
   );
 
+  const applyCustomAspect = useCallback(
+    (w: number, h: number) => {
+      if (w > 0 && h > 0) {
+        const value = w / h;
+        onAspectChange(value);
+        if (imgDimensions) {
+          const imgAspect = imgDimensions.width / imgDimensions.height;
+          let newWidth: number;
+          let newHeight: number;
+          if (value > imgAspect) {
+            newWidth = 100;
+            newHeight = (imgDimensions.width / value / imgDimensions.height) * 100;
+          } else {
+            newHeight = 100;
+            newWidth = ((imgDimensions.height * value) / imgDimensions.width) * 100;
+          }
+          onCropChange({
+            unit: "%",
+            x: (100 - newWidth) / 2,
+            y: (100 - newHeight) / 2,
+            width: newWidth,
+            height: newHeight,
+          });
+        }
+      }
+    },
+    [onAspectChange, onCropChange, imgDimensions],
+  );
+
+  const handleCustomSelect = useCallback(() => {
+    setCustomMode(true);
+    const w = Number(customW);
+    const h = Number(customH);
+    applyCustomAspect(w, h);
+  }, [customW, customH, applyCustomAspect]);
+
   const handleSwapAspect = useCallback(() => {
     if (aspect) {
       handleAspectSelect(1 / aspect);
@@ -130,15 +171,23 @@ export function CropSettings({
   const pixels = toPixels(crop);
 
   const handleProcess = () => {
-    const settings = {
-      left: pixels.left,
-      top: pixels.top,
-      width: Math.max(1, pixels.width),
-      height: Math.max(1, pixels.height),
-    };
     if (files.length > 1) {
+      // Send percentage-based crop so the server adapts to each image's dimensions
+      const settings = {
+        left: crop.x,
+        top: crop.y,
+        width: Math.max(0.1, crop.width),
+        height: Math.max(0.1, crop.height),
+        unit: "percent" as const,
+      };
       processAllFiles(files, settings);
     } else {
+      const settings = {
+        left: pixels.left,
+        top: pixels.top,
+        width: Math.max(1, pixels.width),
+        height: Math.max(1, pixels.height),
+      };
       processFiles(files, settings);
     }
   };
@@ -184,7 +233,7 @@ export function CropSettings({
               key={label}
               onClick={() => handleAspectSelect(value)}
               className={`px-2 py-1.5 rounded text-xs transition-colors ${
-                activePresetLabel === label
+                !customMode && activePresetLabel === label
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-foreground"
               }`}
@@ -192,7 +241,47 @@ export function CropSettings({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleCustomSelect}
+            className={`px-2 py-1.5 rounded text-xs transition-colors ${
+              customMode
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-foreground"
+            }`}
+          >
+            Custom
+          </button>
         </div>
+        {customMode && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <input
+              type="number"
+              value={customW}
+              onChange={(e) => {
+                setCustomW(e.target.value);
+                const w = Number(e.target.value);
+                const h = Number(customH);
+                if (w > 0 && h > 0) applyCustomAspect(w, h);
+              }}
+              min={1}
+              className="w-16 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground tabular-nums text-center"
+            />
+            <span className="text-xs text-muted-foreground">:</span>
+            <input
+              type="number"
+              value={customH}
+              onChange={(e) => {
+                setCustomH(e.target.value);
+                const w = Number(customW);
+                const h = Number(e.target.value);
+                if (w > 0 && h > 0) applyCustomAspect(w, h);
+              }}
+              min={1}
+              className="w-16 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground tabular-nums text-center"
+            />
+          </div>
+        )}
       </div>
 
       {/* Position & Size */}
@@ -259,18 +348,16 @@ export function CropSettings({
       </div>
 
       {/* Grid overlay toggle */}
-      <button
-        type="button"
-        onClick={() => onGridToggle(!showGrid)}
-        className={`flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs transition-colors ${
-          showGrid
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground hover:text-foreground"
-        }`}
-      >
+      <label className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors">
+        <input
+          type="checkbox"
+          checked={showGrid}
+          onChange={(e) => onGridToggle(e.target.checked)}
+          className="accent-primary h-3.5 w-3.5"
+        />
         <Grid3x3 className="h-3.5 w-3.5" />
         Rule of Thirds
-      </button>
+      </label>
 
       {/* Error */}
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -315,14 +402,25 @@ export function CropSettings({
 // ── Pipeline-only crop controls (numeric inputs, no canvas) ──────────
 
 export interface CropControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function CropControls({ onChange }: CropControlsProps) {
+export function CropControls({ settings: initialSettings, onChange }: CropControlsProps) {
   const [left, setLeft] = useState(0);
   const [top, setTop] = useState(0);
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.left != null) setLeft(Number(initialSettings.left));
+    if (initialSettings.top != null) setTop(Number(initialSettings.top));
+    if (initialSettings.width != null) setWidth(String(initialSettings.width));
+    if (initialSettings.height != null) setHeight(String(initialSettings.height));
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

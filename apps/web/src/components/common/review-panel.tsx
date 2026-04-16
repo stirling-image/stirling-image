@@ -1,9 +1,9 @@
-import { TOOLS } from "@stirling-image/shared";
-import * as icons from "lucide-react";
-import { ArrowRight, ChevronDown, ChevronRight, Download, Undo2 } from "lucide-react";
+import { TOOLS } from "@ashim/shared";
+import { ArrowRight, ChevronDown, ChevronRight, Download, FileImage, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatFileSize, triggerDownload } from "@/lib/download";
+import { ICON_MAP } from "@/lib/icon-map";
 import { getSuggestedTools } from "@/lib/suggested-tools";
 
 interface ReviewPanelProps {
@@ -124,12 +124,8 @@ export function ReviewPanel({
                 <div className="space-y-1">
                   {suggestedTools.map((tool) => {
                     const ToolIcon =
-                      (
-                        icons as unknown as Record<
-                          string,
-                          React.ComponentType<{ className?: string }>
-                        >
-                      )[tool.icon] || icons.FileImage;
+                      (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ??
+                      FileImage;
                     return (
                       <button
                         key={tool.id}

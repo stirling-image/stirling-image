@@ -25,6 +25,6 @@ export const useThemeStore = create<ThemeStore>()(
         set({ theme, resolvedTheme: resolved });
       },
     }),
-    { name: "stirling-image-theme" },
+    { name: "ashim-theme" },
   ),
 );

@@ -82,7 +82,7 @@ test.describe("Tool processing (core tools)", () => {
   test("strip-metadata processes image", async ({ loggedInPage: page }) => {
     await page.goto("/strip-metadata");
     await uploadTestImage(page);
-    await page.getByRole("button", { name: /strip metadata/i }).click();
+    await page.getByRole("button", { name: /remove metadata/i }).click();
     await waitForProcessing(page);
     await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
       timeout: 15_000,
@@ -106,14 +106,29 @@ test.describe("Tool processing (core tools)", () => {
     });
   });
 
-  test("brightness-contrast processes image", async ({ loggedInPage: page }) => {
-    await page.goto("/brightness-contrast");
+  test("adjust-colors processes image", async ({ loggedInPage: page }) => {
+    await page.goto("/adjust-colors");
     await uploadTestImage(page);
     // Adjust brightness to non-zero so processing makes a change
     const brightnessSlider = page.locator("input[type='range']").first();
     await brightnessSlider.fill("20");
     // Button text is "Apply" in color-settings.tsx
     await page.getByRole("button", { name: /^apply$/i }).click();
+    await waitForProcessing(page);
+    await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("image-enhancement processes image", async ({ loggedInPage: page }) => {
+    await page.goto("/image-enhancement");
+    await uploadTestImage(page);
+    // Wait for analysis to complete (badges appear)
+    await expect(
+      page.locator("text=Intensity").or(page.locator("text=Enhancement Mode")),
+    ).toBeVisible({ timeout: 10_000 });
+    // Click Enhance button
+    await page.getByRole("button", { name: /^enhance$/i }).click();
     await waitForProcessing(page);
     await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
       timeout: 15_000,
@@ -148,12 +163,13 @@ test.describe("Tool processing (core tools)", () => {
 
   test("qr-generate creates QR code without file upload", async ({ loggedInPage: page }) => {
     await page.goto("/qr-generate");
-    // Fill in QR text
-    await page.locator("textarea").first().fill("https://example.com");
-    await page.getByRole("button", { name: /generate qr/i }).click();
-    await waitForProcessing(page);
-    // QR has a "Download QR Code" button in the left panel
-    await expect(page.getByText(/download qr/i).first()).toBeVisible({ timeout: 15_000 });
+    // Fill in URL input (client-side generation, live preview)
+    await page.getByTestId("qr-input-url").fill("https://example.com");
+    // Verify the live preview rendered (canvas or svg inside the preview area)
+    await expect(page.locator("canvas, svg").first()).toBeVisible({ timeout: 5000 });
+    // Download button should be enabled
+    const downloadBtn = page.getByTestId("qr-generate-download");
+    await expect(downloadBtn).toBeEnabled();
   });
 
   test("vectorize processes image", async ({ loggedInPage: page }) => {

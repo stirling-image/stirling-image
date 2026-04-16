@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, ref } from "vue";
 
 const stars = ref<string | null>(null);
-const repo = "https://github.com/stirling-image/stirling-image";
+const repo = "https://github.com/ashim-hq/ashim";
 
 onMounted(async () => {
   try {
-    const res = await fetch("https://api.github.com/repos/stirling-image/stirling-image");
+    const res = await fetch("https://api.github.com/repos/ashim-hq/ashim");
     if (!res.ok) return;
     const data = await res.json();
     const count = data.stargazers_count;

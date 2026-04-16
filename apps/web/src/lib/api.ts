@@ -4,7 +4,7 @@ const API_BASE = "/api";
 
 function getToken(): string {
   try {
-    return localStorage.getItem("stirling-token") || "";
+    return localStorage.getItem("ashim-token") || "";
   } catch {
     return "";
   }
@@ -71,11 +71,11 @@ export async function apiDelete<T>(path: string): Promise<T> {
 }
 
 export function setToken(token: string) {
-  localStorage.setItem("stirling-token", token);
+  localStorage.setItem("ashim-token", token);
 }
 
 export function clearToken() {
-  localStorage.removeItem("stirling-token");
+  localStorage.removeItem("ashim-token");
 }
 
 // ── File Upload / Download ──────────────────────────────────────

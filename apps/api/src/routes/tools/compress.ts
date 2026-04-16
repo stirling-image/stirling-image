@@ -1,4 +1,4 @@
-import { compress } from "@stirling-image/image-engine";
+import { compress } from "@ashim/image-engine";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";

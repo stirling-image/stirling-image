@@ -55,7 +55,7 @@ export function useAuth() {
         }
 
         // Auth is enabled — check if we have a valid session
-        const token = localStorage.getItem("stirling-token");
+        const token = localStorage.getItem("ashim-token");
         if (!token) {
           setState({
             loading: false,
@@ -84,7 +84,7 @@ export function useAuth() {
             permissions: session.user?.permissions ?? [],
           });
         } else {
-          localStorage.removeItem("stirling-token");
+          localStorage.removeItem("ashim-token");
           setState({
             loading: false,
             authEnabled: true,

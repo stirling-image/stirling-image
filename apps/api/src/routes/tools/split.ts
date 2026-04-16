@@ -4,15 +4,33 @@ import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const settingsSchema = z.object({
-  columns: z.number().min(1).max(10).default(2),
-  rows: z.number().min(1).max(10).default(2),
+  columns: z.number().min(1).max(20).default(3),
+  rows: z.number().min(1).max(20).default(3),
+  tileWidth: z.number().min(10).optional(),
+  tileHeight: z.number().min(10).optional(),
+  outputFormat: z.enum(["original", "png", "jpg", "webp"]).default("original"),
+  quality: z.number().min(1).max(100).default(90),
 });
 
-/**
- * Split an image into grid parts and return as ZIP.
- */
+function resolveOutputFormat(
+  outputFormat: string,
+  originalExt: string,
+): { sharpFormat: keyof sharp.FormatEnum | null; ext: string } {
+  if (outputFormat === "original") {
+    return { sharpFormat: null, ext: originalExt };
+  }
+  const map: Record<string, { sharpFormat: keyof sharp.FormatEnum; ext: string }> = {
+    png: { sharpFormat: "png", ext: ".png" },
+    jpg: { sharpFormat: "jpeg", ext: ".jpg" },
+    webp: { sharpFormat: "webp", ext: ".webp" },
+  };
+  return map[outputFormat] ?? { sharpFormat: null, ext: originalExt };
+}
+
 export function registerSplit(app: FastifyInstance) {
   app.post("/api/v1/tools/split", async (request, reply) => {
     let fileBuffer: Buffer | null = null;
@@ -57,17 +75,30 @@ export function registerSplit(app: FastifyInstance) {
     }
 
     try {
+      fileBuffer = await autoOrient(await ensureSharpCompat(fileBuffer));
       const metadata = await sharp(fileBuffer).metadata();
       const fullW = metadata.width ?? 0;
       const fullH = metadata.height ?? 0;
-      const cellW = Math.floor(fullW / settings.columns);
-      const cellH = Math.floor(fullH / settings.rows);
-      const ext = extname(filename) || ".png";
-      const baseName = filename.replace(ext, "");
 
+      let cols = settings.columns;
+      let rows = settings.rows;
+      if (settings.tileWidth && settings.tileHeight) {
+        cols = Math.max(1, Math.ceil(fullW / settings.tileWidth));
+        rows = Math.max(1, Math.ceil(fullH / settings.tileHeight));
+      }
+      cols = Math.min(cols, 20);
+      rows = Math.min(rows, 20);
+
+      const cellW = Math.floor(fullW / cols);
+      const cellH = Math.floor(fullH / rows);
+      const originalExt = extname(filename) || ".png";
+      const baseName = filename.replace(/\.[^.]+$/, "");
+      const { sharpFormat, ext: outputExt } = resolveOutputFormat(
+        settings.outputFormat,
+        originalExt,
+      );
       const jobId = randomUUID();
 
-      // Set up response headers for ZIP
       reply.hijack();
       reply.raw.writeHead(200, {
         "Content-Type": "application/zip",
@@ -78,20 +109,39 @@ export function registerSplit(app: FastifyInstance) {
       const archive = archiver("zip", { zlib: { level: 5 } });
       archive.pipe(reply.raw);
 
-      for (let row = 0; row < settings.rows; row++) {
-        for (let col = 0; col < settings.columns; col++) {
-          const left = col * cellW;
-          const top = row * cellH;
-          // Ensure we don't go out of bounds on the last row/col
-          const w = col === settings.columns - 1 ? fullW - left : cellW;
-          const h = row === settings.rows - 1 ? fullH - top : cellH;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          let left: number;
+          let top: number;
+          let w: number;
+          let h: number;
 
-          const partBuffer = await sharp(fileBuffer)
-            .extract({ left, top, width: w, height: h })
-            .toBuffer();
+          if (settings.tileWidth && settings.tileHeight) {
+            left = col * settings.tileWidth;
+            top = row * settings.tileHeight;
+            w = col === cols - 1 ? fullW - left : Math.min(settings.tileWidth, fullW - left);
+            h = row === rows - 1 ? fullH - top : Math.min(settings.tileHeight, fullH - top);
+          } else {
+            left = col * cellW;
+            top = row * cellH;
+            w = col === cols - 1 ? fullW - left : cellW;
+            h = row === rows - 1 ? fullH - top : cellH;
+          }
 
+          if (left >= fullW || top >= fullH || w <= 0 || h <= 0) continue;
+
+          let pipeline = sharp(fileBuffer).extract({ left, top, width: w, height: h });
+          if (sharpFormat) {
+            const formatOpts: Record<string, unknown> = {};
+            if (sharpFormat === "jpeg" || sharpFormat === "webp") {
+              formatOpts.quality = settings.quality;
+            }
+            pipeline = pipeline.toFormat(sharpFormat, formatOpts);
+          }
+
+          const partBuffer = await pipeline.toBuffer();
           archive.append(partBuffer, {
-            name: `${baseName}_r${row + 1}_c${col + 1}${ext}`,
+            name: `${baseName}_r${row + 1}_c${col + 1}${outputExt}`,
           });
         }
       }

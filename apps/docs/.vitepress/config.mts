@@ -2,23 +2,23 @@ import { defineConfig } from "vitepress";
 import llmstxt from "vitepress-plugin-llms";
 
 export default defineConfig({
-  title: "Stirling Image",
-  description: "Documentation for Stirling Image, a self-hosted image processing suite.",
-  base: "/stirling-image/",
+  title: "ashim",
+  description: "Documentation for ashim - A Self Hosted Image Manipulator. 45+ tools, local AI, pipelines, REST API.",
+  base: "/ashim/",
   srcDir: ".",
   outDir: "./.vitepress/dist",
   ignoreDeadLinks: [/localhost/],
 
   head: [
     ["meta", { name: "theme-color", content: "#3b82f6" }],
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/stirling-image/favicon.svg" }],
-    ["link", { rel: "llms-txt", href: "/stirling-image/llms.txt" }],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/ashim/favicon.svg" }],
+    ["link", { rel: "llms-txt", href: "/ashim/llms.txt" }],
   ],
 
   vite: {
     plugins: [
       llmstxt({
-        domain: "https://stirling-image.github.io",
+        domain: "https://ashim-hq.github.io",
         customLLMsTxtTemplate: `# {title}
 
 {description}
@@ -41,12 +41,12 @@ export default defineConfig({
 
 ## Source
 
-- [GitHub](https://github.com/stirling-image/stirling-image)
+- [GitHub](https://github.com/ashim-hq/ashim)
 - License: AGPLv3 (commercial license also available)
 `,
         customTemplateVariables: {
           description:
-            "Self-hosted, open-source image processing platform with 30+ tools. Runs in a single Docker container. Available as :latest (full, ~11 GB with AI/ML) or :lite (~1.5 GB, image processing only).",
+            "Self-hosted, open-source image processing platform with 45+ tools including AI/ML. Runs in a single Docker container with GPU auto-detection.",
           details:
             "Resize, compress, convert, remove backgrounds, upscale, run OCR, and more - without sending images to external services.",
         },
@@ -75,6 +75,7 @@ export default defineConfig({
           { text: "Docker tags", link: "/guide/docker-tags" },
           { text: "Developer guide", link: "/guide/developer" },
           { text: "Translation guide", link: "/guide/translations" },
+          { text: "Contributing", link: "/guide/contributing" },
         ],
       },
       {
@@ -92,13 +93,14 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Released under the <a href="https://github.com/stirling-image/stirling-image/blob/main/LICENSE">AGPLv3 License</a>.',
+      message:
+        'Released under the <a href="https://github.com/ashim-hq/ashim/blob/main/LICENSE">AGPLv3 License</a>.',
       copyright:
-        'AI-friendly docs available at <a href="/stirling-image/llms.txt">/llms.txt</a> · <a href="/stirling-image/llms-full.txt">/llms-full.txt</a>',
+        'AI-friendly docs available at <a href="/ashim/llms.txt">/llms.txt</a> · <a href="/ashim/llms-full.txt">/llms-full.txt</a>',
     },
 
     editLink: {
-      pattern: "https://github.com/stirling-image/stirling-image/edit/main/apps/docs/:path",
+      pattern: "https://github.com/ashim-hq/ashim/edit/main/apps/docs/:path",
       text: "Edit this page on GitHub",
     },
   },

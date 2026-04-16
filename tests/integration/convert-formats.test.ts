@@ -156,7 +156,8 @@ describe("SVG via convert tool", () => {
 // SVG-to-raster via dedicated endpoint
 // ---------------------------------------------------------------------------
 describe("SVG via dedicated svg-to-raster endpoint", () => {
-  for (const outputFmt of ["png", "jpg", "webp"] as const) {
+  // Test all 7 output formats
+  for (const outputFmt of ["png", "jpg", "webp", "avif", "tiff", "gif", "heif"] as const) {
     it(`converts svg -> ${outputFmt} via svg-to-raster`, async () => {
       const input = inputs.svg;
       const { body: payload, contentType } = createMultipartPayload([
@@ -179,10 +180,125 @@ describe("SVG via dedicated svg-to-raster endpoint", () => {
         body: payload,
       });
 
+      // HEIF encoding requires heif-enc which may not be installed in dev/CI
+      if (outputFmt === "heif" && res.statusCode === 422) {
+        return; // skip gracefully
+      }
+
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.downloadUrl).toContain(`.${outputFmt}`);
       expect(body.processedSize).toBeGreaterThan(0);
     });
   }
+
+  // Quality setting: low quality jpg should be smaller than high quality jpg
+  it("respects quality setting (low vs high quality jpg)", async () => {
+    const input = inputs.svg;
+
+    const makeRequest = async (quality: number) => {
+      const { body: payload, contentType } = createMultipartPayload([
+        {
+          name: "file",
+          filename: input.filename,
+          contentType: input.contentType,
+          content: input.buffer,
+        },
+        {
+          name: "settings",
+          content: JSON.stringify({ outputFormat: "jpg", width: 200, quality }),
+        },
+      ]);
+      return app.inject({
+        method: "POST",
+        url: "/api/v1/tools/svg-to-raster",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        body: payload,
+      });
+    };
+
+    const [lowRes, highRes] = await Promise.all([makeRequest(10), makeRequest(95)]);
+
+    expect(lowRes.statusCode).toBe(200);
+    expect(highRes.statusCode).toBe(200);
+
+    const lowBody = JSON.parse(lowRes.body);
+    const highBody = JSON.parse(highRes.body);
+
+    expect(highBody.processedSize).toBeGreaterThan(lowBody.processedSize);
+  });
+
+  // DPI setting: higher DPI without width constraint produces a larger image
+  it("respects DPI setting (72 vs 300 dpi png)", async () => {
+    const input = inputs.svg;
+
+    const makeRequest = async (dpi: number) => {
+      const { body: payload, contentType } = createMultipartPayload([
+        {
+          name: "file",
+          filename: input.filename,
+          contentType: input.contentType,
+          content: input.buffer,
+        },
+        {
+          name: "settings",
+          content: JSON.stringify({ outputFormat: "png", dpi }),
+        },
+      ]);
+      return app.inject({
+        method: "POST",
+        url: "/api/v1/tools/svg-to-raster",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": contentType,
+        },
+        body: payload,
+      });
+    };
+
+    const [lowDpi, highDpi] = await Promise.all([makeRequest(72), makeRequest(300)]);
+
+    expect(lowDpi.statusCode).toBe(200);
+    expect(highDpi.statusCode).toBe(200);
+
+    const lowBody = JSON.parse(lowDpi.body);
+    const highBody = JSON.parse(highDpi.body);
+
+    expect(highBody.processedSize).toBeGreaterThan(lowBody.processedSize);
+  });
+
+  // Non-browser formats should include a previewUrl
+  it("returns previewUrl for non-browser format (tiff)", async () => {
+    const input = inputs.svg;
+    const { body: payload, contentType } = createMultipartPayload([
+      {
+        name: "file",
+        filename: input.filename,
+        contentType: input.contentType,
+        content: input.buffer,
+      },
+      {
+        name: "settings",
+        content: JSON.stringify({ outputFormat: "tiff", width: 200 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/svg-to-raster",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body: payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.previewUrl).toBeDefined();
+    expect(body.previewUrl).toContain("preview.webp");
+  });
 });

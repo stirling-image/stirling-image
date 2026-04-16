@@ -1,4 +1,4 @@
-import type { Permission, Role } from "@stirling-image/shared";
+import type { Permission, Role } from "@ashim/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { getAuthUser } from "./plugins/auth.js";
 

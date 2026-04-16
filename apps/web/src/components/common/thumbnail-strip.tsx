@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { FileEntry } from "@/stores/file-store";
 
@@ -44,12 +44,18 @@ export function ThumbnailStrip({ entries, selectedIndex, onSelect }: ThumbnailSt
             style={{ width: 52, height: 38 }}
             title={entry.file.name}
           >
-            <img
-              src={entry.processedUrl ?? entry.blobUrl}
-              alt={entry.file.name}
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
+            {entry.previewLoading ? (
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+              </div>
+            ) : (
+              <img
+                src={entry.processedPreviewUrl ?? entry.processedUrl ?? entry.blobUrl}
+                alt={entry.file.name}
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
+            )}
             {isCompleted && (
               <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="h-2.5 w-2.5 text-white" />

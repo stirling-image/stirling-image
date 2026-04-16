@@ -1,11 +1,11 @@
 {
-  "name": "stirling-image",
-  "version": "1.14.0",
+  "name": "ashim",
+  "version": "1.15.2",
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "turbo dev",
-    "docs:dev": "pnpm --filter @stirling-image/docs docs:dev",
+    "docs:dev": "pnpm --filter @ashim/docs docs:dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "lint:fix": "biome check --write .",
@@ -53,5 +53,10 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2"
+  }
 }

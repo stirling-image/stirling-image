@@ -9,6 +9,8 @@ interface BeforeAfterSliderProps {
   beforeSize?: number;
   /** Processed file size in bytes. */
   afterSize?: number;
+  /** Initial divider position as a percentage (0–100). Defaults to 50. */
+  initialPosition?: number;
 }
 
 function formatSize(bytes: number): string {
@@ -29,9 +31,10 @@ export function BeforeAfterSlider({
   afterSrc,
   beforeSize,
   afterSize,
+  initialPosition = 50,
 }: BeforeAfterSliderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(50); // percentage 0-100
+  const [position, setPosition] = useState(initialPosition); // percentage 0-100
   const [isDragging, setIsDragging] = useState(false);
 
   const updatePosition = useCallback((clientX: number) => {

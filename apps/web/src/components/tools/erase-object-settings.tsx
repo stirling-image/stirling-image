@@ -6,11 +6,15 @@ import { generateId } from "@/lib/utils";
 import { useFileStore } from "@/stores/file-store";
 import type { EraserCanvasRef } from "./eraser-canvas";
 
+const OUTPUT_FORMATS = ["png", "jpg", "webp", "avif", "tiff", "gif", "heic", "heif"] as const;
+const LOSSY_FORMATS = ["jpg", "jpeg", "webp", "avif", "heic", "heif"];
+
 interface EraseObjectSettingsProps {
   eraserRef: React.RefObject<EraserCanvasRef | null>;
   hasStrokes: boolean;
   brushSize: number;
   onBrushSizeChange: (size: number) => void;
+  onMaskCenter?: (centerPct: number) => void;
 }
 
 export function EraseObjectSettings({
@@ -18,6 +22,7 @@ export function EraseObjectSettings({
   hasStrokes,
   brushSize,
   onBrushSizeChange: setBrushSize,
+  onMaskCenter,
 }: EraseObjectSettingsProps) {
   const { files, processing, error, setProcessing, setError, setProcessedUrl, setSizes } =
     useFileStore();
@@ -29,11 +34,20 @@ export function EraseObjectSettings({
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [outputFormat, setOutputFormat] = useState("png");
+  const [quality, setQuality] = useState(95);
+
   const handleProcess = async () => {
     if (files.length === 0 || !eraserRef.current) return;
 
     const maskBlob = await eraserRef.current.exportMask();
     if (!maskBlob) return;
+
+    // Record where the user painted so the comparison slider starts at that location
+    const maskCenter = eraserRef.current.getMaskCenter();
+    if (maskCenter !== null && onMaskCenter) {
+      onMaskCenter(maskCenter);
+    }
 
     setError(null);
     setDownloadUrl(null);
@@ -67,6 +81,8 @@ export function EraseObjectSettings({
     formData.append("file", files[0]);
     formData.append("mask", maskFile);
     formData.append("clientJobId", clientJobId);
+    formData.append("format", outputFormat);
+    formData.append("quality", String(quality));
 
     const xhr = new XMLHttpRequest();
     xhr.upload.onprogress = (e) => {
@@ -87,7 +103,7 @@ export function EraseObjectSettings({
           setDownloadUrl(data.downloadUrl);
           setOriginalSize(data.originalSize);
           setProcessedSize(data.processedSize);
-          setProcessedUrl(data.downloadUrl);
+          setProcessedUrl(data.downloadUrl, data.previewUrl);
           setSizes(data.originalSize, data.processedSize);
         } catch {
           setError("Invalid response");
@@ -166,10 +182,51 @@ export function EraseObjectSettings({
         </div>
       )}
 
+      {/* Output Format */}
+      <div>
+        <label htmlFor="eraser-format" className="text-xs text-muted-foreground">
+          Output Format
+        </label>
+        <select
+          id="eraser-format"
+          value={outputFormat}
+          onChange={(e) => setOutputFormat(e.target.value)}
+          className="w-full mt-1 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
+        >
+          {OUTPUT_FORMATS.map((f) => (
+            <option key={f} value={f}>
+              {f.toUpperCase()}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Quality (lossy formats only) */}
+      {LOSSY_FORMATS.includes(outputFormat) && (
+        <div>
+          <div className="flex justify-between items-center">
+            <label htmlFor="eraser-quality" className="text-xs text-muted-foreground">
+              Quality
+            </label>
+            <span className="text-xs font-mono text-foreground">{quality}</span>
+          </div>
+          <input
+            id="eraser-quality"
+            type="range"
+            min={1}
+            max={100}
+            step={1}
+            value={quality}
+            onChange={(e) => setQuality(Number(e.target.value))}
+            className="w-full mt-1"
+          />
+        </div>
+      )}
+
       {/* Hint */}
       {hasFile && !hasStrokes && (
         <p className="text-[10px] text-muted-foreground">
-          Paint over the objects you want to remove on the image.
+          Paint over the objects you want to remove. Use Ctrl+Z to undo.
         </p>
       )}
 

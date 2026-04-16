@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import sharp from "sharp";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 /**
  * Image info route - read-only, returns JSON metadata.
@@ -35,8 +36,12 @@ export function registerInfo(app: FastifyInstance) {
     }
 
     try {
+      // Read metadata from original buffer (Sharp can read HEIF container metadata)
       const metadata = await sharp(fileBuffer).metadata();
-      const stats = await sharp(fileBuffer).stats();
+
+      // stats() requires pixel decoding, so decode HEIC/HEIF first
+      const decodedBuffer = await ensureSharpCompat(fileBuffer);
+      const stats = await sharp(decodedBuffer).stats();
 
       // Build histogram data from stats
       const histogram = stats.channels.map((ch, i) => ({

@@ -1,11 +1,11 @@
 # Docker Image
 
-Stirling Image ships as a single Docker image that works on all platforms.
+ashim ships as a single Docker image that works on all platforms.
 
 ## Quick start
 
 ```bash
-docker run -d -p 1349:1349 -v stirling-data:/data stirlingimage/stirling-image:latest
+docker run -d --name ashim -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
 The app is available at `http://localhost:1349`.
@@ -15,7 +15,7 @@ The app is available at `http://localhost:1349`.
 The image includes CUDA support on amd64. If you have an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed, add `--gpus all`:
 
 ```bash
-docker run -d --gpus all -p 1349:1349 -v stirling-data:/data stirlingimage/stirling-image:latest
+docker run -d --name ashim --gpus all -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
 The image auto-detects your GPU at runtime. Without `--gpus all`, it runs on CPU. Same image either way.
@@ -56,13 +56,13 @@ GET /api/v1/admin/health
 
 ```yaml
 services:
-  stirling-image:
-    image: stirlingimage/stirling-image:latest
+  ashim:
+    image: ashimhq/ashim:latest
     ports:
       - "1349:1349"
     volumes:
-      - stirling-data:/data
-      - stirling-workspace:/tmp/workspace
+      - ashim-data:/data
+      - ashim-workspace:/tmp/workspace
     restart: unless-stopped
     logging:
       driver: json-file
@@ -71,21 +71,21 @@ services:
         max-file: "3"
 
 volumes:
-  stirling-data:
-  stirling-workspace:
+  ashim-data:
+  ashim-workspace:
 ```
 
 For GPU acceleration via Docker Compose, add the deploy section:
 
 ```yaml
 services:
-  stirling-image:
-    image: stirlingimage/stirling-image:latest
+  ashim:
+    image: ashimhq/ashim:latest
     ports:
       - "1349:1349"
     volumes:
-      - stirling-data:/data
-      - stirling-workspace:/tmp/workspace
+      - ashim-data:/data
+      - ashim-workspace:/tmp/workspace
     deploy:
       resources:
         reservations:
@@ -96,8 +96,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  stirling-data:
-  stirling-workspace:
+  ashim-data:
+  ashim-workspace:
 ```
 
 ## Version pinning
@@ -118,9 +118,6 @@ volumes:
 
 ## Migration from previous tags
 
-If you were using `:lite` or `:cuda` tags, switch to `:latest`:
-
-- **From `:lite`**: Pull `:latest`. You now have all AI tools included.
-- **From `:cuda`**: Pull `:latest` and keep `--gpus all`. Same GPU support, unified image.
+If you were using the `:cuda` tag, switch to `:latest` and keep `--gpus all`. Same GPU support, unified image.
 
 Your data and settings are preserved in the volumes.

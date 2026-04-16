@@ -20,14 +20,15 @@ const envSchema = z.object({
   CONCURRENT_JOBS: z.coerce.number().default(3),
   MAX_MEGAPIXELS: z.coerce.number().default(100),
   RATE_LIMIT_PER_MIN: z.coerce.number().default(100),
-  DB_PATH: z.string().default("./data/stirling.db"),
+  DB_PATH: z.string().default("./data/ashim.db"),
   FILES_STORAGE_PATH: z.string().default("./data/files"),
   WORKSPACE_PATH: z.string().default("./tmp/workspace"),
   DEFAULT_THEME: z.enum(["light", "dark"]).default("light"),
   DEFAULT_LOCALE: z.string().default("en"),
-  APP_NAME: z.string().default("Stirling Image"),
+  APP_NAME: z.string().default("ashim"),
   CORS_ORIGIN: z.string().default(""),
   MAX_USERS: z.coerce.number().default(5),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
 export type Env = z.infer<typeof envSchema>;

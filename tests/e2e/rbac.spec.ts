@@ -144,7 +144,7 @@ base.describe("RBAC - User sees restricted tabs", () => {
     await login(page, TEST_USER, TEST_PASSWORD);
 
     // Extract token from localStorage
-    const token = await page.evaluate(() => localStorage.getItem("stirling-token"));
+    const token = await page.evaluate(() => localStorage.getItem("ashim-token"));
     expect(token).toBeTruthy();
     const bearerToken = token as string;
 

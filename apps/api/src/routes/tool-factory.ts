@@ -149,11 +149,14 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
       }
 
       // Decode HEIC/HEIF input via system heif-dec (Sharp's bundled libheif
-      // lacks the HEVC decoder needed for iPhone photos)
+      // lacks the HEVC decoder needed for iPhone photos).
+      // The decoded buffer is PNG, so update the filename extension to match.
       const isHeif = validation.format === "heif";
       if (isHeif) {
         try {
           fileBuffer = await decodeHeic(fileBuffer);
+          const ext = filename.match(/\.[^.]+$/)?.[0];
+          if (ext) filename = `${filename.slice(0, -ext.length)}.png`;
         } catch (err) {
           return reply.status(422).send({
             error: "Failed to decode HEIC file. Ensure libheif-examples is installed.",
@@ -240,6 +243,34 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         const outputPath = join(workspacePath, "output", result.filename);
         await writeFile(outputPath, result.buffer);
 
+        // Generate a browser-previewable WebP thumbnail for formats that
+        // browsers cannot render in <img> tags (HEIC, TIFF, etc.)
+        const BROWSER_PREVIEWABLE = new Set([
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+          "image/svg+xml",
+          "image/bmp",
+          "image/avif",
+        ]);
+        let previewUrl: string | undefined;
+        if (!BROWSER_PREVIEWABLE.has(result.contentType)) {
+          try {
+            let previewInput = result.buffer;
+            // Sharp can't decode HEIC - use system decoder first
+            if (result.contentType === "image/heic" || result.contentType === "image/heif") {
+              previewInput = await decodeHeic(result.buffer);
+            }
+            const previewBuffer = await sharp(previewInput).webp({ quality: 80 }).toBuffer();
+            const previewPath = join(workspacePath, "output", "preview.webp");
+            await writeFile(previewPath, previewBuffer);
+            previewUrl = `/api/v1/download/${jobId}/preview.webp`;
+          } catch {
+            // Non-fatal - frontend will show the success card fallback
+          }
+        }
+
         // Also save the original input for reference/download
         const inputPath = join(workspacePath, "input", filename);
         await writeFile(inputPath, fileBuffer);
@@ -296,6 +327,7 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         return reply.send({
           jobId,
           downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(result.filename)}`,
+          previewUrl,
           originalSize: fileBuffer.length,
           processedSize: result.buffer.length,
           savedFileId,
@@ -306,7 +338,7 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         request.log.error({ err, toolId: config.toolId }, "Tool processing failed");
         return reply.status(422).send({
           error: "Processing failed",
-          details: process.env.NODE_ENV === "production" ? undefined : message,
+          details: message,
         });
       }
     },

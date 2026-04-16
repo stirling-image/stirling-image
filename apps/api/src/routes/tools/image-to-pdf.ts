@@ -5,6 +5,8 @@ import type { FastifyInstance } from "fastify";
 import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 const settingsSchema = z.object({
@@ -95,8 +97,9 @@ export function registerImageToPdf(app: FastifyInstance) {
       for (const file of files) {
         doc.addPage({ size: [pageW, pageH], margin });
 
-        // Convert to PNG for PDFKit compatibility
-        const pngBuffer = await sharp(file.buffer).png().toBuffer();
+        // Decode HEIC/HEIF if needed, normalize EXIF orientation, then convert to PNG for PDFKit
+        const compatBuffer = await autoOrient(await ensureSharpCompat(file.buffer));
+        const pngBuffer = await sharp(compatBuffer).png().toBuffer();
 
         const meta = await sharp(pngBuffer).metadata();
         const imgW = meta.width ?? 100;

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 
 const settingsSchema = z.object({
   position: z
@@ -67,6 +69,10 @@ export function registerWatermarkImage(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+      mainBuffer = await autoOrient(await ensureSharpCompat(mainBuffer));
+      watermarkBuffer = await autoOrient(await ensureSharpCompat(watermarkBuffer));
+
       const mainImage = sharp(mainBuffer);
       const mainMeta = await mainImage.metadata();
       const mainW = mainMeta.width ?? 800;

@@ -1,4 +1,4 @@
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { formatHeaders } from "@/lib/api";
 
 /**
@@ -99,7 +99,7 @@ export function ChangePasswordPage() {
       }
 
       // Trigger browser password save prompt via real form submission + navigation
-      const username = localStorage.getItem("stirling-username") || "admin";
+      const username = localStorage.getItem("ashim-username") || "admin";
       triggerBrowserPasswordSave(username, newPassword);
       return; // navigation happens inside triggerBrowserPasswordSave
     } catch {
@@ -115,7 +115,7 @@ export function ChangePasswordPage() {
         <div className="w-full max-w-md space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Stirling <span className="text-primary">Image</span>
+              <span className="text-primary">ashim</span>
             </h1>
             <h2 className="text-2xl font-bold mt-4 text-foreground">Change your password</h2>
             <p className="text-sm text-muted-foreground mt-2">
@@ -133,7 +133,7 @@ export function ChangePasswordPage() {
                 type="text"
                 name="username"
                 autoComplete="username"
-                value={localStorage.getItem("stirling-username") || "admin"}
+                value={localStorage.getItem("ashim-username") || "admin"}
                 readOnly
                 className="w-full px-4 py-3 rounded-lg border border-border bg-muted text-muted-foreground cursor-not-allowed"
               />

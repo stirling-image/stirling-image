@@ -1,11 +1,11 @@
-import type { CategoryInfo, Tool } from "@stirling-image/shared";
-import { CATEGORIES, TOOLS } from "@stirling-image/shared";
-import * as icons from "lucide-react";
+import type { CategoryInfo, Tool } from "@ashim/shared";
+import { CATEGORIES, TOOLS } from "@ashim/shared";
 import { Eye, EyeOff, FileImage, LayoutGrid, List, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GemLogo } from "@/components/common/gem-logo";
 import { apiGet } from "@/lib/api";
+import { ICON_MAP } from "@/lib/icon-map";
 import { cn } from "@/lib/utils";
 
 export function FullscreenGridPage() {
@@ -57,8 +57,6 @@ export function FullscreenGridPage() {
 
   const activeCategories = CATEGORIES.filter((cat) => groupedTools.has(cat.id));
 
-  const iconsMap = icons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
@@ -69,7 +67,7 @@ export function FullscreenGridPage() {
             className="flex items-center gap-2 text-lg font-bold text-foreground shrink-0"
           >
             <GemLogo className="h-6 w-6 text-primary" />
-            Stirling <span className="text-primary">Image</span>
+            <span className="text-primary">ashim</span>
           </Link>
 
           {/* Search */}
@@ -130,7 +128,6 @@ export function FullscreenGridPage() {
                 category={category}
                 tools={groupedTools.get(category.id) || []}
                 showDetails={showDetails}
-                iconsMap={iconsMap}
               />
             ))}
           </div>
@@ -144,14 +141,13 @@ function CategoryCard({
   category,
   tools,
   showDetails,
-  iconsMap,
 }: {
   category: CategoryInfo;
   tools: Tool[];
   showDetails: boolean;
-  iconsMap: Record<string, React.ComponentType<{ className?: string }>>;
 }) {
-  const CategoryIcon = iconsMap[category.icon] || LayoutGrid;
+  const CategoryIcon =
+    (ICON_MAP[category.icon] as React.ComponentType<{ className?: string }>) ?? LayoutGrid;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -183,7 +179,8 @@ function CategoryCard({
       {/* Tool list */}
       <div className="p-2">
         {tools.map((tool) => {
-          const ToolIcon = iconsMap[tool.icon] || FileImage;
+          const ToolIcon =
+            (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ?? FileImage;
           return (
             <Link
               key={tool.id}

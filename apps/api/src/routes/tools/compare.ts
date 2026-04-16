@@ -3,6 +3,8 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
+import { autoOrient } from "../../lib/auto-orient.js";
+import { ensureSharpCompat } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 
 /**
@@ -41,6 +43,10 @@ export function registerCompare(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF if needed, then normalize EXIF orientation
+      bufferA = await autoOrient(await ensureSharpCompat(bufferA));
+      bufferB = await autoOrient(await ensureSharpCompat(bufferB));
+
       // Normalize both to same size for comparison
       const metaA = await sharp(bufferA).metadata();
       const metaB = await sharp(bufferB).metadata();

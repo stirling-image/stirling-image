@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://ashim-hq.github.io/ashim/
+    about: Check the docs for setup guides, configuration, and API reference.
+  - name: Security vulnerability
+    url: https://github.com/ashim-hq/ashim/security/advisories/new
+    about: Report security issues privately through GitHub Security Advisories.

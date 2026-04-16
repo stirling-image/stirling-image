@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "Stirling Image"
-  text: "Self-hosted image processing"
-  tagline: Resize, compress, convert, remove backgrounds, and more. All on your own server, no data leaves your machine.
+  name: "ashim"
+  text: "A Self Hosted Image Manipulator"
+  tagline: 45+ tools. Local AI. No cloud. Your images stay on your machine.
   actions:
     - theme: brand
       text: Get started
@@ -14,12 +14,24 @@ hero:
       link: /api/rest
 
 features:
-  - title: 30+ tools
-    details: Resize, crop, compress, convert, watermark, OCR, background removal, upscaling, face blurring, and more.
-  - title: Runs locally
-    details: Single Docker container. Your images stay on your server, nothing gets sent to external services.
+  - title: 45+ Image Tools
+    details: Resize, crop, compress, convert, watermark, color adjust, vectorize, create GIFs, build collages, generate passport photos, find duplicates, and more.
+  - title: Local AI
+    details: 13 AI-powered tools - remove backgrounds, upscale, restore and colorize old photos, erase objects, blur faces, enhance faces, extract text (OCR). All on your hardware, no internet required.
+  - title: Pipelines
+    details: Chain tools into reusable workflows with up to 20 steps. Batch process up to 200 images at once with a single request.
   - title: REST API
-    details: Every tool is available through the API. Upload a file, pick a tool, get your result back.
-  - title: Pipeline support
-    details: Chain multiple tools together and save them as reusable pipelines. Batch process entire folders.
+    details: Every tool available via API with API key auth. Interactive docs at /api/docs, plus /llms.txt and /llms-full.txt for AI agents.
+  - title: File Library
+    details: Persistent file storage with full version history. Every processing step is tracked so you can trace the full tool chain from original to final output.
+  - title: Teams & Access Control
+    details: Multi-user support with admin/user roles, team grouping, per-resource permissions, and audit logging for all sensitive actions.
 ---
+
+<div class="quick-start-banner">
+
+```bash
+docker run -d --name ashim -p 1349:1349 -v ashim-data:/data ghcr.io/ashim-hq/ashim:latest
+```
+
+</div>

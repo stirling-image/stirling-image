@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { upscale } from "@stirling-image/ai";
+import { upscale } from "@ashim/ai";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import sharp from "sharp";
 import { z } from "zod";
 import { autoOrient } from "../../lib/auto-orient.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
+import { decodeHeic, encodeHeic } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 import { registerToolProcessFn } from "../tool-factory.js";
@@ -56,10 +58,20 @@ export function registerUpscale(app: FastifyInstance) {
     try {
       const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
       const scale = Number(settings.scale) || 2;
+      const model = settings.model || "auto";
+      const faceEnhance = Boolean(settings.faceEnhance);
+      const denoise = Number(settings.denoise) || 0;
+      const format = settings.format || "png";
+      const outputQuality = Number(settings.quality) || 95;
       request.log.info(
-        { toolId: "upscale", imageSize: fileBuffer.length, scale },
+        { toolId: "upscale", imageSize: fileBuffer.length, scale, model, format },
         "Starting upscale",
       );
+
+      // Decode HEIC/HEIF input via system decoder
+      if (validation.format === "heif") {
+        fileBuffer = await decodeHeic(fileBuffer);
+      }
 
       // Auto-orient to fix EXIF rotation before upscaling
       fileBuffer = await autoOrient(fileBuffer);
@@ -70,6 +82,12 @@ export function registerUpscale(app: FastifyInstance) {
       // Save input
       const inputPath = join(workspacePath, "input", filename);
       await writeFile(inputPath, fileBuffer);
+
+      // Determine which format the Python sidecar should produce.
+      // Formats that need Node.js-side conversion (HEIC/HEIF via heif-enc,
+      // AVIF via Sharp) are produced as PNG first, then converted below.
+      const needsNodeConversion = ["heic", "heif", "avif"].includes(format);
+      const pythonFormat = needsNodeConversion ? "png" : format;
 
       // Process
       const jobIdForProgress = clientJobId;
@@ -87,14 +105,58 @@ export function registerUpscale(app: FastifyInstance) {
       const result = await upscale(
         fileBuffer,
         join(workspacePath, "output"),
-        { scale },
+        { scale, model, faceEnhance, denoise, format: pythonFormat, quality: outputQuality },
         onProgress,
       );
 
-      // Save output
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_${scale}x.png`;
+      // Convert to final format if needed (HEIC/HEIF/AVIF)
+      let outputBuffer = result.buffer;
+      let finalFormat = result.format;
+      if (needsNodeConversion) {
+        if (format === "heic" || format === "heif") {
+          outputBuffer = await encodeHeic(result.buffer, outputQuality);
+          finalFormat = format;
+        } else if (format === "avif") {
+          outputBuffer = await sharp(result.buffer).avif({ quality: outputQuality }).toBuffer();
+          finalFormat = "avif";
+        }
+      }
+
+      // Save output with correct extension for the chosen format
+      const EXT_MAP: Record<string, string> = {
+        jpeg: "jpg",
+        jpg: "jpg",
+        png: "png",
+        webp: "webp",
+        tiff: "tiff",
+        gif: "gif",
+        avif: "avif",
+        heic: "heic",
+        heif: "heif",
+      };
+      const ext = EXT_MAP[finalFormat] || "png";
+      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_${scale}x.${ext}`;
       const outputPath = join(workspacePath, "output", outputFilename);
-      await writeFile(outputPath, result.buffer);
+      await writeFile(outputPath, outputBuffer);
+
+      // Generate browser-compatible preview for non-previewable formats
+      const BROWSER_PREVIEWABLE = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif", "bmp"]);
+      let previewUrl: string | undefined;
+      if (!BROWSER_PREVIEWABLE.has(finalFormat)) {
+        try {
+          // For HEIC/HEIF, decode first since Sharp can't read HEVC
+          const previewInput =
+            finalFormat === "heic" || finalFormat === "heif"
+              ? await decodeHeic(outputBuffer)
+              : outputBuffer;
+          const previewBuffer = await sharp(previewInput).webp({ quality: 80 }).toBuffer();
+          const previewPath = join(workspacePath, "output", "preview.webp");
+          await writeFile(previewPath, previewBuffer);
+          previewUrl = `/api/v1/download/${jobId}/preview.webp`;
+        } catch {
+          // Non-fatal - frontend will show fallback
+        }
+      }
 
       if (clientJobId) {
         updateSingleFileProgress({
@@ -107,8 +169,9 @@ export function registerUpscale(app: FastifyInstance) {
       return reply.send({
         jobId,
         downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outputFilename)}`,
+        previewUrl,
         originalSize: fileBuffer.length,
-        processedSize: result.buffer.length,
+        processedSize: outputBuffer.length,
         width: result.width,
         height: result.height,
         method: result.method,

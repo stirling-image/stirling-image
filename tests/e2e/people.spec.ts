@@ -1,7 +1,7 @@
 import { test as base, expect } from "@playwright/test";
 import { test as uiTest } from "./helpers";
 
-const API = "http://localhost:13490";
+const API = process.env.API_URL || "http://localhost:13490";
 
 async function getAuthToken(): Promise<string> {
   const res = await fetch(`${API}/api/auth/login`, {

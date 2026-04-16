@@ -8,14 +8,14 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
-    container_name: stirling-test-unit
+    container_name: ashim-test-unit
     command: ["pnpm", "test:ci"]
     environment:
       - NODE_ENV=test
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin
       - DEFAULT_PASSWORD=admin
-      - DB_PATH=/tmp/test-stirling.db
+      - DB_PATH=/tmp/test-ashim.db
       - WORKSPACE_PATH=/tmp/test-workspace
       - MAX_MEGAPIXELS=100
       - RATE_LIMIT_PER_MIN=1000
@@ -28,14 +28,14 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
-    container_name: stirling-test-e2e
+    container_name: ashim-test-e2e
     command: ["sh", "-c", "npx playwright install --with-deps chromium && pnpm test:e2e"]
     environment:
       - NODE_ENV=test
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin
       - DEFAULT_PASSWORD=admin
-      - DB_PATH=/tmp/test-stirling.db
+      - DB_PATH=/tmp/test-ashim.db
       - WORKSPACE_PATH=/tmp/test-workspace
       - MAX_MEGAPIXELS=100
       - RATE_LIMIT_PER_MIN=1000

@@ -40,7 +40,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @stirling-image/api dev",
+      command: "pnpm --filter @ashim/api dev",
       port: 13490,
       reuseExistingServer: !process.env.CI,
       env: {
@@ -54,7 +54,7 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: "pnpm --filter @stirling-image/web dev",
+      command: "pnpm --filter @ashim/web dev",
       port: 1349,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

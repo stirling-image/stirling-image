@@ -7,13 +7,23 @@ import { useFileStore } from "@/stores/file-store";
 type CompressMode = "quality" | "targetSize";
 
 export interface CompressControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
 }
 
-export function CompressControls({ onChange }: CompressControlsProps) {
+export function CompressControls({ settings: initialSettings, onChange }: CompressControlsProps) {
   const [mode, setMode] = useState<CompressMode>("quality");
   const [quality, setQuality] = useState(75);
   const [targetSizeKb, setTargetSizeKb] = useState("");
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.mode != null) setMode(initialSettings.mode as CompressMode);
+    if (initialSettings.quality != null) setQuality(Number(initialSettings.quality));
+    if (initialSettings.targetSizeKb != null) setTargetSizeKb(String(initialSettings.targetSizeKb));
+  }, [initialSettings]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {

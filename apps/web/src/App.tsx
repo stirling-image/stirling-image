@@ -1,16 +1,27 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { KeyboardShortcutProvider } from "./components/common/keyboard-shortcut-provider";
 import { useAuth } from "./hooks/use-auth";
-import { AutomatePage } from "./pages/automate-page";
-import { ChangePasswordPage } from "./pages/change-password-page";
-import { FilesPage } from "./pages/files-page";
-import { FullscreenGridPage } from "./pages/fullscreen-grid-page";
-import { HomePage } from "./pages/home-page";
-import { LoginPage } from "./pages/login-page";
-import { PrivacyPolicyPage } from "./pages/privacy-policy-page";
-import { ToolPage } from "./pages/tool-page";
+
+// Lazy-load all pages so each page's JS (and its icons/deps) is only
+// downloaded when the user navigates there, shrinking the main bundle.
+const AutomatePage = lazy(() =>
+  import("./pages/automate-page").then((m) => ({ default: m.AutomatePage })),
+);
+const ChangePasswordPage = lazy(() =>
+  import("./pages/change-password-page").then((m) => ({ default: m.ChangePasswordPage })),
+);
+const FilesPage = lazy(() => import("./pages/files-page").then((m) => ({ default: m.FilesPage })));
+const FullscreenGridPage = lazy(() =>
+  import("./pages/fullscreen-grid-page").then((m) => ({ default: m.FullscreenGridPage })),
+);
+const HomePage = lazy(() => import("./pages/home-page").then((m) => ({ default: m.HomePage })));
+const LoginPage = lazy(() => import("./pages/login-page").then((m) => ({ default: m.LoginPage })));
+const PrivacyPolicyPage = lazy(() =>
+  import("./pages/privacy-policy-page").then((m) => ({ default: m.PrivacyPolicyPage })),
+);
+const ToolPage = lazy(() => import("./pages/tool-page").then((m) => ({ default: m.ToolPage })));
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -92,6 +103,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Single page-level loading fallback — shown while JS for a route downloads.
+function PageLoader() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-background text-foreground">
+      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export function App() {
   return (
     <ErrorBoundary>
@@ -99,16 +119,26 @@ export function App() {
       <BrowserRouter>
         <KeyboardShortcutProvider>
           <AuthGuard>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/change-password" element={<ChangePasswordPage />} />
-              <Route path="/automate" element={<AutomatePage />} />
-              <Route path="/files" element={<FilesPage />} />
-              <Route path="/fullscreen" element={<FullscreenGridPage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-              <Route path="/:toolId" element={<ToolPage />} />
-              <Route path="/" element={<HomePage />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/change-password" element={<ChangePasswordPage />} />
+                <Route path="/automate" element={<AutomatePage />} />
+                <Route path="/files" element={<FilesPage />} />
+                <Route path="/fullscreen" element={<FullscreenGridPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                {/* Redirects: old color tools consolidated into adjust-colors */}
+                <Route
+                  path="/brightness-contrast"
+                  element={<Navigate to="/adjust-colors" replace />}
+                />
+                <Route path="/saturation" element={<Navigate to="/adjust-colors" replace />} />
+                <Route path="/color-channels" element={<Navigate to="/adjust-colors" replace />} />
+                <Route path="/color-effects" element={<Navigate to="/adjust-colors" replace />} />
+                <Route path="/:toolId" element={<ToolPage />} />
+                <Route path="/" element={<HomePage />} />
+              </Routes>
+            </Suspense>
           </AuthGuard>
         </KeyboardShortcutProvider>
       </BrowserRouter>

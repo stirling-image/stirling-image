@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import { getTestImagePath } from "./helpers";
 
-const API = "http://localhost:13490";
+const API = process.env.API_URL || "http://localhost:13490";
 
 async function getAuthToken(): Promise<string> {
   const res = await fetch(`${API}/api/auth/login`, {

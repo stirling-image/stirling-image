@@ -1,32 +1,36 @@
 # Translation guide
 
-Stirling Image ships with English by default. The i18n system is designed so adding a new language is straightforward. This page walks you through the process.
+ashim ships with English by default. The i18n system is designed so adding a new language is straightforward.
 
 ## How translations work
 
 All UI strings live in `packages/shared/src/i18n/`. The reference file is `en.ts`, which exports a typed object with every string the app uses. Other languages are separate files (e.g., `de.ts`, `fr.ts`) that export the same shape.
 
-The `TranslationKeys` type is derived from the English file, so TypeScript will catch any missing keys in your translation.
+The `TranslationKeys` type is derived from the English file, so TypeScript will catch any missing keys in any translation file.
 
-## Adding a new language
+## Requesting a translation
 
-### 1. Fork and branch
+To request a new language or report a mistranslation, open a [GitHub Issue](https://github.com/ashim-hq/ashim/issues) with:
 
-Fork the repository and create a new branch from `main`:
+- The language name and locale code (e.g., German / `de`)
+- Any specific strings or sections you want translated
+- If you have a translation ready, paste the translated strings directly in the issue
 
-```bash
-git checkout -b feat/add-german-translations
-```
+We do not accept pull requests. Submitting translations via issues is the right path.
 
-### 2. Copy the reference file
+## How to create a translation (for your own fork)
+
+If you are running a fork and want to add a language yourself:
+
+### 1. Copy the reference file
 
 ```bash
 cp packages/shared/src/i18n/en.ts packages/shared/src/i18n/de.ts
 ```
 
-### 3. Translate the strings
+### 2. Translate the strings
 
-Open `de.ts` and translate every string value. Keep the object structure and keys exactly the same. Only change the values.
+Open your new file and translate every string value. Keep the object structure and keys exactly the same - only change the values.
 
 ```ts
 // packages/shared/src/i18n/de.ts
@@ -40,8 +44,8 @@ export const de = {
   },
   tools: {
     resize: {
-      name: "Größe ändern",
-      description: "Größe nach Pixeln, Prozent oder Social-Media-Vorgaben ändern",
+      name: "Grosse andern",
+      description: "Grosse nach Pixeln, Prozent oder Social-Media-Vorgaben andern",
     },
     // ... translate all tool entries
   },
@@ -51,11 +55,11 @@ export const de = {
 
 Things to keep in mind:
 
-- Preserve any interpolation placeholders if they exist in the future (e.g., `{count}`, `{filename}`).
 - Do not translate object keys, only values.
 - Keep the `as const` assertion at the end.
+- If a string is the same in your language (technical terms, proper nouns), leave the English value.
 
-### 4. Export the new language
+### 3. Export the new language
 
 Edit `packages/shared/src/i18n/index.ts` to include your language:
 
@@ -65,34 +69,19 @@ export { en } from "./en.js";
 export { de } from "./de.js";
 ```
 
-### 5. Register in the frontend
-
-The frontend needs to know about the new locale. Add it to the locale selector so users can switch languages. The exact location depends on how the locale switcher is implemented at the time of your contribution. Search for where `en` is referenced in the frontend and add your language alongside it.
-
-### 6. Test it
+### 4. Verify
 
 ```bash
-pnpm typecheck    # will catch missing or mistyped keys
+pnpm typecheck    # catches missing or mistyped keys
 pnpm dev          # manually verify strings appear correctly
 ```
 
-TypeScript is your safety net here. If your translation file is missing a key or has the wrong structure, `pnpm typecheck` will fail with a clear error.
-
-### 7. Submit a PR
-
-Push your branch and open a pull request. In the PR description, list which sections you translated and any strings you intentionally left in English (technical terms, proper nouns, etc.).
-
-## Strings that don't need translation
-
-Some strings are the same across languages: tool names that are English loanwords, technical terms, abbreviations. If a string is identical in your language, just leave it as the English value. No special configuration is needed.
-
 ## Adding new translation keys
 
-If you are adding a new feature that needs new UI strings:
+When adding a new feature that needs new UI strings:
 
 1. Add the new keys to `packages/shared/src/i18n/en.ts` first. This is the reference file.
-2. Add translations to any other language files you can. If you can't translate them, leave the English value as a placeholder and note it in your PR.
-3. Run `pnpm typecheck` to make sure all language files still satisfy the `TranslationKeys` type.
+2. Run `pnpm typecheck` to make sure all language files still satisfy the `TranslationKeys` type.
 
 ## File reference
 

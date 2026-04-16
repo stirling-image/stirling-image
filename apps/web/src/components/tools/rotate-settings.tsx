@@ -11,18 +11,33 @@ export interface PreviewTransform {
 }
 
 export interface RotateControlsProps {
+  settings?: Record<string, unknown>;
   onChange?: (settings: Record<string, unknown>) => void;
   onPreviewTransform?: (transform: PreviewTransform) => void;
   resetSignal?: number;
 }
 
-export function RotateControls({ onChange, onPreviewTransform, resetSignal }: RotateControlsProps) {
+export function RotateControls({
+  settings: initialSettings,
+  onChange,
+  onPreviewTransform,
+  resetSignal,
+}: RotateControlsProps) {
   // Quick rotation in 90° steps: 0, 90, 180, 270
   const [rotation, setRotation] = useState(0);
   // Fine straighten adjustment: -45 to +45
   const [straighten, setStraighten] = useState(0);
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
+
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initialSettings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (initialSettings.angle != null) setRotation(Number(initialSettings.angle));
+    if (initialSettings.horizontal != null) setFlipH(Boolean(initialSettings.horizontal));
+    if (initialSettings.vertical != null) setFlipV(Boolean(initialSettings.vertical));
+  }, [initialSettings]);
 
   const totalAngle = rotation + straighten;
 
@@ -87,20 +102,45 @@ export function RotateControls({ onChange, onPreviewTransform, resetSignal }: Ro
 
   return (
     <div className="space-y-4">
-      {/* Quick rotate */}
+      {/* Quick rotate presets */}
       <div>
         <p className="text-xs text-muted-foreground">Rotate</p>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex gap-1.5 mt-1">
           <button
             type="button"
             data-testid="rotate-left"
             onClick={rotateLeft}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm font-medium"
+            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-xs font-medium"
             title="Rotate 90° counter-clockwise"
           >
-            <RotateCcw className="h-4 w-4" />
-            Left
+            <RotateCcw className="h-3.5 w-3.5" />
+            -90°
           </button>
+          <button
+            type="button"
+            onClick={() => setRotation((r) => r + 180)}
+            className="flex-1 flex items-center justify-center py-2 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-xs font-medium"
+            title="Rotate 180°"
+          >
+            180°
+          </button>
+          <button
+            type="button"
+            data-testid="rotate-right"
+            onClick={rotateRight}
+            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-xs font-medium"
+            title="Rotate 90° clockwise"
+          >
+            +90°
+            <RotateCw className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Custom angle */}
+      <div>
+        <p className="text-xs text-muted-foreground">Angle</p>
+        <div className="flex items-center justify-center gap-1.5 mt-1">
           <button
             type="button"
             onClick={() => setRotation((r) => r - 1)}
@@ -122,7 +162,7 @@ export function RotateControls({ onChange, onPreviewTransform, resetSignal }: Ro
                   commitAngleInput();
                 }
               }}
-              className="w-14 text-center text-sm font-mono font-medium tabular-nums py-1.5 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 pr-4"
+              className="w-16 text-center text-sm font-mono font-medium tabular-nums py-1.5 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 pr-4"
             />
             <span className="absolute right-2 text-sm font-mono text-muted-foreground pointer-events-none">
               °
@@ -135,16 +175,6 @@ export function RotateControls({ onChange, onPreviewTransform, resetSignal }: Ro
             title="Increase 1°"
           >
             <Plus className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            data-testid="rotate-right"
-            onClick={rotateRight}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-sm font-medium"
-            title="Rotate 90° clockwise"
-          >
-            Right
-            <RotateCw className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -185,26 +215,26 @@ export function RotateControls({ onChange, onPreviewTransform, resetSignal }: Ro
             type="button"
             data-testid="rotate-flip-h"
             onClick={() => setFlipH(!flipH)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
               flipH
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-primary/10"
             }`}
           >
-            <FlipHorizontal className="h-4 w-4" />
+            <FlipHorizontal className="h-3.5 w-3.5" />
             Horizontal
           </button>
           <button
             type="button"
             data-testid="rotate-flip-v"
             onClick={() => setFlipV(!flipV)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
               flipV
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-primary/10"
             }`}
           >
-            <FlipVertical className="h-4 w-4" />
+            <FlipVertical className="h-3.5 w-3.5" />
             Vertical
           </button>
         </div>

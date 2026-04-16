@@ -7,7 +7,7 @@ import { getTestImagePath } from "./helpers";
 // auth token handling, and unauthenticated access.
 // ---------------------------------------------------------------------------
 
-const API = "http://localhost:13490";
+const API = process.env.API_URL || "http://localhost:13490";
 
 async function getAuthToken(): Promise<string> {
   const res = await fetch(`${API}/api/auth/login`, {
@@ -38,8 +38,8 @@ test.describe("Security: Path traversal", () => {
 
   test("download rejects path traversal in jobId (..)", async () => {
     const res = await fetch(`${API}/api/v1/download/../../../etc/passwd/file.png`);
-    // Should return 400 (invalid path) or 404, never the actual file
-    expect([400, 404]).toContain(res.status);
+    // 400/404 in dev (Fastify only), 200 in production (SPA fallback for normalized path).
+    // Either way, the actual file must never be leaked.
     const body = await res.text();
     expect(body).not.toContain("root:");
   });

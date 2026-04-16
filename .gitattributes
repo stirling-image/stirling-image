@@ -1,0 +1,28 @@
+# Ensure shell scripts, Python, and Dockerfiles always use LF line endings.
+# Without this, git on Windows (core.autocrlf=true) will check out .sh files
+# with CRLF, causing "bad interpreter" errors when Docker runs entrypoint.sh.
+* text=auto
+
+*.sh        text eol=lf
+Dockerfile* text eol=lf
+*.py        text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.json      text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.md        text eol=lf
+
+# Binary files — never mangle
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.pth       binary
+*.onnx      binary

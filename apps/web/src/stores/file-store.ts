@@ -1,9 +1,13 @@
 import { create } from "zustand";
+import { formatHeaders } from "@/lib/api";
 
 export interface FileEntry {
   file: File;
   blobUrl: string;
+  previewLoading: boolean;
   processedUrl: string | null;
+  processedPreviewUrl: string | null;
+  processedFilename: string | null;
   processedSize: number | null;
   originalSize: number;
   status: "pending" | "processing" | "completed" | "failed";
@@ -19,7 +23,10 @@ function createEntry(file: File): FileEntry {
   return {
     file,
     blobUrl: URL.createObjectURL(file),
+    previewLoading: needsServerPreview(file),
     processedUrl: null,
+    processedPreviewUrl: null,
+    processedFilename: null,
     processedSize: null,
     originalSize: file.size,
     status: "pending",
@@ -51,6 +58,7 @@ function deriveSelected(entries: FileEntry[], selectedIndex: number) {
     selectedFileSize: entry ? entry.file.size : null,
     originalBlobUrl: entry ? entry.blobUrl : null,
     processedUrl: entry ? entry.processedUrl : null,
+    processedPreviewUrl: entry ? entry.processedPreviewUrl : null,
     originalSize: entry ? entry.originalSize : null,
     processedSize: entry ? entry.processedSize : null,
   };
@@ -67,6 +75,34 @@ function deriveFiles(entries: FileEntry[]): File[] {
   }
   prevFiles = entries.map((e) => e.file);
   return prevFiles;
+}
+
+// ---------------------------------------------------------------------------
+// HEIC/HEIF preview helpers
+// ---------------------------------------------------------------------------
+
+const HEIF_EXTENSIONS = new Set(["heic", "heif", "hif"]);
+
+function needsServerPreview(file: File): boolean {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return HEIF_EXTENSIONS.has(ext);
+}
+
+async function fetchDecodedPreview(file: File): Promise<string | null> {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/v1/preview", {
+      method: "POST",
+      headers: formatHeaders(),
+      body: formData,
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +124,7 @@ interface FileState {
   readonly selectedFileSize: number | null;
   readonly originalBlobUrl: string | null;
   readonly processedUrl: string | null;
+  readonly processedPreviewUrl: string | null;
   readonly originalSize: number | null;
   readonly processedSize: number | null;
 
@@ -103,7 +140,7 @@ interface FileState {
   setProcessing: (v: boolean) => void;
   setError: (e: string | null) => void;
   setJobId: (id: string) => void;
-  setProcessedUrl: (url: string | null) => void;
+  setProcessedUrl: (url: string | null, previewUrl?: string | null) => void;
   setSizes: (original: number, processed: number) => void;
   undoProcessing: () => void;
   reset: () => void;
@@ -133,12 +170,41 @@ export const useFileStore = create<FileState>((set, get) => ({
       files: deriveFiles(entries),
       ...deriveSelected(entries, 0),
     });
+    // Async: decode HEIC/HEIF files for browser preview
+    for (let i = 0; i < entries.length; i++) {
+      if (needsServerPreview(entries[i].file)) {
+        const file = entries[i].file;
+        fetchDecodedPreview(file).then((url) => {
+          const state = get();
+          if (state.entries[i]?.file !== file) return;
+          const updated = [...state.entries];
+          updated[i] = { ...updated[i], previewLoading: false, ...(url ? { blobUrl: url } : {}) };
+          set({ entries: updated, ...deriveSelected(updated, state.selectedIndex) });
+        });
+      }
+    }
   },
 
   addFiles: (files) => {
-    const entries = [...get().entries, ...files.map(createEntry)];
+    const oldLen = get().entries.length;
+    const newEntries = files.map(createEntry);
+    const entries = [...get().entries, ...newEntries];
     const idx = get().selectedIndex;
     set({ entries, files: deriveFiles(entries), ...deriveSelected(entries, idx) });
+    // Async: decode HEIC/HEIF files for browser preview
+    for (let j = 0; j < newEntries.length; j++) {
+      const i = oldLen + j;
+      if (needsServerPreview(newEntries[j].file)) {
+        const file = newEntries[j].file;
+        fetchDecodedPreview(file).then((url) => {
+          const state = get();
+          if (state.entries[i]?.file !== file) return;
+          const updated = [...state.entries];
+          updated[i] = { ...updated[i], previewLoading: false, ...(url ? { blobUrl: url } : {}) };
+          set({ entries: updated, ...deriveSelected(updated, state.selectedIndex) });
+        });
+      }
+    }
   },
 
   removeFile: (index) => {
@@ -207,7 +273,7 @@ export const useFileStore = create<FileState>((set, get) => ({
     // no-op for backward compat
   },
 
-  setProcessedUrl: (url) => {
+  setProcessedUrl: (url, previewUrl) => {
     const { entries, selectedIndex } = get();
     if (!entries[selectedIndex]) return;
     const updated = [...entries];
@@ -215,12 +281,16 @@ export const useFileStore = create<FileState>((set, get) => ({
       updated[selectedIndex] = {
         ...updated[selectedIndex],
         processedUrl: url,
+        processedPreviewUrl: previewUrl ?? null,
+        processedFilename: null,
         status: "completed",
       };
     } else {
       updated[selectedIndex] = {
         ...updated[selectedIndex],
         processedUrl: null,
+        processedPreviewUrl: null,
+        processedFilename: null,
         status: "pending",
       };
     }
@@ -247,6 +317,8 @@ export const useFileStore = create<FileState>((set, get) => ({
     const resetEntries = entries.map((e) => ({
       ...e,
       processedUrl: null,
+      processedPreviewUrl: null,
+      processedFilename: null,
       processedSize: null,
       status: "pending" as const,
       error: null,

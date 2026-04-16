@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
-import { extractText } from "@stirling-image/ai";
+import { extractText } from "@ashim/ai";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { validateImageBuffer } from "../../lib/file-validation.js";
@@ -8,8 +8,11 @@ import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 
 const settingsSchema = z.object({
-  engine: z.enum(["tesseract", "paddleocr"]).default("tesseract"),
-  language: z.enum(["en", "de", "fr", "es", "zh", "ja", "ko"]).default("en"),
+  quality: z.enum(["fast", "balanced", "best"]).default("balanced"),
+  language: z.enum(["auto", "en", "de", "fr", "es", "zh", "ja", "ko"]).default("auto"),
+  enhance: z.boolean().default(true),
+  // Backward compat: old "engine" param still accepted
+  engine: z.enum(["tesseract", "paddleocr"]).optional(),
 });
 
 /**
@@ -70,11 +73,17 @@ export function registerOcr(app: FastifyInstance) {
         return reply.status(400).send({ error: "Settings must be valid JSON" });
       }
 
+      // Backward compat: map old engine param to quality
+      let quality = settings.quality;
+      if (settings.engine && !settingsRaw?.includes('"quality"')) {
+        quality = settings.engine === "tesseract" ? "fast" : "balanced";
+      }
+
       request.log.info(
         {
           toolId: "ocr",
           imageSize: fileBuffer.length,
-          engine: settings.engine,
+          quality,
           language: settings.language,
         },
         "Starting OCR",
@@ -94,30 +103,66 @@ export function registerOcr(app: FastifyInstance) {
           }
         : undefined;
 
-      const result = await extractText(
-        fileBuffer,
-        workspacePath,
-        {
-          engine: settings.engine,
-          language: settings.language,
-        },
-        onProgress,
-      );
+      // Fallback chain: best -> balanced -> fast
+      // PaddleOCR can crash with segfault on some platforms, so we retry
+      // with a lower quality tier at the Node.js level.
+      const fallbackChain: Array<"fast" | "balanced" | "best"> =
+        quality === "best"
+          ? ["best", "balanced", "fast"]
+          : quality === "balanced"
+            ? ["balanced", "fast"]
+            : ["fast"];
 
-      if (clientJobId) {
-        updateSingleFileProgress({
-          jobId: clientJobId,
-          phase: "complete",
-          percent: 100,
-        });
+      let lastError: unknown;
+      for (const tier of fallbackChain) {
+        try {
+          const result = await extractText(
+            fileBuffer,
+            workspacePath,
+            {
+              quality: tier,
+              language: settings.language,
+              enhance: settings.enhance,
+            },
+            onProgress,
+          );
+
+          if (clientJobId) {
+            updateSingleFileProgress({
+              jobId: clientJobId,
+              phase: "complete",
+              percent: 100,
+            });
+          }
+
+          return reply.send({
+            jobId,
+            filename,
+            text: result.text,
+          });
+        } catch (err) {
+          lastError = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          // If the Python process crashed (segfault, dispatcher exit), try next tier
+          if (
+            msg.includes("exited unexpectedly") ||
+            msg.includes("exited with code") ||
+            msg.includes("Segmentation fault")
+          ) {
+            request.log.warn(
+              { toolId: "ocr", quality: tier, err },
+              `OCR ${tier} crashed, falling back`,
+            );
+            if (onProgress) onProgress(15, "Retrying...");
+            continue;
+          }
+          // Non-crash errors (validation, timeout) should not retry
+          throw err;
+        }
       }
 
-      return reply.send({
-        jobId,
-        filename,
-        text: result.text,
-        engine: result.engine,
-      });
+      // All tiers failed
+      throw lastError;
     } catch (err) {
       request.log.error({ err, toolId: "ocr" }, "OCR failed");
       return reply.status(422).send({

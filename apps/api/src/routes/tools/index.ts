@@ -1,4 +1,4 @@
-import { PYTHON_SIDECAR_TOOLS, TOOLS } from "@stirling-image/shared";
+import { TOOLS } from "@ashim/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db, schema } from "../../db/index.js";
@@ -9,6 +9,7 @@ import { registerBulkRename } from "./bulk-rename.js";
 import { registerCollage } from "./collage.js";
 import { registerColorAdjustments } from "./color-adjustments.js";
 import { registerColorPalette } from "./color-palette.js";
+import { registerColorize } from "./colorize.js";
 import { registerCompare } from "./compare.js";
 import { registerCompose } from "./compose.js";
 import { registerCompress } from "./compress.js";
@@ -16,19 +17,28 @@ import { registerContentAwareResize } from "./content-aware-resize.js";
 import { registerConvert } from "./convert.js";
 import { registerCrop } from "./crop.js";
 import { registerEditMetadata } from "./edit-metadata.js";
+import { registerEnhanceFaces } from "./enhance-faces.js";
 import { registerEraseObject } from "./erase-object.js";
 import { registerFavicon } from "./favicon.js";
 import { registerFindDuplicates } from "./find-duplicates.js";
 import { registerGifTools } from "./gif-tools.js";
+import { registerImageEnhancement } from "./image-enhancement.js";
+import { registerImageToBase64 } from "./image-to-base64.js";
 import { registerImageToPdf } from "./image-to-pdf.js";
 import { registerInfo } from "./info.js";
+import { registerNoiseRemoval } from "./noise-removal.js";
 import { registerOcr } from "./ocr.js";
+import { registerOptimizeForWeb } from "./optimize-for-web.js";
+import { registerPassportPhoto } from "./passport-photo.js";
 import { registerPdfToImage } from "./pdf-to-image.js";
 import { registerQrGenerate } from "./qr-generate.js";
+import { registerRedEyeRemoval } from "./red-eye-removal.js";
 import { registerRemoveBackground } from "./remove-background.js";
 import { registerReplaceColor } from "./replace-color.js";
 import { registerResize } from "./resize.js";
+import { registerRestorePhoto } from "./restore-photo.js";
 import { registerRotate } from "./rotate.js";
+import { registerSharpening } from "./sharpening.js";
 import { registerSmartCrop } from "./smart-crop.js";
 import { registerSplit } from "./split.js";
 import { registerStitch } from "./stitch.js";
@@ -70,10 +80,6 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
   // Build skip set
   const skipTools = new Set([...disabledTools, ...(enableExperimental ? [] : experimentalToolIds)]);
 
-  // In lite mode, register 501 stubs for AI tools instead of real handlers
-  const isLite = process.env.STIRLING_VARIANT === "lite";
-  const liteStubTools = new Set<string>(PYTHON_SIDECAR_TOOLS);
-
   const toolRegistrations: Array<{
     id: string;
     register: (app: FastifyInstance) => void;
@@ -87,6 +93,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "strip-metadata", register: registerStripMetadata },
     { id: "edit-metadata", register: registerEditMetadata },
     { id: "color-adjustments", register: registerColorAdjustments },
+    { id: "sharpening", register: registerSharpening },
 
     // Watermark & Overlay
     { id: "watermark-text", register: registerWatermarkText },
@@ -101,6 +108,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "color-palette", register: registerColorPalette },
     { id: "qr-generate", register: registerQrGenerate },
     { id: "barcode-read", register: registerBarcodeRead },
+    { id: "image-to-base64", register: registerImageToBase64 },
 
     // Layout & Composition
     { id: "collage", register: registerCollage },
@@ -118,6 +126,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "bulk-rename", register: registerBulkRename },
     { id: "favicon", register: registerFavicon },
     { id: "image-to-pdf", register: registerImageToPdf },
+    { id: "optimize-for-web", register: registerOptimizeForWeb },
 
     // Adjustments extra
     { id: "replace-color", register: registerReplaceColor },
@@ -129,11 +138,17 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "blur-faces", register: registerBlurFaces },
     { id: "erase-object", register: registerEraseObject },
     { id: "smart-crop", register: registerSmartCrop },
+    { id: "image-enhancement", register: registerImageEnhancement },
     { id: "content-aware-resize", register: registerContentAwareResize },
+    { id: "colorize", register: registerColorize },
+    { id: "enhance-faces", register: registerEnhanceFaces },
+    { id: "noise-removal", register: registerNoiseRemoval },
+    { id: "passport-photo", register: registerPassportPhoto },
+    { id: "red-eye-removal", register: registerRedEyeRemoval },
+    { id: "restore-photo", register: registerRestorePhoto },
   ];
 
   let skipped = 0;
-  let stubbed = 0;
   for (const { id, register } of toolRegistrations) {
     if (skipTools.has(id)) {
       app.log.info(`Skipping disabled/experimental tool: ${id}`);
@@ -141,24 +156,11 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
       continue;
     }
 
-    if (isLite && liteStubTools.has(id)) {
-      // Register a 501 stub instead of the real handler
-      app.post(`/api/v1/tools/${id}`, async (_request, reply) => {
-        return reply.status(501).send({
-          statusCode: 501,
-          error: "Not Available",
-          message: `The "${id}" tool requires the full image. Pull stirlingimage/stirling-image:latest for all features.`,
-        });
-      });
-      stubbed++;
-      continue;
-    }
-
     register(app);
   }
 
-  const registered = toolRegistrations.length - skipped - stubbed;
+  const registered = toolRegistrations.length - skipped;
   app.log.info(
-    `Tool routes: ${registered} active, ${stubbed} lite-stubbed, ${skipped} skipped (${toolRegistrations.length} total)`,
+    `Tool routes: ${registered} active, ${skipped} skipped (${toolRegistrations.length} total)`,
   );
 }

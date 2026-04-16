@@ -25,7 +25,7 @@ export function LoginPage() {
       const data = await res.json();
       setToken(data.token);
       // Store username for settings display
-      localStorage.setItem("stirling-username", data.user?.username || username);
+      localStorage.setItem("ashim-username", data.user?.username || username);
       // Redirect to password change if required, otherwise go home
       if (data.user?.mustChangePassword) {
         window.location.href = "/change-password";
@@ -45,7 +45,7 @@ export function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Stirling <span className="text-primary">Image</span>
+              <span className="text-primary">ashim</span>
             </h1>
             <h2 className="text-2xl font-bold mt-4 text-foreground">Login</h2>
           </div>

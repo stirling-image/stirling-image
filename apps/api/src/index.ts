@@ -1,7 +1,7 @@
+import { isGpuAvailable } from "@ashim/ai";
+import { APP_VERSION } from "@ashim/shared";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import { isGpuAvailable } from "@stirling-image/ai";
-import { APP_VERSION } from "@stirling-image/shared";
 import Fastify from "fastify";
 import { env } from "./config.js";
 import { db, schema } from "./db/index.js";
@@ -23,14 +23,6 @@ import { teamsRoutes } from "./routes/teams.js";
 import { registerToolRoutes } from "./routes/tools/index.js";
 import { userFileRoutes } from "./routes/user-files.js";
 
-// Warn about deprecated STIRLING_VARIANT env var
-if (process.env.STIRLING_VARIANT) {
-  console.warn(
-    `WARNING: STIRLING_VARIANT="${process.env.STIRLING_VARIANT}" is set but ignored. ` +
-      "There is now a single unified image with all features. Remove STIRLING_VARIANT from your environment.",
-  );
-}
-
 // Run before anything else
 runMigrations();
 console.log("Database initialized");
@@ -42,7 +34,7 @@ await ensureDefaultAdmin();
 recoverStaleJobs();
 
 const app = Fastify({
-  logger: true,
+  logger: { level: env.LOG_LEVEL },
   bodyLimit: env.MAX_UPLOAD_SIZE_MB * 1024 * 1024,
 });
 
@@ -64,7 +56,7 @@ app.addHook("onSend", async (_request, reply) => {
     reply.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     const csp = _request.url.startsWith("/api/docs")
       ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     reply.header("Content-Security-Policy", csp);
   }
 });
@@ -72,6 +64,8 @@ app.addHook("onSend", async (_request, reply) => {
 await app.register(rateLimit, {
   max: env.RATE_LIMIT_PER_MIN,
   timeWindow: "1 minute",
+  // Only rate-limit API endpoints — static files and the SPA fallback must never be throttled
+  allowList: (request) => !request.url.startsWith("/api/"),
 });
 
 // Multipart upload support
@@ -173,7 +167,7 @@ const cleanupCron = startCleanupCron();
 // Start
 try {
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
-  console.log(`Stirling Image API running on port ${env.PORT}`);
+  console.log(`ashim API running on port ${env.PORT}`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
@@ -210,7 +204,7 @@ async function shutdown(signal: string) {
   }
 
   try {
-    const { shutdownDispatcher } = await import("@stirling-image/ai");
+    const { shutdownDispatcher } = await import("@ashim/ai");
     shutdownDispatcher();
     console.log("Python dispatcher shut down");
   } catch {

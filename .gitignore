@@ -30,9 +30,9 @@ playwright-report/
 blob-report/
 
 # IDE / tool scratch
-.superpowers/
-.claude/
 CLAUDE.md
+.claude/
+.superpowers/
 docs/superpowers/
 PRD.md
 
@@ -45,3 +45,5 @@ layout-*.png
 audit_report.md
 .worktrees/
 .release-version
+.models
+docs/specs/

@@ -17,4 +17,7 @@ export default defineConfig({
       "/api": "http://localhost:13490",
     },
   },
+  build: {
+    rollupOptions: {},
+  },
 });

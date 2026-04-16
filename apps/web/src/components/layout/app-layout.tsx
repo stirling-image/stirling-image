@@ -61,7 +61,7 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
                 <div className="flex items-center gap-2">
                   <GemLogo className="h-5 w-5 text-primary" />
                   <span className="text-sm font-bold text-foreground">
-                    Stirling <span className="text-primary">Image</span>
+                    <span className="text-primary">ashim</span>
                   </span>
                 </div>
               )}
@@ -109,7 +109,7 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
             <div className="flex items-center gap-2">
               <GemLogo className="h-5 w-5 text-primary" />
               <span className="text-sm font-bold text-foreground">
-                Stirling <span className="text-primary">Image</span>
+                <span className="text-primary">ashim</span>
               </span>
             </div>
           )}

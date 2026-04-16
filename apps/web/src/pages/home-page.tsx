@@ -1,12 +1,11 @@
-import { CATEGORIES, TOOLS } from "@stirling-image/shared";
-import * as icons from "lucide-react";
-import { useCallback, useEffect, useMemo } from "react";
+import { CATEGORIES, TOOLS } from "@ashim/shared";
+import { Loader2 } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { ImageViewer } from "@/components/common/image-viewer";
 import { MultiImageViewer } from "@/components/common/multi-image-viewer";
 import { AppLayout } from "@/components/layout/app-layout";
-import { cn } from "@/lib/utils";
+import { ICON_MAP } from "@/lib/icon-map";
 import { useFileStore } from "@/stores/file-store";
 import { useSettingsStore } from "@/stores/settings-store";
 
@@ -14,16 +13,21 @@ import { useSettingsStore } from "@/stores/settings-store";
 const QUICK_ACTION_IDS = ["resize", "compress", "convert", "remove-background"];
 
 export function HomePage() {
-  const { setFiles, files, reset, originalBlobUrl, selectedFileName, selectedFileSize } =
-    useFileStore();
+  const {
+    setFiles,
+    files,
+    reset,
+    originalBlobUrl,
+    selectedFileName,
+    selectedFileSize,
+    currentEntry,
+  } = useFileStore();
   const navigate = useNavigate();
-  const { variantUnavailableTools, fetch: fetchSettings } = useSettingsStore();
+  const { fetch: fetchSettings } = useSettingsStore();
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
-
-  const unavailableSet = useMemo(() => new Set(variantUnavailableTools), [variantUnavailableTools]);
 
   const handleFiles = useCallback(
     (newFiles: File[]) => {
@@ -32,25 +36,6 @@ export function HomePage() {
     },
     [setFiles, reset],
   );
-
-  const handleToolClick = (route: string, toolId: string) => {
-    if (unavailableSet.has(toolId)) {
-      toast("This tool requires the full image.", {
-        description:
-          "Pull stirlingimage/stirling-image:latest for all features including AI tools.",
-        action: {
-          label: "Learn more",
-          onClick: () =>
-            window.open(
-              "https://stirling-image.github.io/stirling-image/guide/docker-tags",
-              "_blank",
-            ),
-        },
-      });
-      return;
-    }
-    navigate(route);
-  };
 
   const hasFile = files.length > 0;
 
@@ -68,7 +53,7 @@ export function HomePage() {
           {/* File info */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2 text-sm">
-              <icons.CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+              <ICON_MAP.CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
               <span className="truncate font-medium text-foreground">
                 {selectedFileName ?? files[0].name}
               </span>
@@ -96,18 +81,14 @@ export function HomePage() {
                 const tool = TOOLS.find((t) => t.id === id);
                 if (!tool) return null;
                 const Icon =
-                  (icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-                    tool.icon
-                  ] || icons.FileImage;
+                  (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ??
+                  ICON_MAP.FileImage;
                 return (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => handleToolClick(tool.route, tool.id)}
-                    className={cn(
-                      "flex items-center gap-2 p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors text-left",
-                      unavailableSet.has(id) && "opacity-50",
-                    )}
+                    onClick={() => navigate(tool.route)}
+                    className="flex items-center gap-2 p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors text-left"
                   >
                     <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <Icon className="h-4 w-4" />
@@ -138,23 +119,14 @@ export function HomePage() {
                   <div className="space-y-0.5">
                     {categoryTools.map((tool) => {
                       const Icon =
-                        (
-                          icons as unknown as Record<
-                            string,
-                            React.ComponentType<{ className?: string }>
-                          >
-                        )[tool.icon] || icons.FileImage;
+                        (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ??
+                        ICON_MAP.FileImage;
                       return (
                         <button
                           key={tool.id}
                           type="button"
-                          onClick={() => handleToolClick(tool.route, tool.id)}
-                          className={cn(
-                            "flex items-center gap-2.5 w-full py-1.5 px-2 rounded-lg text-left transition-colors",
-                            unavailableSet.has(tool.id)
-                              ? "opacity-50 hover:bg-muted/50"
-                              : "hover:bg-muted text-foreground",
-                          )}
+                          onClick={() => navigate(tool.route)}
+                          className="flex items-center gap-2.5 w-full py-1.5 px-2 rounded-lg text-left transition-colors hover:bg-muted text-foreground"
                         >
                           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm">{tool.name}</span>
@@ -172,6 +144,12 @@ export function HomePage() {
         <div className="flex-1 flex items-center justify-center p-6 min-h-0">
           {files.length > 1 ? (
             <MultiImageViewer />
+          ) : currentEntry?.previewLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+              <p className="text-sm text-muted-foreground">Generating preview...</p>
+              <p className="text-xs text-muted-foreground/60">{selectedFileName}</p>
+            </div>
           ) : originalBlobUrl ? (
             <ImageViewer
               src={originalBlobUrl}

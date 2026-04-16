@@ -1,7 +1,26 @@
 import type { CropOptions, Sharp } from "../types.js";
 
 export async function crop(image: Sharp, options: CropOptions): Promise<Sharp> {
-  const { left, top, width, height } = options;
+  const metadata = await image.metadata();
+  const imgWidth = metadata.width ?? 0;
+  const imgHeight = metadata.height ?? 0;
+
+  let left: number;
+  let top: number;
+  let width: number;
+  let height: number;
+
+  if (options.unit === "percent") {
+    left = Math.round((options.left / 100) * imgWidth);
+    top = Math.round((options.top / 100) * imgHeight);
+    width = Math.round((options.width / 100) * imgWidth);
+    height = Math.round((options.height / 100) * imgHeight);
+  } else {
+    left = Math.round(options.left);
+    top = Math.round(options.top);
+    width = Math.round(options.width);
+    height = Math.round(options.height);
+  }
 
   if (width <= 0 || height <= 0) {
     throw new Error("Crop width and height must be greater than 0");
@@ -9,10 +28,6 @@ export async function crop(image: Sharp, options: CropOptions): Promise<Sharp> {
   if (left < 0 || top < 0) {
     throw new Error("Crop left and top must be non-negative");
   }
-
-  const metadata = await image.metadata();
-  const imgWidth = metadata.width ?? 0;
-  const imgHeight = metadata.height ?? 0;
 
   if (left + width > imgWidth) {
     throw new Error(

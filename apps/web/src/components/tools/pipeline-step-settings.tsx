@@ -1,26 +1,61 @@
-import { BlurFacesControls } from "./blur-faces-settings";
-import { BorderControls } from "./border-settings";
-import { ColorControls } from "./color-settings";
-import { CompressControls } from "./compress-settings";
-import { ConvertControls } from "./convert-settings";
-import { CropControls } from "./crop-settings";
-import { GifToolsControls } from "./gif-tools-settings";
-import { RemoveBgControls } from "./remove-bg-settings";
-import { ReplaceColorControls } from "./replace-color-settings";
-import { ResizeControls } from "./resize-settings";
-import { RotateControls } from "./rotate-settings";
-import { SmartCropControls } from "./smart-crop-settings";
-import { StripMetadataControls } from "./strip-metadata-settings";
-import { TextOverlayControls } from "./text-overlay-settings";
-import { UpscaleControls } from "./upscale-settings";
-import { WatermarkTextControls } from "./watermark-text-settings";
+import { lazy, Suspense } from "react";
 
-const COLOR_TOOL_IDS = new Set([
-  "brightness-contrast",
-  "saturation",
-  "color-channels",
-  "color-effects",
-]);
+type ControlProps = {
+  settings: Record<string, unknown>;
+  onChange: (settings: Record<string, unknown>) => void;
+};
+
+// Lazy-load every control so these modules are not pulled into the main bundle.
+// The pipeline builder wraps this component in <Suspense> so each control
+// loads on demand when the user selects a step in the pipeline.
+const CONTROLS: Record<string, React.LazyExoticComponent<React.FC<ControlProps>>> = {
+  resize: lazy(() => import("./resize-settings").then((m) => ({ default: m.ResizeControls }))),
+  crop: lazy(() => import("./crop-settings").then((m) => ({ default: m.CropControls }))),
+  rotate: lazy(() => import("./rotate-settings").then((m) => ({ default: m.RotateControls }))),
+  convert: lazy(() => import("./convert-settings").then((m) => ({ default: m.ConvertControls }))),
+  compress: lazy(() =>
+    import("./compress-settings").then((m) => ({ default: m.CompressControls })),
+  ),
+  "strip-metadata": lazy(() =>
+    import("./strip-metadata-settings").then((m) => ({ default: m.StripMetadataControls })),
+  ),
+  border: lazy(() => import("./border-settings").then((m) => ({ default: m.BorderControls }))),
+  "watermark-text": lazy(() =>
+    import("./watermark-text-settings").then((m) => ({ default: m.WatermarkTextControls })),
+  ),
+  "text-overlay": lazy(() =>
+    import("./text-overlay-settings").then((m) => ({ default: m.TextOverlayControls })),
+  ),
+  "replace-color": lazy(() =>
+    import("./replace-color-settings").then((m) => ({ default: m.ReplaceColorControls })),
+  ),
+  "smart-crop": lazy(() =>
+    import("./smart-crop-settings").then((m) => ({ default: m.SmartCropControls })),
+  ),
+  "gif-tools": lazy(() =>
+    import("./gif-tools-settings").then((m) => ({ default: m.GifToolsControls })),
+  ),
+  upscale: lazy(() => import("./upscale-settings").then((m) => ({ default: m.UpscaleControls }))),
+  "blur-faces": lazy(() =>
+    import("./blur-faces-settings").then((m) => ({ default: m.BlurFacesControls })),
+  ),
+  "enhance-faces": lazy(() =>
+    import("./enhance-faces-settings").then((m) => ({ default: m.EnhanceFacesControls })),
+  ),
+  "remove-background": lazy(() =>
+    import("./remove-bg-settings").then((m) => ({ default: m.RemoveBgControls })),
+  ),
+  "noise-removal": lazy(() =>
+    import("./noise-removal-settings").then((m) => ({ default: m.NoiseRemovalControls })),
+  ),
+};
+
+const COLOR_TOOL_IDS = new Set(["adjust-colors"]);
+
+// ColorControls needs an extra toolId prop so it lives outside the shared map.
+const LazyColorControls = lazy(() =>
+  import("./color-settings").then((m) => ({ default: m.ColorControls })),
+);
 
 interface PipelineStepSettingsProps {
   toolId: string;
@@ -29,23 +64,23 @@ interface PipelineStepSettingsProps {
 }
 
 export function PipelineStepSettings({ toolId, settings, onChange }: PipelineStepSettingsProps) {
-  if (toolId === "resize") return <ResizeControls onChange={onChange} />;
-  if (toolId === "crop") return <CropControls onChange={onChange} />;
-  if (toolId === "rotate") return <RotateControls onChange={onChange} />;
-  if (toolId === "convert") return <ConvertControls onChange={onChange} />;
-  if (toolId === "compress") return <CompressControls onChange={onChange} />;
-  if (toolId === "strip-metadata") return <StripMetadataControls onChange={onChange} />;
-  if (toolId === "border") return <BorderControls onChange={onChange} />;
-  if (toolId === "watermark-text") return <WatermarkTextControls onChange={onChange} />;
-  if (toolId === "text-overlay") return <TextOverlayControls onChange={onChange} />;
-  if (toolId === "replace-color") return <ReplaceColorControls onChange={onChange} />;
-  if (toolId === "smart-crop") return <SmartCropControls onChange={onChange} />;
-  if (toolId === "gif-tools") return <GifToolsControls onChange={onChange} />;
-  if (toolId === "upscale") return <UpscaleControls onChange={onChange} />;
-  if (toolId === "blur-faces") return <BlurFacesControls onChange={onChange} />;
-  if (toolId === "remove-background")
-    return <RemoveBgControls settings={settings} onChange={onChange} />;
-  if (COLOR_TOOL_IDS.has(toolId)) return <ColorControls toolId={toolId} onChange={onChange} />;
+  const Control = CONTROLS[toolId];
+
+  if (Control) {
+    return (
+      <Suspense fallback={null}>
+        <Control settings={settings} onChange={onChange} />
+      </Suspense>
+    );
+  }
+
+  if (COLOR_TOOL_IDS.has(toolId)) {
+    return (
+      <Suspense fallback={null}>
+        <LazyColorControls toolId={toolId} settings={settings} onChange={onChange} />
+      </Suspense>
+    );
+  }
 
   return (
     <p className="text-xs text-muted-foreground italic">

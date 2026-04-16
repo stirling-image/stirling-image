@@ -4,13 +4,18 @@ export const EXIF_LABELS: Record<string, string> = {
   Model: "Camera Model",
   Software: "Software",
   DateTime: "Date/Time",
+  ModifyDate: "Date Modified",
   DateTimeOriginal: "Date Taken",
+  CreateDate: "Date Created",
   DateTimeDigitized: "Date Digitized",
   ExposureTime: "Exposure Time",
   FNumber: "F-Number",
+  ISO: "ISO",
   ISOSpeedRatings: "ISO",
   FocalLength: "Focal Length",
+  FocalLengthIn35mmFormat: "Focal Length (35mm)",
   FocalLengthIn35mmFilm: "Focal Length (35mm)",
+  ExposureCompensation: "Exposure Bias",
   ExposureBiasValue: "Exposure Bias",
   MeteringMode: "Metering Mode",
   Flash: "Flash",
@@ -22,12 +27,15 @@ export const EXIF_LABELS: Record<string, string> = {
   Sharpness: "Sharpness",
   DigitalZoomRatio: "Digital Zoom",
   ImageWidth: "Width",
+  ImageHeight: "Height",
   ImageLength: "Height",
   Orientation: "Orientation",
   XResolution: "X Resolution",
   YResolution: "Y Resolution",
   ResolutionUnit: "Resolution Unit",
   ColorSpace: "Color Space",
+  ExifImageWidth: "Pixel Width",
+  ExifImageHeight: "Pixel Height",
   PixelXDimension: "Pixel Width",
   PixelYDimension: "Pixel Height",
   Artist: "Artist",
@@ -35,39 +43,48 @@ export const EXIF_LABELS: Record<string, string> = {
   ImageDescription: "Description",
   LensMake: "Lens Make",
   LensModel: "Lens Model",
+  LensInfo: "Lens Info",
   BodySerialNumber: "Body Serial",
   CameraOwnerName: "Camera Owner",
+  // IPTC
+  ObjectName: "Title",
+  Headline: "Headline",
+  Keywords: "Keywords",
+  City: "City",
+  "Province-State": "State/Province",
+  "Country-PrimaryLocationName": "Country",
+  CopyrightNotice: "Copyright Notice",
+  "By-line": "Creator",
+  Caption: "Caption",
+  // XMP
+  Subject: "Subject/Keywords",
+  Title: "Title",
+  Description: "Description",
+  Creator: "Creator",
+  Rights: "Rights",
 };
 
 /** Keys to skip in display (internal/binary/redundant) */
 export const SKIP_KEYS = new Set([
-  "ExifTag",
-  "GPSTag",
-  "InteroperabilityTag",
+  "ExifToolVersion",
+  "FileName",
+  "Directory",
+  "FileSize",
+  "FileModifyDate",
+  "FileAccessDate",
+  "FileInodeChangeDate",
+  "FilePermissions",
+  "FileType",
+  "FileTypeExtension",
+  "MIMEType",
+  "SourceFile",
+  "ExifByteOrder",
+  "ThumbnailImage",
+  "ThumbnailOffset",
+  "ThumbnailLength",
+  "PreviewImage",
   "MakerNote",
   "PrintImageMatching",
-  "ComponentsConfiguration",
-  "FlashpixVersion",
-  "ExifVersion",
-  "FileSource",
-  "SceneType",
-  "UserComment",
-  "InteroperabilityIndex",
-  "InteroperabilityVersion",
-]);
-
-/** Keys that are binary/complex and NOT safe for EXIF round-trip via withExif() */
-export const UNSAFE_ROUND_TRIP_KEYS = new Set([
-  "MakerNote",
-  "PrintImageMatching",
-  "ComponentsConfiguration",
-  "FlashpixVersion",
-  "ExifVersion",
-  "FileSource",
-  "SceneType",
-  "UserComment",
-  "InteroperabilityIndex",
-  "InteroperabilityVersion",
 ]);
 
 export function formatExifValue(key: string, value: unknown): string {
@@ -78,13 +95,12 @@ export function formatExifValue(key: string, value: unknown): string {
       return `1/${Math.round(1 / value)}s`;
     }
     if (key === "FNumber") return `f/${value}`;
-    if (key === "FocalLength") return `${value}mm`;
-    if (key === "FocalLengthIn35mmFilm") return `${value}mm`;
+    if (key === "FocalLength" || key === "FocalLengthIn35mmFormat") return `${value}mm`;
     return String(value);
   }
   if (Array.isArray(value)) {
-    if (typeof value[0] === "number" && value.length <= 4) {
-      return value.join(", ");
+    if (value.length <= 6) {
+      return value.map(String).join(", ");
     }
     return `[${value.length} values]`;
   }

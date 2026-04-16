@@ -1,4 +1,4 @@
-import { TOOLS } from "@stirling-image/shared";
+import { TOOLS } from "@ashim/shared";
 import { FileImage } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";

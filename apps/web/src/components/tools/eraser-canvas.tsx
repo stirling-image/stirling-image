@@ -5,6 +5,7 @@ type Stroke = { points: Point[]; size: number };
 
 export interface EraserCanvasRef {
   exportMask: () => Promise<Blob | null>;
+  getMaskCenter: () => number | null;
   clear: () => void;
   undo: () => void;
 }
@@ -30,6 +31,9 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
   const drawingRef = useRef(false);
   const currentPointsRef = useRef<Point[]>([]);
 
+  // Cursor position for brush preview
+  const [cursorPos, setCursorPos] = useState<Point | null>(null);
+
   // Measure and fit image to container
   const measure = useCallback(() => {
     const img = imgRef.current;
@@ -48,6 +52,7 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
   }, []);
 
   // Reset strokes when image changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: imageSrc triggers intentional reset
   useEffect(() => {
     strokesRef.current = [];
     currentPointsRef.current = [];
@@ -55,19 +60,7 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
     setCanvasSize(null);
   }, [imageSrc, onStrokeChange]);
 
-  // Redraw all strokes
-  const redraw = useCallback(() => {
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx || !canvasSize) return;
-
-    ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
-
-    for (const stroke of strokesRef.current) {
-      drawStroke(ctx, stroke);
-    }
-  }, [canvasSize]);
-
-  function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
+  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -86,7 +79,33 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
       }
       ctx.stroke();
     }
-  }
+  }, []);
+
+  // Redraw all strokes
+  const redraw = useCallback(() => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx || !canvasSize) return;
+
+    ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
+
+    for (const stroke of strokesRef.current) {
+      drawStroke(ctx, stroke);
+    }
+  }, [canvasSize, drawStroke]);
+
+  // Keyboard shortcut: Ctrl+Z for undo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        strokesRef.current.pop();
+        onStrokeChange(strokesRef.current.length > 0);
+        redraw();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onStrokeChange, redraw]);
 
   // Get canvas-relative point from event
   const getPoint = useCallback((e: React.MouseEvent | React.TouchEvent): Point | null => {
@@ -121,9 +140,12 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
 
   const handleMove = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
+      // Update cursor position for brush preview
+      const pt = getPoint(e);
+      if (pt) setCursorPos(pt);
+
       if (!drawingRef.current) return;
       if ("touches" in e) e.preventDefault();
-      const pt = getPoint(e);
       if (!pt) return;
 
       currentPointsRef.current.push(pt);
@@ -158,6 +180,11 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
       redraw();
     }
   }, [brushSize, onStrokeChange, redraw]);
+
+  const handleLeave = useCallback(() => {
+    setCursorPos(null);
+    handleUp();
+  }, [handleUp]);
 
   // Expose methods
   useImperativeHandle(
@@ -212,6 +239,20 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
           mask.toBlob((b) => resolve(b), "image/png");
         });
       },
+      getMaskCenter: () => {
+        if (strokesRef.current.length === 0 || !canvasSize) return null;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (const stroke of strokesRef.current) {
+          for (const pt of stroke.points) {
+            minX = Math.min(minX, pt.x - stroke.size / 2);
+            maxX = Math.max(maxX, pt.x + stroke.size / 2);
+          }
+        }
+        if (minX === Infinity) return null;
+        const centerX = (minX + maxX) / 2;
+        return Math.max(0, Math.min(100, (centerX / canvasSize.w) * 100));
+      },
       clear: () => {
         strokesRef.current = [];
         currentPointsRef.current = [];
@@ -252,15 +293,29 @@ export const EraserCanvas = forwardRef<EraserCanvasRef, EraserCanvasProps>(funct
             ref={canvasRef}
             width={canvasSize.w}
             height={canvasSize.h}
-            className="absolute inset-0 cursor-crosshair touch-none"
+            className="absolute inset-0 touch-none"
+            style={{ cursor: "none" }}
             onMouseDown={handleDown}
             onMouseMove={handleMove}
             onMouseUp={handleUp}
-            onMouseLeave={handleUp}
+            onMouseLeave={handleLeave}
             onTouchStart={handleDown}
             onTouchMove={handleMove}
             onTouchEnd={handleUp}
           />
+          {/* Brush cursor preview */}
+          {cursorPos && (
+            <div
+              className="pointer-events-none absolute rounded-full border-2 border-white/80"
+              style={{
+                width: brushSize,
+                height: brushSize,
+                left: cursorPos.x - brushSize / 2,
+                top: cursorPos.y - brushSize / 2,
+                boxShadow: "0 0 0 1px rgba(0,0,0,0.3)",
+              }}
+            />
+          )}
         </div>
       )}
     </div>

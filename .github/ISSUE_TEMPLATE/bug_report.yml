@@ -1,0 +1,85 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and didn't find a duplicate
+          required: true
+        - label: I'm running the latest version of ashim
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect to happen?
+      placeholder: |
+        When I try to resize an image, the output is blank.
+        I expected the resized image to be returned normally.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Upload a PNG image
+        2. Select "Resize" tool
+        3. Set width to 500
+        4. Click "Process"
+        5. Downloaded file is 0 bytes
+    validations:
+      required: true
+
+  - type: textarea
+    id: docker-setup
+    attributes:
+      label: Docker setup
+      description: Paste your `docker run` command or `docker-compose.yml` (remove any sensitive values).
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: image-tag
+    attributes:
+      label: Image tag
+      description: Which Docker image tag are you using?
+      placeholder: "e.g. latest, 1.11.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - AMD64 (Intel/AMD)
+        - ARM64 (Apple Silicon, Raspberry Pi)
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "e.g. Chrome 130, Firefox 133, Safari 18"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste any relevant container logs (`docker logs <container>`).
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain the problem.

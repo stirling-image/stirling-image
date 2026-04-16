@@ -1,6 +1,6 @@
 # Deployment
 
-Stirling Image ships as a single Docker container. The image supports **linux/amd64** (with NVIDIA CUDA) and **linux/arm64** (CPU), so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
+ashim ships as a single Docker container. The image supports **linux/amd64** (with NVIDIA CUDA) and **linux/arm64** (CPU), so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
 
 See [Docker Image](./docker-tags) for GPU setup, Docker Compose examples, and version pinning.
 
@@ -8,14 +8,14 @@ See [Docker Image](./docker-tags) for GPU setup, Docker Compose examples, and ve
 
 ```yaml
 services:
-  stirling-image:
-    image: stirlingimage/stirling-image:latest
-    container_name: stirling-image
+  ashim:
+    image: ashimhq/ashim:latest
+    container_name: ashim
     ports:
       - "1349:1349"
     volumes:
-      - stirling-data:/data
-      - stirling-workspace:/tmp/workspace
+      - ashim-data:/data
+      - ashim-workspace:/tmp/workspace
     environment:
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin
@@ -23,8 +23,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  stirling-data:
-  stirling-workspace:
+  ashim-data:
+  ashim-workspace:
 ```
 
 ```bash
@@ -32,6 +32,8 @@ docker compose up -d
 ```
 
 The app is then available at `http://localhost:1349`.
+
+> **Docker Hub rate limits?** Replace `ashimhq/ashim:latest` with `ghcr.io/ashim-hq/ashim:latest` to pull from GitHub Container Registry instead. Both registries receive the same image on every release.
 
 ## What's inside the container
 
@@ -81,12 +83,12 @@ The `/data` volume is the important one. Without it, you lose all user accounts 
 The container includes a health check that hits `GET /api/v1/health`. Docker uses this to report container status:
 
 ```bash
-docker inspect --format='{{.State.Health.Status}}' stirling-image
+docker inspect --format='{{.State.Health.Status}}' ashim
 ```
 
 ## Reverse proxy
 
-If you're running Stirling Image behind nginx or Caddy, point it at port 1349. Example nginx config:
+If you're running ashim behind nginx or Caddy, point it at port 1349. Example nginx config:
 
 ```nginx
 server {
@@ -110,9 +112,16 @@ Set `client_max_body_size` to match your `MAX_UPLOAD_SIZE_MB` value.
 
 ## CI/CD
 
-The GitHub repository has two workflows:
+The GitHub repository has three workflows:
 
-- **release.yml** -- On release, builds a multi-arch Docker image (amd64 + arm64), and pushes to Docker Hub (`stirlingimage/stirling-image`) and GitHub Container Registry (`ghcr.io/stirling-image/stirling-image`).
-- **deploy-docs.yml** -- Builds this documentation site and deploys it to GitHub Pages.
+- **ci.yml** -- Runs automatically on every push and PR. Lints, typechecks, tests, builds, and validates the Docker image (without pushing).
+- **release.yml** -- Triggered manually via `workflow_dispatch`. Runs semantic-release to create a version tag and GitHub release, then builds a multi-arch Docker image (amd64 + arm64) and pushes to Docker Hub (`ashimhq/ashim`) and GitHub Container Registry (`ghcr.io/ashim-hq/ashim`).
+- **deploy-docs.yml** -- Builds this documentation site and deploys it to GitHub Pages on push to `main`.
 
-Both run automatically. No manual steps needed after merging to `main`.
+To create a release, go to **Actions > Release > Run workflow** in the GitHub UI, or run:
+
+```bash
+gh workflow run release.yml
+```
+
+Semantic-release determines the version from commit history. The `latest` Docker tag always points to the most recent release.
