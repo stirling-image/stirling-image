@@ -3,7 +3,7 @@ import llmstxt from "vitepress-plugin-llms";
 
 export default defineConfig({
   title: "ashim",
-  description: "Documentation for ashim, a self-hosted image processing suite.",
+  description: "Documentation for ashim — A Self Hosted Image Manipulator. 45+ tools, local AI, pipelines, REST API.",
   base: "/ashim/",
   srcDir: ".",
   outDir: "./.vitepress/dist",
@@ -46,7 +46,7 @@ export default defineConfig({
 `,
         customTemplateVariables: {
           description:
-            "Self-hosted, open-source image processing platform with 30+ tools including AI/ML. Runs in a single Docker container with GPU auto-detection.",
+            "Self-hosted, open-source image processing platform with 45+ tools including AI/ML. Runs in a single Docker container with GPU auto-detection.",
           details:
             "Resize, compress, convert, remove backgrounds, upscale, run OCR, and more - without sending images to external services.",
         },

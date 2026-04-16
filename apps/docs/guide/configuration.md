@@ -18,6 +18,8 @@ All configuration is done through environment variables. Every variable has a se
 | `AUTH_ENABLED` | `false` | Set to `true` to require login. The Docker image defaults to `true`. |
 | `DEFAULT_USERNAME` | `admin` | Username for the initial admin account. Only used on first run. |
 | `DEFAULT_PASSWORD` | `admin` | Password for the initial admin account. Change this after first login. |
+| `MAX_USERS` | `5` | Maximum number of registered user accounts |
+| `SKIP_MUST_CHANGE_PASSWORD` | — | Set to any non-empty value to bypass the forced password-change prompt on first login |
 
 ### Storage
 

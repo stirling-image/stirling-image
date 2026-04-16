@@ -1,43 +1,42 @@
-# Getting started
+# Getting Started
 
-## Run with Docker
-
-The fastest way to get ashim running:
+## Quick Start
 
 ```bash
-docker run -d \
-  --name ashim \
-  -p 1349:1349 \
-  -v ashim-data:/data \
-  ashimhq/ashim:latest
+docker run -d -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
 ```
 
-Open `http://localhost:1349` in your browser. Log in with `admin` / `admin`.
+Open [http://localhost:1349](http://localhost:1349) in your browser.
 
-::: tip GPU acceleration
-Have an NVIDIA GPU? Add `--gpus all` to accelerate background removal (2.7x), upscaling (3x), and OCR (1.5x):
+**Default credentials:**
+
+| Field    | Value   |
+|----------|---------|
+| Username | `admin` |
+| Password | `admin` |
+
+You will be asked to change your password on first login.
+
+::: tip NVIDIA GPU acceleration
+Add `--gpus all` for GPU-accelerated background removal, upscaling, OCR, face enhancement, and restoration:
 
 ```bash
-docker run -d --gpus all -p 1349:1349 -v ashim-data:/data ashimhq/ashim:latest
+docker run -d -p 1349:1349 --gpus all -v ashim-data:/data ashimhq/ashim:latest
 ```
 
-Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Falls back to CPU if no GPU is found. See [Docker Tags](./docker-tags) for details and benchmarks.
+Requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Falls back to CPU automatically. See [Docker Tags](/guide/docker-tags) for benchmarks.
 :::
 
-## Run with Docker Compose
-
-Create a `docker-compose.yml`:
+## Docker Compose
 
 ```yaml
 services:
   ashim:
     image: ashimhq/ashim:latest
-    container_name: ashim
     ports:
       - "1349:1349"
     volumes:
       - ashim-data:/data
-      - ashim-workspace:/tmp/workspace
     environment:
       - AUTH_ENABLED=true
       - DEFAULT_USERNAME=admin
@@ -46,44 +45,74 @@ services:
 
 volumes:
   ashim-data:
-  ashim-workspace:
 ```
 
-```bash
-docker compose up -d
-```
+See [Configuration](/guide/configuration) for all environment variables.
 
-See [Configuration](./configuration) for the full list of environment variables.
+## Build from Source
 
-## Build from source
-
-Requirements: Node.js 22+, pnpm 9+, Python 3.10+
+**Prerequisites:** Node.js 22+, pnpm 9+, Python 3.10+ (for AI features), Git.
 
 ```bash
 git clone https://github.com/ashim-hq/ashim.git
 cd ashim
 pnpm install
-```
-
-Start the dev server:
-
-```bash
 pnpm dev
 ```
 
-This starts both the API server and the React frontend. Open `http://localhost:1349` in your browser.
+- Frontend: [http://localhost:1349](http://localhost:1349)
+- Backend: [http://localhost:13490](http://localhost:13490)
 
-## What you can do
+## What You Can Do
 
-The sidebar lists every tool. Pick one, upload an image, tweak the settings, download the result.
+### Image Processing (45+ Tools)
 
-Some things to try first:
+| Category | Tools |
+|----------|-------|
+| **Essentials** | Resize, Crop, Rotate & Flip, Convert, Compress |
+| **Optimization** | Optimize for Web, Strip Metadata, Edit Metadata, Bulk Rename, Image to PDF, Favicon Generator |
+| **Adjustments** | Adjust Colors, Sharpening, Replace Color |
+| **AI Tools** | Remove Background, Upscale, Erase Object, OCR, Blur Faces, Smart Crop, Image Enhancement, Enhance Faces, Colorize, Noise Removal, Red Eye Removal, Restore Photo, Passport Photo, Content-Aware Resize |
+| **Watermark & Overlay** | Text Watermark, Image Watermark, Text Overlay, Image Composition |
+| **Utilities** | Image Info, Compare, Find Duplicates, Color Palette, QR Code Generator, Barcode Reader, Image to Base64 |
+| **Layout** | Collage, Stitch, Split, Border & Frame |
+| **Format** | SVG to Raster, Vectorize, GIF Tools, PDF to Image |
 
-- Resize an image to specific dimensions or a percentage
-- Remove a background with the AI tool
-- Compress a photo before uploading it somewhere
-- Convert between formats (JPEG, PNG, WebP, AVIF, TIFF, HEIC)
-- Batch process a folder of images through any tool
-- Save results to the Files page for later
+### Pipelines
 
-Every tool is also available through the [REST API](../api/rest), so you can script workflows or plug ashim into other systems.
+Chain tools into multi-step workflows and apply them to one image or a whole batch:
+
+1. Open **Pipelines** in the sidebar.
+2. Add steps (any tool, any settings).
+3. Run on a single file — or up to 200 files at once.
+4. Save the pipeline for later reuse.
+
+Pipelines can have up to 20 steps.
+
+### File Library
+
+Every file you process can be saved to your **Files** library. ashim tracks the full version history so you can trace every processing step from the original upload to the final output.
+
+### REST API & API Keys
+
+Every tool is accessible via HTTP:
+
+```bash
+curl -X POST http://localhost:1349/api/v1/tools/resize \
+  -H "Authorization: Bearer si_<your-api-key>" \
+  -F "file=@photo.jpg" \
+  -F 'settings={"width":800,"height":600,"fit":"cover"}'
+```
+
+Generate API keys under **Settings → API Keys**. See the [REST API reference](/api/rest) for all endpoints, or visit [http://localhost:1349/api/docs](http://localhost:1349/api/docs) for the interactive reference.
+
+### Multi-User & Teams
+
+Enable multiple users with role-based access control:
+
+- **Admin**: full access — manage users, teams, settings, all files/pipelines/API keys
+- **User**: use tools, manage own files/pipelines/API keys
+
+Create teams under **Settings → Teams** to group users.
+
+Set `AUTH_ENABLED=true` (or `false` for single-user/self-use without login).

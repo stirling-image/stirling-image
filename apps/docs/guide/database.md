@@ -31,6 +31,16 @@ Active login sessions. Each row ties a session token to a user.
 | `expiresAt` | text | ISO timestamp |
 | `createdAt` | text | ISO timestamp |
 
+### teams
+
+Groups for organizing users. Admins can assign users to teams.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text UUID | Primary key |
+| `name` | text (unique, max 50 chars) | Team name |
+| `createdAt` | integer | Unix timestamp |
+
 ### api_keys
 
 API keys for programmatic access. The raw key is shown once on creation; only the hash is stored.
@@ -58,6 +68,25 @@ Saved tool chains that users create in the UI.
 | `steps` | text | JSON array of `{ toolId, settings }` objects |
 | `createdAt` | text | ISO timestamp |
 
+### user_files
+
+Persistent file library with version chain tracking. Each processing step that saves a result creates a new row linked to its parent via `parentId`, forming a version tree.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text UUID | Primary key |
+| `userId` | text UUID | FK → users (CASCADE DELETE) |
+| `originalName` | text | Original upload filename |
+| `storedName` | text | Filename on disk |
+| `mimeType` | text | MIME type |
+| `size` | integer | File size in bytes |
+| `width` | integer | Image width in px |
+| `height` | integer | Image height in px |
+| `version` | integer | Version number (1 = original) |
+| `parentId` | text UUID \| null | FK → user_files (parent version) |
+| `toolChain` | text (JSON array) | Tool IDs applied in order to produce this version |
+| `createdAt` | integer | Unix timestamp |
+
 ### jobs
 
 Tracks processing jobs for progress reporting and cleanup.
@@ -67,7 +96,7 @@ Tracks processing jobs for progress reporting and cleanup.
 | `id` | text | Primary key (UUID) |
 | `type` | text | Tool or pipeline identifier |
 | `status` | text | `queued`, `processing`, `completed`, or `failed` |
-| `progress` | integer | 0-100 percentage |
+| `progress` | real | 0.0–1.0 fraction |
 | `inputFiles` | text | JSON array of input file paths |
 | `outputPath` | text | Path to the result file |
 | `settings` | text | JSON of the tool settings used |

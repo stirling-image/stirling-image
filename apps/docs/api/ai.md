@@ -1,135 +1,236 @@
-# AI engine
+# AI Engine Reference
 
-The `@ashim/ai` package wraps Python ML models in TypeScript functions. A persistent Python dispatcher process pre-imports heavy ML libraries at startup and keeps them warm in memory, eliminating the cold-start latency that would otherwise occur on every request. If the dispatcher is unavailable, the bridge falls back to spawning a fresh subprocess per call.
+The `@ashim/ai` package bridges Node.js to a **persistent Python sidecar** for all ML operations. The dispatcher process stays alive between requests for fast warm-start performance. GPU is auto-detected at startup and used when available.
 
-All model weights are bundled in the Docker image during the build. No downloads happen at runtime.
+13 AI tool routes. All models run locally — no internet required after initial model download.
 
-::: tip GPU acceleration
-The Docker image includes CUDA-accelerated ML libraries on amd64. Add `--gpus all` to your Docker run command to enable GPU acceleration. The image auto-detects your GPU and falls back to CPU if none is available.
-:::
+## Architecture
 
-## Background removal
+```
+Node.js Tool Route
+      │
+      ▼
+ @ashim/ai bridge.ts
+      │ (stdin/stdout JSON + stderr progress events)
+      ▼
+ Python dispatcher (persistent process)
+      │
+      ├─ remove_bg.py        (rembg / BiRefNet)
+      ├─ upscale.py          (RealESRGAN)
+      ├─ inpaint.py          (LaMa ONNX)
+      ├─ ocr.py              (PaddleOCR / Tesseract)
+      ├─ detect_faces.py     (MediaPipe)
+      ├─ face_landmarks.py   (MediaPipe landmarks)
+      ├─ enhance_faces.py    (GFPGAN / CodeFormer)
+      ├─ colorize.py         (DDColor)
+      ├─ noise_removal.py    (tiered denoising)
+      ├─ red_eye_removal.py  (landmark + color analysis)
+      ├─ restore.py          (scratch repair + enhancement + denoising)
+      └─ seam_carving        (Go caire binary — not Python)
+```
 
-Removes the background from an image and returns a transparent PNG.
+**Timeouts:** 300 s default; OCR and BiRefNet background removal get 600 s.
 
-**Model:** BiRefNet models via [rembg](https://github.com/danielgatis/rembg)
+## Background Removal
 
-| Parameter | Type | Description |
-|---|---|---|
-| `model` | string | Model name. Default: `birefnet-general`. Available models: `birefnet-general`, `birefnet-general-lite`, `birefnet-matting`, `birefnet-portrait`, `bria-rmbg`, `u2net`. |
-| `alphaMatting` | boolean | Use alpha matting for finer edge detail |
-| `alphaMattingForegroundThreshold` | number | Foreground threshold for alpha matting (0-255) |
-| `alphaMattingBackgroundThreshold` | number | Background threshold for alpha matting (0-255) |
+**Function:** `removeBackground`  
+**Tool route:** `remove-background`  
+**Model:** rembg with BiRefNet (default) or U2-Net variants
 
-A Phase 2 effects endpoint is also available at `POST /api/v1/tools/remove-background/effects`. After removing the background, you can apply post-processing effects such as replacement backgrounds, blur, and drop shadows.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | string | `birefnet-general` | Model variant — see table below |
+| `alphaMattingForeground` | number (1–255) | 240 | Foreground threshold for alpha matting |
+| `alphaMattingBackground` | number (1–255) | 10 | Background threshold for alpha matting |
+| `returnMask` | boolean | false | Return the mask instead of the cutout |
+| `backgroundColor` | string | — | Fill removed area (hex color or "transparent") |
 
-**Python script:** `packages/ai/python/remove_bg.py`
+**Available models:**
 
-## Upscaling
+| Model ID | Best for |
+|----------|---------|
+| `birefnet-general` | General purpose (default) |
+| `birefnet-portrait` | People / portraits |
+| `birefnet-dis` | Dichotomous Image Segmentation |
+| `birefnet-hrsod` | High-resolution salient objects |
+| `birefnet-cod` | Camouflaged objects |
+| `u2net` | Fast general purpose |
+| `u2net_human_seg` | Human segmentation |
+| `isnet-general-use` | High quality general |
 
-Increases image resolution using AI super-resolution.
+## Image Upscaling
 
-**Model:** [RealESRGAN](https://github.com/xinntao/Real-ESRGAN) with Lanczos fallback
+**Function:** `upscale`  
+**Tool route:** `upscale`  
+**Model:** RealESRGAN (with Lanczos fallback on CPU-constrained systems)
 
-| Parameter | Type | Description |
-|---|---|---|
-| `scale` | number | Upscale factor (2-8) |
-| `model` | string | Model selection: `auto`, `realesrgan`, or `lanczos`. Default: `auto`. |
-| `faceEnhance` | boolean | Enable face enhancement for better facial detail |
-| `denoise` | number | Denoise strength (0-1). Higher values remove more noise but may lose detail. |
-| `format` | string | Output format (e.g. `png`, `webp`, `jpeg`) |
-| `quality` | number | Output quality for lossy formats |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `scale` | 2 \| 4 | 4 | Upscale factor |
+| `model` | string | `realesrgan-x4plus` | Model variant |
+| `faceEnhance` | boolean | false | Apply GFPGAN face enhancement pass |
+| `denoise` | number (0–1) | 0.5 | Denoising strength |
+| `format` | string | — | Output format override |
+| `quality` | number | 95 | Output quality (for JPEG/WebP) |
 
-Returns the upscaled image along with the original and new dimensions.
+## OCR / Text Extraction
 
-**Python script:** `packages/ai/python/upscale.py`
+**Function:** `extractText`  
+**Tool route:** `ocr`  
+**Models:** Tesseract (fast), PaddleOCR PP-OCRv5 (balanced), PaddleOCR-VL 1.5 (best)
 
-## OCR (text recognition)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `quality` | `fast` \| `balanced` \| `best` | `balanced` | Processing tier |
+| `language` | string | `en` | Language code (ISO 639-1) |
+| `enhance` | boolean | false | Pre-process image to improve OCR accuracy |
 
-Extracts text from images. Three quality tiers are available, each trading speed for accuracy.
+Returns structured results with bounding boxes, confidence scores, and extracted text blocks.
 
-**Models:**
-- `fast` - [Tesseract](https://github.com/tesseract-ocr/tesseract) for quick extraction
-- `balanced` - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 for general-purpose use
-- `best` - PaddleOCR-VL 1.5 vision-language model for maximum accuracy
+## Face / PII Blur
 
-| Parameter | Type | Description |
-|---|---|---|
-| `quality` | string | Quality tier: `fast`, `balanced`, or `best`. Default: `balanced`. |
-| `language` | string | Language code: `auto`, `en`, `de`, `fr`, `es`, `zh`, `ja`, `ko`. Default: `auto`. |
-| `enhance` | boolean | Apply image preprocessing to improve recognition accuracy |
+**Function:** `blurFaces`  
+**Tool route:** `blur-faces`  
+**Model:** MediaPipe face detection
 
-Returns structured results with text content, bounding boxes, and confidence scores for each detected text region.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `blurRadius` | number | 30 | Gaussian blur radius |
+| `sensitivity` | number (0–1) | 0.5 | Detection confidence threshold |
 
-**Python script:** `packages/ai/python/ocr.py`
+## Face Enhancement
 
-## Face detection and blurring
+**Function:** `enhanceFaces`  
+**Tool route:** `enhance-faces`  
+**Models:** GFPGAN, CodeFormer
 
-Detects faces in an image and applies a blur to each detected region.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | `gfpgan` \| `codeformer` | `gfpgan` | Enhancement model |
+| `strength` | number (0–1) | 0.7 | Enhancement strength |
+| `sensitivity` | number (0–1) | 0.5 | Face detection threshold |
+| `centerFace` | boolean | false | Focus enhancement on center face only |
 
-**Model:** [MediaPipe](https://github.com/google/mediapipe) Face Detection
+## AI Colorization
 
-| Parameter | Type | Description |
-|---|---|---|
-| `blurRadius` | number | Blur radius for detected faces (1-100). Default: `30`. |
-| `sensitivity` | number | Detection sensitivity (0-1). Lower values require higher confidence. Default: `0.5`. |
+**Function:** `colorize`  
+**Tool route:** `colorize`  
+**Model:** DDColor (with OpenCV DNN fallback)
 
-Returns the blurred image along with metadata about each detected face region (bounding box coordinates and confidence score).
+Converts black-and-white or grayscale photos to full color.
 
-**Python script:** `packages/ai/python/detect_faces.py`
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `intensity` | number (0–1) | 0.85 | Color saturation strength |
+| `model` | string | `ddcolor` | Model variant |
 
-## Object erasing (inpainting)
+## Noise Removal
 
-Removes objects from images by filling in the area with generated content that matches the surroundings.
+**Function:** `noiseRemoval`  
+**Tool route:** `noise-removal`
 
-**Model:** [LaMa](https://github.com/advimman/lama) (Large Mask Inpainting) via ONNX Runtime
+Three-tier denoising pipeline (fast: OpenCV bilateral filter; balanced: frequency-domain; best: deep learning model).
 
-Takes an image and a mask file (white = area to erase, black = keep). Returns the inpainted image. GPU acceleration is available via ONNX CUDAExecutionProvider when a compatible GPU is detected.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `quality` | `fast` \| `balanced` \| `best` | `balanced` | Processing tier |
+| `strength` | number (0–1) | 0.5 | Denoising strength |
+| `preserveDetail` | boolean | true | Edge-preserving mode |
+| `colorNoise` | boolean | false | Target color noise specifically |
 
-**Python script:** `packages/ai/python/inpaint.py`
+## Red Eye Removal
 
-## Content-aware resize (seam carving)
+**Function:** `removeRedEye`  
+**Tool route:** `red-eye-removal`
 
-Intelligently resizes images by removing or inserting seams - paths of least visual importance. This preserves the main subject and structure of the image while changing its dimensions.
+Detects face landmarks, locates eye regions, and corrects red-channel oversaturation.
 
-**Engine:** `caire` Go binary
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sensitivity` | number (0–1) | 0.5 | Red pixel detection threshold |
+| `strength` | number (0–1) | 0.9 | Correction strength |
 
-| Parameter | Type | Description |
-|---|---|---|
-| `width` | number | Target width in pixels |
-| `height` | number | Target height in pixels |
-| `protectFaces` | boolean | Use face detection to protect facial regions from seam removal |
-| `blurRadius` | number | Gaussian blur radius for energy map computation (0-20) |
-| `sobelThreshold` | number | Edge detection threshold for energy computation (1-20) |
-| `square` | boolean | Force output to a square aspect ratio |
+## Photo Restoration
 
-## Smart crop
+**Function:** `restorePhoto`  
+**Tool route:** `restore-photo`
 
-Automatically crops images to focus on the most important region. Combines Sharp attention/entropy strategies with MediaPipe face detection to find the optimal crop area.
+Multi-step pipeline for old or damaged photos: scratch/tear detection and repair → face enhancement → denoising → optional colorization.
 
-**Models:** Sharp (attention/entropy) + [MediaPipe](https://github.com/google/mediapipe) Face Detection
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `mode` | `auto` \| `light` \| `heavy` | `auto` | Restoration intensity |
+| `scratchRemoval` | boolean | true | Detect and repair scratches, tears |
+| `faceEnhancement` | boolean | true | Apply face enhancement pass |
+| `fidelity` | number (0–1) | 0.7 | Face enhancement strength |
+| `denoise` | boolean | true | Apply denoising pass |
+| `denoiseStrength` | number (0–100) | 40 | Denoising strength |
+| `colorize` | boolean | false | Colorize after restoration |
 
-Three modes are available:
+## Passport Photo
 
-- **subject** - Uses Sharp's attention strategy to find the most visually interesting region.
-- **face** - Uses MediaPipe face detection to center the crop on detected faces.
-- **trim** - Removes uniform borders and whitespace from the edges of the image.
+**Function:** Uses `detectFaceLandmarks` + `removeBackground`  
+**Tool route:** `passport-photo`  
+**Model:** MediaPipe face landmarks
 
-Parameters vary by mode. See the interactive API reference at `/api/docs` for the full parameter list for each mode.
+Generates government-compliant ID photos. Supports **37 countries** across 6 regions (Americas, Europe, Asia, Africa, Oceania, Middle East). Each spec includes physical dimensions, DPI, head-height ratio, eye-line position, and background color requirements.
 
-## How the bridge works
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `country` | string | `us` | ISO country code (see list in UI) |
+| `printLayout` | `4x6` \| `A4` \| `none` | `none` | Output as print sheet or standalone |
+| `backgroundColor` | string | country default | Background fill color |
 
-The TypeScript bridge (`packages/ai/src/bridge.ts`) exposes a single function, `runPythonWithProgress`, that does the following for each AI call:
+## Object Erasing (Inpainting)
 
-1. Writes the input image to a temp file in the workspace directory.
-2. Sends a JSON request to the persistent Python dispatcher via stdin (`packages/ai/python/dispatcher.py`). If the dispatcher isn't running, falls back to spawning a fresh subprocess.
-3. Parses JSON progress lines from stderr (e.g. `{"progress": 50, "stage": "Processing..."}`) and forwards them via an `onProgress` callback for real-time SSE streaming.
-4. Reads the JSON response from stdout.
-5. Reads the output image from the filesystem.
-6. Cleans up temp files.
+**Function:** `inpaint`  
+**Tool route:** `erase-object`  
+**Model:** LaMa via ONNX Runtime
 
-The persistent dispatcher pre-imports rembg, torch, PaddleOCR, MediaPipe, and the LaMa ONNX model at startup. This means the first AI call after container start is fast instead of waiting for library imports. The dispatcher handles requests sequentially (Python's GIL) and reports readiness via a `{"ready": true}` message on stderr.
+| Parameter | Type | Required | Description |
+|-----------|------|---------|-------------|
+| `maskData` | string | Yes | Base64-encoded PNG mask (white = erase) |
+| `maskThreshold` | number (0–255) | No | Threshold for mask binarization |
 
-GPU detection is handled by `packages/ai/python/gpu.py`, which checks for CUDA availability at startup and configures each model to use GPU or CPU accordingly.
+GPU-accelerated when an NVIDIA GPU is available.
 
-If the Python process exits with a non-zero code, the bridge extracts a user-friendly error from stderr/stdout and throws. Timeouts default to 5 minutes.
+## Smart Crop
+
+**Function:** Uses MediaPipe + Sharp attention/entropy  
+**Tool route:** `smart-crop`  
+**Model:** MediaPipe face detection
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `mode` | `subject` \| `face` \| `trim` | `subject` | Crop strategy |
+| `width` | number | — | Output width |
+| `height` | number | — | Output height |
+| `facePreset` | string | — | Preset framing when `mode=face` |
+
+**Face presets:**
+
+| Preset | Head ratio | Best for |
+|--------|-----------|---------|
+| `close-up` | 1.8× face | Headshots |
+| `head-and-shoulders` | 2.8× face | Profile photos |
+| `upper-body` | 4.5× face | LinkedIn / formal |
+| `half-body` | 7.0× face | Full upper body |
+
+## Content-Aware Resize (Seam Carving)
+
+**Function:** `seamCarve`  
+**Tool route:** `content-aware-resize`  
+**Engine:** Go `caire` binary (not Python — no GPU benefit)
+
+Intelligently resizes images by removing or adding low-energy seams, preserving important content.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `width` | number | — | Target width |
+| `height` | number | — | Target height |
+| `protectFaces` | boolean | true | Protect detected face regions from seam removal |
+| `blurRadius` | number | 0 | Pre-blur to reduce noise sensitivity |
+| `sobelThreshold` | number | 10 | Edge sensitivity threshold |
+| `square` | boolean | false | Force square output |
+
+Max input edge before auto-downscaling: **1200 px**.
