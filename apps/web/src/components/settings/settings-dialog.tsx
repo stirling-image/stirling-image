@@ -15,6 +15,7 @@ import {
   Search,
   Settings,
   Shield,
+  Sparkles,
   Trash2,
   UserPlus,
   Users,
@@ -27,6 +28,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiDelete, apiGet, apiPost, apiPut, clearToken, formatHeaders } from "@/lib/api";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { GemLogo } from "../common/gem-logo";
+import { AiFeaturesSection } from "./ai-features-section";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -40,6 +42,7 @@ type Section =
   | "people"
   | "teams"
   | "api-keys"
+  | "ai-features"
   | "tools"
   | "about";
 
@@ -57,6 +60,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "people", label: "People", icon: Users, requiredPermission: "users:manage" },
   { id: "teams", label: "Teams", icon: UsersRound, requiredPermission: "teams:manage" },
   { id: "api-keys", label: "API Keys", icon: Key },
+  { id: "ai-features", label: "AI Features", icon: Sparkles, requiredPermission: "settings:write" },
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "about", label: "About", icon: Info },
 ];
@@ -131,6 +135,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           {section === "people" && <PeopleSection />}
           {section === "teams" && <TeamsSection />}
           {section === "api-keys" && <ApiKeysSection />}
+          {section === "ai-features" && <AiFeaturesSection />}
           {section === "tools" && <ToolsSection />}
           {section === "about" && <AboutSection />}
         </div>
