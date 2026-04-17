@@ -1,3 +1,10 @@
+## [1.15.8](https://github.com/ashim-hq/ashim/compare/v1.15.7...v1.15.8) (2026-04-17)
+
+
+### Bug Fixes
+
+* copy Node.js from official image instead of apt-get install ([536125e](https://github.com/ashim-hq/ashim/commit/536125ec9fbc5758bdd3e8f0f4c44253de2231c7))
+
 ## [1.15.7](https://github.com/ashim-hq/ashim/compare/v1.15.6...v1.15.7) (2026-04-17)
 
 
