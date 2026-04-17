@@ -1,6 +1,6 @@
 {
   "name": "@ashim/web",
-  "version": "1.15.4",
+  "version": "1.15.5",
   "private": true,
   "type": "module",
   "scripts": {

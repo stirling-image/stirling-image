@@ -1,3 +1,10 @@
+## [1.15.5](https://github.com/ashim-hq/ashim/compare/v1.15.4...v1.15.5) (2026-04-17)
+
+
+### Bug Fixes
+
+* exclude e2e-docker tests from Vitest runner ([8df18c5](https://github.com/ashim-hq/ashim/commit/8df18c56a6c69e2a188cf0e7c97e692cd4c0e7ec))
+
 ## [1.15.4](https://github.com/ashim-hq/ashim/compare/v1.15.3...v1.15.4) (2026-04-17)
 
 
