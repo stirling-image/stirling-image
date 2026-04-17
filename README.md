@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="apps/web/public/logo-192.png" width="80" alt="ashim logo">
+  <img src="social-preview.png" width="800" alt="ashim — A Self Hosted Image Manipulator">
 </p>
-
-<h1 align="center">ashim</h1>
-
-<p align="center">A Self Hosted Image Manipulator</p>
 
 <p align="center">
   <a href="https://hub.docker.com/r/ashimhq/ashim"><img src="https://img.shields.io/docker/v/ashimhq/ashim?label=Docker%20Hub&logo=docker" alt="Docker Hub"></a>
