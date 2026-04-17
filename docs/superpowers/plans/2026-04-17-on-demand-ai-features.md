@@ -30,8 +30,6 @@ MODIFIED FILES:
   packages/ai/src/bridge.ts                                     # restartDispatcher(), FEATURE_NOT_INSTALLED handling
   packages/ai/src/index.ts                                      # Export restartDispatcher
   packages/ai/python/dispatcher.py                              # Read installed.json, gate scripts by feature
-  packages/ai/python/colorize.py                                # Hard imports to lazy imports
-  packages/ai/python/restore.py                                 # Hard imports to lazy imports
   apps/api/src/index.ts                                         # Register feature routes, startup venv check
   apps/api/src/routes/tool-factory.ts                           # Feature-installed guard before process()
   apps/api/src/routes/batch.ts                                  # Feature-installed check at gating point
@@ -337,6 +335,13 @@ Port the retry pattern from `docker/download_models.py` `_urlretrieve()` (lines 
 
 Writes to `/data/ai/installed.json` on success (matching the structure read by `feature-status.ts`).
 
+**Additional requirements based on recent codebase changes:**
+
+- **Parallel model downloads:** Use `concurrent.futures.ThreadPoolExecutor(max_workers=4)` for model downloads, matching the pattern in `docker/download_models.py` (lines 671-720). Collect errors from all downloads and report them together.
+- **NCCL conflict handling:** After installing packages for any bundle, check if both `torch` and `paddlepaddle-gpu` are installed. If so, run the NCCL re-alignment: `pip install $($PYTHON -c "from importlib.metadata import requires; print([r.split(';')[0].strip() for r in requires('torch') if 'nccl' in r][0])")`. This prevents paddlepaddle-gpu from silently downgrading `nvidia-nccl-cu12`.
+- **ONNX CUDA provider safety:** When installing `onnxruntime-gpu` at runtime (GPU is present), the CUDA EP shared library loads immediately on import. If the install script imports onnxruntime during model download (e.g., for rembg which uses ONNX), this should work fine at runtime (unlike build time where GPU drivers aren't available).
+- **GPU detection for package variant selection:** Use the two-tier GPU detection from `gpu.py` (torch -> ONNX RT ctypes probe). If GPU is available, install GPU variants (onnxruntime-gpu, paddlepaddle-gpu, CUDA torch). If not, install CPU variants.
+
 **Robustness requirements for the install script:**
 
 - **Atomic model downloads:** For each URL-based model:
@@ -409,12 +414,12 @@ git commit -m "feat: add feature-installed guards to tool routes, batch, and pip
 
 ---
 
-### Task 7: Bridge and Python Sidecar Changes
+### Task 7: Python Sidecar Changes
 
 **Files:**
 - Modify: `packages/ai/python/dispatcher.py`
-- Modify: `packages/ai/python/colorize.py`
-- Modify: `packages/ai/python/restore.py`
+
+Note: `colorize.py` and `restore.py` do NOT need import changes. Their hard module-level imports (`numpy`, `cv2`, `PIL`) are base packages that will always be in the image. The ML-specific imports (`onnxruntime`, `torch`, `mediapipe`, `rembg`, `gfpgan`, `codeformer`) are already imported lazily inside functions in all Python scripts.
 
 - [ ] **Step 1: Add feature gating to dispatcher.py**
 
@@ -426,19 +431,13 @@ In `_run_script_main()`, before the `exec()` call, check if the script's bundle 
 
 Also set `U2NET_HOME` to `/data/ai/models/rembg` on startup if `/data/ai/models` exists.
 
-- [ ] **Step 2: Convert hard imports in colorize.py**
+Note: The dispatcher eagerly pre-imports `PIL`, `mediapipe`, `numpy`, `gpu`, `rembg` at startup (lines 39-45). With on-demand features, `mediapipe` and `rembg` may not be installed. The existing `_try_import` pattern already catches `ImportError` and logs it (recently improved to log the error). No change needed — the dispatcher starts fine with missing optional modules. After a feature is installed, `shutdownDispatcher()` (called from the install endpoint) kills and re-spawns the dispatcher, picking up the new packages.
 
-Move module-level `import numpy as np`, `import cv2`, `from PIL import Image` (lines 10-12) inside each function that uses them (`colorize_ddcolor`, `colorize_opencv`, `main`).
-
-- [ ] **Step 3: Convert hard imports in restore.py**
-
-Move module-level `import numpy as np`, `import cv2`, `from PIL import Image` (lines 13-15) inside each function that uses them.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
-git add packages/ai/python/dispatcher.py packages/ai/python/colorize.py packages/ai/python/restore.py
-git commit -m "feat: add feature gating to Python dispatcher, convert hard imports to lazy"
+git add packages/ai/python/dispatcher.py
+git commit -m "feat: add feature gating to Python dispatcher"
 ```
 
 ---
@@ -576,15 +575,20 @@ git commit -m "feat: add AI Features settings panel for managing feature bundles
 
 - [ ] **Step 1: Modify the Dockerfile**
 
-In `docker/Dockerfile` production stage:
+In `docker/Dockerfile` production stage. Be precise — the Dockerfile has changed significantly since the initial analysis. Current state uses cuDNN base, a node-bins donor stage, COPY-based Node.js install, pip cache mounts on all layers, and an NCCL re-alignment step.
 
-1. **Keep**: base image selection, Node.js install, pnpm setup, system packages, Python venv creation with base packages (numpy, Pillow, opencv)
-2. **Remove**: all ML pip install commands (lines 175-206: onnxruntime, rembg, realesrgan, paddlepaddle, mediapipe, codeformer)
-3. **Remove**: download_models.py COPY and RUN (lines 219-231)
-4. **Remove**: the `apt-get purge build-essential python3-dev` line (line 251) so build-essential stays for runtime pip installs
-5. **Add**: `COPY docker/feature-manifest.json /app/docker/feature-manifest.json`
-6. **Add**: `COPY packages/ai/python/install_feature.py /app/packages/ai/python/install_feature.py`
-7. **Update** env vars: `PYTHON_VENV_PATH=/data/ai/venv`, add `MODELS_PATH=/data/ai/models`, add `DATA_DIR=/data`
+1. **Keep**: cuDNN base image (`nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04` on amd64, `node:22-bookworm` on arm64)
+2. **Keep**: `node-bins` donor stage and COPY-based Node.js install (replaces old NodeSource apt repo)
+3. **Keep**: pnpm setup, system packages with retry loop, caire binary
+4. **Keep**: Python venv creation with base packages (numpy, Pillow, opencv) and pip cache mount
+5. **Remove**: all ML pip install commands (onnxruntime, rembg, realesrgan, paddlepaddle, mediapipe, codeformer, NCCL fix)
+6. **Remove**: download_models.py COPY and RUN (parallel model download step)
+7. **Remove**: the `apt-get purge build-essential python3-dev` line — keep build-essential for runtime pip installs
+8. **Add**: `COPY docker/feature-manifest.json /app/docker/feature-manifest.json`
+9. **Add**: `COPY packages/ai/python/install_feature.py /app/packages/ai/python/install_feature.py`
+10. **Update** env vars: `PYTHON_VENV_PATH=/data/ai/venv`, add `MODELS_PATH=/data/ai/models`, add `DATA_DIR=/data`
+
+Note: The NCCL re-alignment step (dynamically reads torch's NCCL dependency after paddlepaddle-gpu silently downgrades it) is only needed when BOTH torch and paddlepaddle-gpu are installed. In the on-demand model, these would be installed at different times by different bundles (Upscale vs OCR). The install_feature.py script must handle this: if torch is already installed and paddlepaddle-gpu is being installed (or vice versa), run the NCCL re-alignment afterward.
 
 - [ ] **Step 2: Update entrypoint.sh for venv bootstrap**
 
