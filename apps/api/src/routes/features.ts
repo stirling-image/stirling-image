@@ -133,26 +133,34 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
       const modelsDir = getModelsDir();
 
       const child = spawn(pythonPath, [scriptPath, bundleId, manifestPath, modelsDir], {
-        stdio: ["ignore", "ignore", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
           BUNDLE_ID: bundleId,
+          PIP_CACHE_DIR: join(getAiDir(), "pip-cache"),
         },
       });
 
       let stderrBuffer = "";
+      let stdoutBuffer = "";
+      const lastStderrLines: string[] = [];
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        stdoutBuffer += chunk.toString();
+      });
 
       child.stderr.on("data", (chunk: Buffer) => {
         stderrBuffer += chunk.toString();
 
-        // Process complete lines
         const lines = stderrBuffer.split("\n");
-        // Keep the last incomplete line in the buffer
         stderrBuffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
+
+          lastStderrLines.push(trimmed);
+          if (lastStderrLines.length > 20) lastStderrLines.shift();
 
           try {
             const parsed = JSON.parse(trimmed) as { progress?: number; stage?: string };
@@ -170,7 +178,7 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
               });
             }
           } catch {
-            // Not JSON — ignore non-progress stderr output
+            // Not JSON progress — rembg/pip output noise, keep in lastStderrLines for error reporting
           }
         }
       });
@@ -181,10 +189,12 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
         if (code === 0) {
           invalidateCache();
           shutdownDispatcher();
-          setInstallProgress(bundleId, { percent: 100, stage: "Complete" }, null);
+          setInstallProgress(null, null, null);
           updateSingleFileProgress({ jobId, phase: "complete", percent: 100, stage: "Complete" });
         } else {
-          const errorMsg = `Install failed with exit code ${code}`;
+          const errorDetail =
+            lastStderrLines.filter((l) => !l.startsWith("{")).join("\n") || stdoutBuffer.trim();
+          const errorMsg = errorDetail || `Install failed with exit code ${code}`;
           setInstallProgress(bundleId, null, errorMsg);
           updateSingleFileProgress({ jobId, phase: "failed", percent: 0, error: errorMsg });
         }

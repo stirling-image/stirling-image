@@ -1,4 +1,4 @@
-import { PYTHON_SIDECAR_TOOLS, TOOLS } from "@ashim/shared";
+import { PYTHON_SIDECAR_TOOLS, TOOL_BUNDLE_MAP, TOOLS } from "@ashim/shared";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -110,12 +110,22 @@ export function ToolPage() {
     [toolId],
   );
   const isAiTool = toolId ? (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(toolId) : false;
-  const getBundleForTool = useFeaturesStore((s) => s.getBundleForTool);
-  const isToolInstalled = useFeaturesStore((s) => s.isToolInstalled);
-  const featureBundle = toolId ? getBundleForTool(toolId) : null;
-  const toolInstalled = toolId ? isToolInstalled(toolId) : true;
+  const featuresLoaded = useFeaturesStore((s) => s.loaded);
+  const featureBundles = useFeaturesStore((s) => s.bundles);
+  const fetchFeatures = useFeaturesStore((s) => s.fetch);
+  const featureBundle = useMemo(() => {
+    if (!toolId) return null;
+    const bundleId = TOOL_BUNDLE_MAP[toolId];
+    if (!bundleId) return null;
+    return featureBundles.find((b) => b.id === bundleId) ?? null;
+  }, [toolId, featureBundles]);
+  const toolInstalled = featureBundle ? featureBundle.status === "installed" : !isAiTool;
   const { hasPermission } = useAuth();
   const isAdmin = hasPermission("settings:write");
+
+  useEffect(() => {
+    if (isAiTool) fetchFeatures();
+  }, [isAiTool, fetchFeatures]);
   const {
     files,
     entries,
@@ -239,6 +249,16 @@ export function ToolPage() {
       <AppLayout>
         <div className="flex items-center justify-center h-full text-muted-foreground">
           Tool not found
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isAiTool && !featuresLoaded) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          Loading...
         </div>
       </AppLayout>
     );
