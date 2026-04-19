@@ -1,125 +1,88 @@
 import type { FeatureBundleState } from "@ashim/shared";
 import { AlertCircle, Download, Loader2, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { apiPost } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { useFeaturesStore } from "@/stores/features-store";
+
+const PROGRESS_MESSAGES = [
+  "Almost there... probably...",
+  "Good things take time...",
+  "Still faster than watching paint dry...",
+  "Your patience is truly inspiring...",
+  "Working harder than it looks...",
+  "This is the exciting part, trust me...",
+  "Doing important behind-the-scenes stuff...",
+  "If you're reading this, it's working...",
+  "Preparing something awesome...",
+  "Worth every second, pinky promise...",
+  "The suspense is part of the experience...",
+  "Teaching your computer new tricks...",
+  "Setting up your superpowers...",
+  "Your images will thank you later...",
+  "Loading... but make it fancy...",
+  "This would be a great time for coffee...",
+  "Rome wasn't built in a day either...",
+  "Shhh... genius at work...",
+  "Making your photos jealous of what's coming...",
+  "Assembling the dream team...",
+  "Unpacking awesomeness...",
+  "Almost done thinking about starting... just kidding...",
+  "Plot twist: this is actually doing something...",
+  "Warming up the creative engines...",
+  "Imagination loading...",
+  "Not a screensaver, we promise...",
+  "Great art takes time to install...",
+  "Your future self will thank you...",
+  "Grabbing some really smart files...",
+  "Hang tight, the best is yet to come...",
+];
+
+function formatTimeRemaining(ms: number): string {
+  if (ms < 60000) return "Less than a minute left";
+  const mins = Math.ceil(ms / 60000);
+  if (mins === 1) return "~1 minute left";
+  return `~${mins} minutes left`;
+}
 
 interface FeatureInstallPromptProps {
   bundle: FeatureBundleState;
   isAdmin: boolean;
 }
 
-interface ProgressState {
-  percent: number;
-  stage: string;
-}
-
 export function FeatureInstallPrompt({ bundle, isAdmin }: FeatureInstallPromptProps) {
-  const [installing, setInstalling] = useState(false);
-  const [progress, setProgress] = useState<ProgressState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const refresh = useFeaturesStore((s) => s.refresh);
+  const { installBundle, clearError, installing, errors, startTimes } = useFeaturesStore();
+  const progress = installing[bundle.id] ?? null;
+  const error = errors[bundle.id] ?? null;
+  const isInstalling = !!progress;
+  const startTime = startTimes[bundle.id] ?? null;
 
-  // If bundle is already installing on mount, show progress state immediately
+  const [messageIndex, setMessageIndex] = useState(() =>
+    Math.floor(Math.random() * PROGRESS_MESSAGES.length),
+  );
+  const [now, setNow] = useState(Date.now());
+
   useEffect(() => {
-    if (bundle.status === "installing") {
-      setInstalling(true);
-      setProgress(bundle.progress ?? { percent: 0, stage: "Installing..." });
-    }
-  }, [bundle.status, bundle.progress]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      eventSourceRef.current?.close();
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, []);
-
-  function startPollingFallback() {
-    if (pollingRef.current) return;
-    pollingRef.current = setInterval(async () => {
-      try {
-        await refresh();
-        const updated = useFeaturesStore.getState().bundles.find((b) => b.id === bundle.id);
-        if (!updated || updated.status !== "installing") {
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          pollingRef.current = null;
-          setInstalling(false);
-          if (updated?.status === "error") {
-            setError(updated.error ?? "Installation failed");
-          } else {
-            setProgress(null);
-          }
-        } else if (updated.progress) {
-          setProgress(updated.progress);
-        }
-      } catch {
-        // ignore polling errors
-      }
+    if (!isInstalling) return;
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % PROGRESS_MESSAGES.length);
+      setNow(Date.now());
     }, 3000);
+    return () => clearInterval(interval);
+  }, [isInstalling]);
+
+  const eta = (() => {
+    if (!progress || !startTime || progress.percent <= 2) return null;
+    const elapsed = now - startTime;
+    const rate = progress.percent / elapsed;
+    if (rate <= 0) return null;
+    const remaining = (100 - progress.percent) / rate;
+    return formatTimeRemaining(remaining);
+  })();
+
+  function handleInstall() {
+    clearError(bundle.id);
+    installBundle(bundle.id);
   }
 
-  function listenToProgress(jobId: string) {
-    const es = new EventSource(`/api/v1/jobs/${jobId}/progress`);
-    eventSourceRef.current = es;
-
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data) as {
-          phase: string;
-          percent: number;
-          stage: string;
-          error?: string;
-        };
-
-        if (data.phase === "complete") {
-          es.close();
-          eventSourceRef.current = null;
-          setInstalling(false);
-          setProgress(null);
-          refresh();
-          return;
-        }
-
-        if (data.phase === "failed") {
-          es.close();
-          eventSourceRef.current = null;
-          setInstalling(false);
-          setError(data.error ?? "Installation failed");
-          return;
-        }
-
-        setProgress({ percent: data.percent, stage: data.stage });
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    es.onerror = () => {
-      es.close();
-      eventSourceRef.current = null;
-      startPollingFallback();
-    };
-  }
-
-  async function handleInstall() {
-    setInstalling(true);
-    setError(null);
-    setProgress({ percent: 0, stage: "Starting installation..." });
-
-    try {
-      const result = await apiPost<{ jobId: string }>(`/v1/admin/features/${bundle.id}/install`);
-      listenToProgress(result.jobId);
-    } catch (err) {
-      setInstalling(false);
-      setError(err instanceof Error ? err.message : "Failed to start installation");
-    }
-  }
-
-  // Non-admin: show "not enabled" message
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-4">
@@ -132,7 +95,6 @@ export function FeatureInstallPrompt({ bundle, isAdmin }: FeatureInstallPromptPr
     );
   }
 
-  // Admin: show install prompt
   return (
     <div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
       <Download className="h-16 w-16 text-muted-foreground" />
@@ -144,7 +106,6 @@ export function FeatureInstallPrompt({ bundle, isAdmin }: FeatureInstallPromptPr
         </p>
       </div>
 
-      {/* Error banner */}
       {error && (
         <div className="flex items-center gap-2 bg-destructive/10 text-destructive rounded-lg px-4 py-3 max-w-md w-full">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -160,29 +121,29 @@ export function FeatureInstallPrompt({ bundle, isAdmin }: FeatureInstallPromptPr
         </div>
       )}
 
-      {/* Progress bar */}
-      {installing && progress && (
+      {isInstalling && progress && (
         <div className="w-full max-w-md space-y-2">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
+              className="h-full bg-primary rounded-full transition-all duration-500"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{progress.stage}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <span className="italic truncate">{PROGRESS_MESSAGES[messageIndex]}</span>
+            </div>
+            {eta && <p className="text-xs text-muted-foreground shrink-0 ml-2">{eta}</p>}
           </div>
         </div>
       )}
 
-      {/* Install button (hidden when installing or showing error) */}
-      {!installing && !error && (
+      {!isInstalling && !error && (
         <button
           type="button"
           onClick={handleInstall}
-          disabled={installing || bundle.status === "installing"}
-          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
         >
           Enable {bundle.name}
         </button>

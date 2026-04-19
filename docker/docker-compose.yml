@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: ashimhq/ashim:latest
+    image: ashim:latest
     container_name: ashim
     ports:
       - "1349:1349"
@@ -15,11 +15,31 @@ services:
       - DEFAULT_USERNAME=admin
       - DEFAULT_PASSWORD=admin
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1349/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  ashim-gpu:
+    extends:
+      service: ashim
+    container_name: ashim-gpu
+    profiles:
+      - gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 volumes:
   ashim-data:
