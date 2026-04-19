@@ -58,7 +58,7 @@ export function CompareSettings() {
           id="compare-second-image"
           ref={secondInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif,.hif"
           onChange={(e) => setSecondFile(e.target.files?.[0] ?? null)}
           className="hidden"
         />

@@ -57,7 +57,7 @@ export function FileUploadArea() {
         </div>
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif,.hif"
           multiple
           className="hidden"
           onChange={handleInputChange}
