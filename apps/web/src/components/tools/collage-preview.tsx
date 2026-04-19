@@ -237,7 +237,12 @@ function CollageCanvas({ template }: { template: CollageTemplate }) {
             {template.cells.map((cell, i) => {
               const imgIndex = cellAssignments[i] ?? -1;
               const img = imgIndex >= 0 ? images[imgIndex] : null;
-              const transform = cellTransforms[i] ?? { panX: 0, panY: 0, zoom: 1 };
+              const transform = cellTransforms[i] ?? {
+                panX: 0,
+                panY: 0,
+                zoom: 1,
+                objectFit: "cover" as const,
+              };
               const isSelected = selectedCell === i;
               const isDragSource = activeDragCell === i;
 
