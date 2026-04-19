@@ -257,6 +257,7 @@ function CollageCanvas({ template }: { template: CollageTemplate }) {
                   isDragSource={isDragSource}
                   gridColumn={cell.gridColumn}
                   gridRow={cell.gridRow}
+                  backgroundColor={backgroundColor}
                 />
               );
             })}
@@ -288,6 +289,7 @@ function CollageCell({
   isDragSource,
   gridColumn,
   gridRow,
+  backgroundColor,
 }: {
   cellIndex: number;
   image: CollageImage | null;
@@ -297,6 +299,7 @@ function CollageCell({
   isDragSource: boolean;
   gridColumn: string;
   gridRow: string;
+  backgroundColor: string;
 }) {
   const store = useCollageStore();
   const cellRef = useRef<HTMLDivElement>(null);
@@ -437,6 +440,7 @@ function CollageCell({
         borderRadius: `${cornerRadius}px`,
         minHeight: 0,
         touchAction: isSelected ? "none" : "auto",
+        backgroundColor: transform.objectFit === "contain" ? backgroundColor : undefined,
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
