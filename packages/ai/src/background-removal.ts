@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type ProgressCallback, runPythonWithProgress } from "./bridge.js";
+import { type ProgressCallback, parseStdoutJson, runPythonWithProgress } from "./bridge.js";
 
 export interface RemoveBackgroundOptions {
   model?: string;
@@ -29,7 +29,7 @@ export async function removeBackground(
       { onProgress, timeout },
     );
 
-    const result = JSON.parse(stdout);
+    const result = parseStdoutJson(stdout);
     if (!result.success) {
       throw new Error(result.error || "Background removal failed");
     }

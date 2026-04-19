@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
-import { type ProgressCallback, runPythonWithProgress } from "./bridge.js";
+import { type ProgressCallback, parseStdoutJson, runPythonWithProgress } from "./bridge.js";
 
 export type OcrQuality = "fast" | "balanced" | "best";
 
@@ -36,7 +36,7 @@ export async function extractText(
     timeout: 600_000, // 10 min timeout for VLM on CPU
   });
 
-  const result = JSON.parse(stdout);
+  const result = parseStdoutJson(stdout);
   if (!result.success) {
     throw new Error(result.error || "OCR failed");
   }

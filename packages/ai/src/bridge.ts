@@ -100,9 +100,7 @@ function startDispatcher(): ChildProcess | null {
           if (parsed.ready === true) {
             dispatcherReady = true;
             dispatcherGpuAvailable = parsed.gpu === true;
-            console.log(
-              `[bridge] Python dispatcher ready (GPU: ${parsed.gpu === true})`,
-            );
+            console.log(`[bridge] Python dispatcher ready (GPU: ${parsed.gpu === true})`);
             continue;
           }
 
@@ -407,4 +405,11 @@ export function runPythonWithProgress(
 
   // Fall back to per-request spawning
   return runPythonPerRequest(scriptName, args, options);
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: matches JSON.parse return type
+export function parseStdoutJson(stdout: string): any {
+  const match = stdout.match(/\{[\s\S]*\}$/);
+  if (!match) throw new Error("No JSON response from Python script");
+  return JSON.parse(match[0]);
 }

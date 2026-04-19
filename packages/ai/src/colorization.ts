@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type ProgressCallback, runPythonWithProgress } from "./bridge.js";
+import { type ProgressCallback, parseStdoutJson, runPythonWithProgress } from "./bridge.js";
 
 export interface ColorizeOptions {
   intensity?: number;
@@ -30,7 +30,7 @@ export async function colorize(
     { onProgress },
   );
 
-  const result = JSON.parse(stdout);
+  const result = parseStdoutJson(stdout);
   if (!result.success) {
     throw new Error(result.error || "Colorization failed");
   }

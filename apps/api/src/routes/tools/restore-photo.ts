@@ -32,6 +32,17 @@ const settingsSchema = z.object({
  */
 export function registerRestorePhoto(app: FastifyInstance) {
   app.post("/api/v1/tools/restore-photo", async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!isToolInstalled("restore-photo")) {
+      const bundle = getBundleForTool("restore-photo");
+      return reply.status(501).send({
+        error: "Feature not installed",
+        code: "FEATURE_NOT_INSTALLED",
+        feature: "photo-restoration",
+        featureName: bundle?.name ?? "Photo Restoration",
+        estimatedSize: bundle?.estimatedSize ?? "unknown",
+      });
+    }
+
     let fileBuffer: Buffer | null = null;
     let filename = "image";
     let settingsRaw: string | null = null;
@@ -67,18 +78,6 @@ export function registerRestorePhoto(app: FastifyInstance) {
     const validation = await validateImageBuffer(fileBuffer);
     if (!validation.valid) {
       return reply.status(400).send({ error: `Invalid image: ${validation.reason}` });
-    }
-
-    // Guard: check if the photo restoration feature bundle is installed
-    if (!isToolInstalled("restore-photo")) {
-      const bundle = getBundleForTool("restore-photo");
-      return reply.status(501).send({
-        error: "Feature not installed",
-        code: "FEATURE_NOT_INSTALLED",
-        feature: "photo-restoration",
-        featureName: bundle?.name ?? "Photo Restoration",
-        estimatedSize: bundle?.estimatedSize ?? "unknown",
-      });
     }
 
     try {

@@ -100,7 +100,7 @@ export function isFeatureInstalled(bundleId: string): boolean {
 
 export function isToolInstalled(toolId: string): boolean {
   const bundleId = TOOL_BUNDLE_MAP[toolId];
-  if (!bundleId) return false;
+  if (!bundleId) return true;
   return isFeatureInstalled(bundleId);
 }
 
