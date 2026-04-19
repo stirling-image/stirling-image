@@ -1,7 +1,21 @@
-import { Download, ImagePlus, Loader2, RotateCcw, Upload, X } from "lucide-react";
-import { type DragEvent, useCallback, useRef, useState } from "react";
+import {
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { useDrag, usePinch, useWheel } from "@use-gesture/react";
+import { Download, GripVertical, ImagePlus, Loader2, RotateCcw, Upload, X } from "lucide-react";
+import { type DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type CollageTemplate, getTemplateById } from "@/lib/collage-templates";
 import { cn } from "@/lib/utils";
+import type { CollageImage } from "@/stores/collage-store";
 import { useCollageStore } from "@/stores/collage-store";
 
 // Checkerboard pattern for transparent background
@@ -18,6 +32,10 @@ function getAspectMultiplier(ar: string): number | null {
     "4:5": 5 / 4,
   };
   return map[ar] ?? null;
+}
+
+function displayUrl(img: CollageImage): string {
+  return img.previewBlobUrl ?? img.blobUrl;
 }
 
 export function CollagePreview() {
@@ -138,13 +156,53 @@ function CollageCanvas({ template }: { template: CollageTemplate }) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arMultiplier = getAspectMultiplier(aspectRatio);
-
-  // Calculate canvas aspect ratio style
   const aspectStyle: React.CSSProperties = arMultiplier
     ? { aspectRatio: `1 / ${arMultiplier}` }
     : {};
 
   const bgIsTransparent = backgroundColor === "transparent";
+
+  const [activeDragCell, setActiveDragCell] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 300, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 5 } }),
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const cellIndex = event.active.data.current?.cellIndex as number | undefined;
+    if (cellIndex != null) setActiveDragCell(cellIndex);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragCell(null);
+      const { active, over } = event;
+      if (!over) return;
+      const fromCell = active.data.current?.cellIndex as number;
+      const toCell = over.data.current?.cellIndex as number;
+      if (fromCell == null || toCell == null || fromCell === toCell) return;
+
+      const toImgIdx = cellAssignments[toCell] ?? -1;
+      if (toImgIdx >= 0) {
+        store.swapCells(fromCell, toCell);
+      } else {
+        const fromImgIdx = cellAssignments[fromCell];
+        if (fromImgIdx == null || fromImgIdx < 0) return;
+        store.setCellAssignment(toCell, fromImgIdx);
+        store.setCellAssignment(fromCell, -1);
+      }
+    },
+    [cellAssignments, store],
+  );
+
+  const activeDragImage =
+    activeDragCell != null
+      ? (() => {
+          const imgIdx = cellAssignments[activeDragCell] ?? -1;
+          return imgIdx >= 0 ? images[imgIdx] : null;
+        })()
+      : null;
 
   return (
     <div
@@ -158,127 +216,154 @@ function CollageCanvas({ template }: { template: CollageTemplate }) {
         className="relative w-full max-w-[800px] max-h-full"
         style={aspectStyle}
       >
-        <div
-          className="w-full h-full rounded-lg overflow-hidden shadow-lg"
-          style={{
-            background: bgIsTransparent ? CHECKER_BG : backgroundColor,
-            display: "grid",
-            gridTemplateColumns: template.gridTemplateColumns,
-            gridTemplateRows: template.gridTemplateRows,
-            gap: `${gap}px`,
-            padding: `${gap}px`,
-            ...(arMultiplier ? { aspectRatio: `1 / ${arMultiplier}` } : { aspectRatio: "4 / 3" }),
-          }}
-        >
-          {template.cells.map((cell, i) => {
-            const imgIndex = cellAssignments[i] ?? -1;
-            const img = imgIndex >= 0 ? images[imgIndex] : null;
-            const transform = cellTransforms[i] ?? { panX: 0, panY: 0, zoom: 1 };
-            const isSelected = selectedCell === i;
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div
+            className="w-full h-full rounded-lg overflow-hidden shadow-lg"
+            style={{
+              background: bgIsTransparent ? CHECKER_BG : backgroundColor,
+              display: "grid",
+              gridTemplateColumns: template.gridTemplateColumns,
+              gridTemplateRows: template.gridTemplateRows,
+              gap: `${gap}px`,
+              padding: `${gap}px`,
+              ...(arMultiplier ? { aspectRatio: `1 / ${arMultiplier}` } : { aspectRatio: "4 / 3" }),
+            }}
+          >
+            {template.cells.map((cell, i) => {
+              const imgIndex = cellAssignments[i] ?? -1;
+              const img = imgIndex >= 0 ? images[imgIndex] : null;
+              const transform = cellTransforms[i] ?? { panX: 0, panY: 0, zoom: 1 };
+              const isSelected = selectedCell === i;
+              const isDragSource = activeDragCell === i;
 
-            return (
-              <CollageCell
-                key={`${template.id}-${cell.gridColumn}-${cell.gridRow}`}
-                cellIndex={i}
-                image={img}
-                transform={transform}
-                cornerRadius={cornerRadius}
-                isSelected={isSelected}
-                gridColumn={cell.gridColumn}
-                gridRow={cell.gridRow}
-              />
-            );
-          })}
-        </div>
+              return (
+                <CollageCell
+                  key={`${template.id}-${cell.gridColumn}-${cell.gridRow}`}
+                  cellIndex={i}
+                  image={img}
+                  transform={transform}
+                  cornerRadius={cornerRadius}
+                  isSelected={isSelected}
+                  isDragSource={isDragSource}
+                  gridColumn={cell.gridColumn}
+                  gridRow={cell.gridRow}
+                />
+              );
+            })}
+          </div>
+          <DragOverlay dropAnimation={null}>
+            {activeDragImage ? (
+              <div className="w-20 h-20 rounded-lg overflow-hidden shadow-xl border-2 border-primary opacity-90">
+                <img
+                  src={displayUrl(activeDragImage)}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
     </div>
   );
 }
 
-/** A single cell in the collage grid with pan/zoom support. */
+/** A single cell in the collage grid with use-gesture pan/zoom/pinch and dnd-kit reorder. */
 function CollageCell({
   cellIndex,
   image,
   transform,
   cornerRadius,
   isSelected,
+  isDragSource,
   gridColumn,
   gridRow,
 }: {
   cellIndex: number;
-  image: { blobUrl: string } | null;
+  image: CollageImage | null;
   transform: { panX: number; panY: number; zoom: number };
   cornerRadius: number;
   isSelected: boolean;
+  isDragSource: boolean;
   gridColumn: string;
   gridRow: string;
 }) {
   const store = useCollageStore();
   const cellRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const controlsTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (!image) return;
-      e.preventDefault();
-      e.stopPropagation();
-      store.setSelectedCell(cellIndex);
-      isDragging.current = true;
-      dragStart.current = {
-        x: e.clientX,
-        y: e.clientY,
-        panX: transform.panX,
-        panY: transform.panY,
-      };
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `cell-drop-${cellIndex}`,
+    data: { cellIndex },
+  });
 
-      const handleMouseMove = (ev: MouseEvent) => {
-        if (!isDragging.current) return;
-        const dx = ev.clientX - dragStart.current.x;
-        const dy = ev.clientY - dragStart.current.y;
-        const rect = cellRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        // Convert pixel drag to percentage of cell size
-        const panX = Math.max(
-          -100,
-          Math.min(100, dragStart.current.panX + (dx / rect.width) * 100),
-        );
-        const panY = Math.max(
-          -100,
-          Math.min(100, dragStart.current.panY + (dy / rect.height) * 100),
-        );
-        store.setCellTransform(cellIndex, { panX, panY });
-      };
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+  } = useDraggable({
+    id: `cell-drag-${cellIndex}`,
+    data: { cellIndex },
+    disabled: !image,
+  });
 
-      const handleMouseUp = () => {
-        isDragging.current = false;
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(() => setControlsVisible(false), 3000);
+  }, []);
 
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+  useEffect(() => {
+    if (isSelected && image) showControls();
+    if (!isSelected) setControlsVisible(false);
+  }, [isSelected, image, showControls]);
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    };
+  }, []);
+
+  const bindDrag = useDrag(
+    ({ delta: [dx, dy], first, memo }) => {
+      if (!image || !isSelected) return memo;
+      if (first) {
+        showControls();
+        memo = { panX: transform.panX, panY: transform.panY };
+      }
+      const rect = cellRef.current?.getBoundingClientRect();
+      if (!rect || !memo) return memo;
+      const panX = Math.max(-100, Math.min(100, memo.panX + (dx / rect.width) * 100));
+      const panY = Math.max(-100, Math.min(100, memo.panY + (dy / rect.height) * 100));
+      store.setCellTransform(cellIndex, { panX, panY });
+      return memo;
     },
-    [cellIndex, image, store, transform.panX, transform.panY],
+    { pointer: { touch: true }, filterTaps: true },
   );
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (!image) return;
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Math.max(1, Math.min(3, transform.zoom + delta));
-      store.setCellTransform(cellIndex, { zoom: newZoom });
+  const bindPinch = usePinch(
+    ({ offset: [scale] }) => {
+      if (!image || !isSelected) return;
+      showControls();
+      const zoom = Math.max(1, Math.min(3, scale));
+      store.setCellTransform(cellIndex, { zoom });
     },
-    [cellIndex, image, store, transform.zoom],
+    {
+      scaleBounds: { min: 1, max: 3 },
+      from: () => [transform.zoom, 0],
+    },
   );
 
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      store.resetCellTransform(cellIndex);
+  const bindWheel = useWheel(
+    ({ direction: [, dy] }) => {
+      if (!image || !isSelected) return;
+      showControls();
+      const delta = dy > 0 ? -0.1 : 0.1;
+      const zoom = Math.max(1, Math.min(3, transform.zoom + delta));
+      store.setCellTransform(cellIndex, { zoom });
     },
-    [cellIndex, store],
+    { eventOptions: { passive: false } },
   );
 
   const handleClick = useCallback(
@@ -289,50 +374,142 @@ function CollageCell({
     [cellIndex, store],
   );
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      store.resetCellTransform(cellIndex);
+    },
+    [cellIndex, store],
+  );
+
+  const handleZoomSlider = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      showControls();
+      store.setCellTransform(cellIndex, { zoom: Number.parseFloat(e.target.value) });
+    },
+    [cellIndex, store, showControls],
+  );
+
+  const handleReset = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      store.resetCellTransform(cellIndex);
+    },
+    [cellIndex, store],
+  );
+
+  const mergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      (cellRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      setDropRef(node);
+    },
+    [setDropRef],
+  );
+
+  const isLoading = image?.previewLoading ?? false;
+
   return (
-    // biome-ignore lint/a11y/useSemanticElements: cell requires drag/zoom interactions incompatible with button element
     <div
-      ref={cellRef}
+      ref={mergedRef}
       role="button"
       tabIndex={0}
       aria-label={`Collage cell ${cellIndex + 1}`}
       className={cn(
-        "relative overflow-hidden cursor-grab active:cursor-grabbing transition-shadow",
+        "relative overflow-hidden transition-shadow",
         isSelected && "ring-2 ring-primary ring-offset-1",
+        isOver && !isSelected && "ring-2 ring-blue-500",
         !image && "border-2 border-dashed border-border/50",
+        image && !isSelected && "cursor-grab",
+        image && isSelected && "cursor-grab active:cursor-grabbing",
+        isDragSource && "opacity-50",
       )}
       style={{
         gridColumn,
         gridRow,
         borderRadius: `${cornerRadius}px`,
         minHeight: 0,
+        touchAction: isSelected ? "none" : "auto",
       }}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") handleClick(e as unknown as React.MouseEvent);
       }}
-      onMouseDown={handleMouseDown}
-      onWheel={handleWheel}
-      onDoubleClick={handleDoubleClick}
+      {...(isSelected ? { ...bindDrag(), ...bindPinch(), ...bindWheel() } : {})}
     >
       {image ? (
-        <img
-          src={image.blobUrl}
-          alt=""
-          draggable={false}
-          className="w-full h-full object-cover select-none pointer-events-none"
-          style={{
-            transform: `translate(${transform.panX}%, ${transform.panY}%) scale(${transform.zoom})`,
-          }}
-        />
+        isLoading ? (
+          <div className="w-full h-full flex items-center justify-center bg-muted/30">
+            <Loader2 className="h-6 w-6 text-primary animate-spin" />
+          </div>
+        ) : (
+          <img
+            src={displayUrl(image)}
+            alt=""
+            draggable={false}
+            className="w-full h-full object-cover select-none pointer-events-none"
+            style={{
+              transform: `translate(${transform.panX}%, ${transform.panY}%) scale(${transform.zoom})`,
+            }}
+          />
+        )
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted/30">
           <ImagePlus className="h-6 w-6 text-muted-foreground/30" />
         </div>
       )}
-      {isSelected && image && transform.zoom > 1 && (
-        <div className="absolute bottom-1 right-1 bg-background/80 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">
-          {Math.round(transform.zoom * 100)}%
+
+      {/* Drag handle for reorder — top-right of selected cells */}
+      {isSelected && image && !isLoading && (
+        <div
+          ref={setDragRef}
+          {...listeners}
+          {...attributes}
+          className="absolute top-1 right-1 bg-black/50 backdrop-blur-sm text-white rounded p-1 cursor-grab active:cursor-grabbing hover:bg-black/70 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </div>
+      )}
+
+      {/* Zoom controls overlay — bottom of selected cells */}
+      {isSelected && image && !isLoading && (
+        <div
+          className={cn(
+            "absolute bottom-0 left-0 right-0 flex items-center gap-2 px-2 py-1.5 bg-black/50 backdrop-blur-sm transition-opacity duration-300",
+            controlsVisible ? "opacity-100" : "opacity-0",
+          )}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.1"
+            value={transform.zoom}
+            onChange={handleZoomSlider}
+            onPointerDown={() => {
+              if (controlsTimer.current) clearTimeout(controlsTimer.current);
+            }}
+            onPointerUp={showControls}
+            className="flex-1 h-1 accent-white cursor-pointer"
+          />
+          <span className="text-white text-[10px] font-mono w-7 text-right shrink-0">
+            {transform.zoom.toFixed(1)}x
+          </span>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="text-white hover:text-white/80 transition-colors shrink-0"
+            title="Reset position and zoom"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
     </div>
@@ -364,7 +541,17 @@ function ImageStrip() {
             key={img.id}
             className="relative shrink-0 w-14 h-14 rounded-md overflow-hidden border border-border group"
           >
-            <img src={img.blobUrl} alt={img.file.name} className="w-full h-full object-cover" />
+            {img.previewLoading ? (
+              <div className="w-full h-full flex items-center justify-center bg-muted/30">
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+              </div>
+            ) : (
+              <img
+                src={displayUrl(img)}
+                alt={img.file.name}
+                className="w-full h-full object-cover"
+              />
+            )}
             <button
               type="button"
               onClick={() => store.removeImage(i)}
