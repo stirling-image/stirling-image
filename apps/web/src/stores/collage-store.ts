@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { COLLAGE_TEMPLATES, getDefaultTemplate } from "@/lib/collage-templates";
+import { fetchDecodedPreview, needsServerPreview, revokePreviewUrl } from "@/lib/image-preview";
 
 export type AspectRatio = "free" | "1:1" | "4:3" | "3:2" | "16:9" | "9:16" | "4:5";
 export type OutputFormat = "png" | "jpeg" | "webp";
@@ -9,6 +10,8 @@ export interface CollageImage {
   id: string;
   file: File;
   blobUrl: string;
+  previewBlobUrl?: string;
+  previewLoading: boolean;
 }
 
 export interface CellTransform {
@@ -110,6 +113,7 @@ export const useCollageStore = create<CollageState>((set, get) => ({
       id: `img-${++nextImageId}`,
       file: f,
       blobUrl: URL.createObjectURL(f),
+      previewLoading: needsServerPreview(f),
     }));
     const state = get();
     const allImages = [...state.images, ...newImages];
@@ -127,12 +131,33 @@ export const useCollageStore = create<CollageState>((set, get) => ({
       resultSize: null,
       error: null,
     });
+
+    for (const img of newImages) {
+      if (img.previewLoading) {
+        const imgId = img.id;
+        fetchDecodedPreview(img.file).then((url) => {
+          const current = get();
+          const idx = current.images.findIndex((i) => i.id === imgId);
+          if (idx === -1) return;
+          const updated = [...current.images];
+          updated[idx] = {
+            ...updated[idx],
+            previewLoading: false,
+            ...(url ? { previewBlobUrl: url } : {}),
+          };
+          set({ images: updated });
+        });
+      }
+    }
   },
 
   removeImage: (index) => {
     const state = get();
     const img = state.images[index];
-    if (img) URL.revokeObjectURL(img.blobUrl);
+    if (img) {
+      URL.revokeObjectURL(img.blobUrl);
+      if (img.previewBlobUrl) revokePreviewUrl(img.previewBlobUrl);
+    }
     const newImages = state.images.filter((_, i) => i !== index);
     if (newImages.length === 0) {
       get().reset();
@@ -152,7 +177,10 @@ export const useCollageStore = create<CollageState>((set, get) => ({
 
   clearImages: () => {
     const state = get();
-    for (const img of state.images) URL.revokeObjectURL(img.blobUrl);
+    for (const img of state.images) {
+      URL.revokeObjectURL(img.blobUrl);
+      if (img.previewBlobUrl) revokePreviewUrl(img.previewBlobUrl);
+    }
     set({
       images: [],
       cellAssignments: [],
@@ -237,7 +265,10 @@ export const useCollageStore = create<CollageState>((set, get) => ({
   setError: (e) => set({ error: e, phase: "editing" }),
   reset: () => {
     const state = get();
-    for (const img of state.images) URL.revokeObjectURL(img.blobUrl);
+    for (const img of state.images) {
+      URL.revokeObjectURL(img.blobUrl);
+      if (img.previewBlobUrl) revokePreviewUrl(img.previewBlobUrl);
+    }
     nextImageId = 0;
     set({
       images: [],
