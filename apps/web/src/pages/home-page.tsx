@@ -1,11 +1,12 @@
-import { CATEGORIES, TOOLS } from "@ashim/shared";
-import { Loader2 } from "lucide-react";
+import { CATEGORIES, PYTHON_SIDECAR_TOOLS, TOOLS } from "@ashim/shared";
+import { Download, Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ImageViewer } from "@/components/common/image-viewer";
 import { MultiImageViewer } from "@/components/common/multi-image-viewer";
 import { AppLayout } from "@/components/layout/app-layout";
 import { ICON_MAP } from "@/lib/icon-map";
+import { useFeaturesStore } from "@/stores/features-store";
 import { useFileStore } from "@/stores/file-store";
 import { useSettingsStore } from "@/stores/settings-store";
 
@@ -24,10 +25,12 @@ export function HomePage() {
   } = useFileStore();
   const navigate = useNavigate();
   const { fetch: fetchSettings } = useSettingsStore();
+  const { fetch: fetchFeatures, isToolInstalled } = useFeaturesStore();
 
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+    fetchFeatures();
+  }, [fetchSettings, fetchFeatures]);
 
   const handleFiles = useCallback(
     (newFiles: File[]) => {
@@ -83,6 +86,8 @@ export function HomePage() {
                 const Icon =
                   (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ??
                   ICON_MAP.FileImage;
+                const isAi = (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(id);
+                const needsDownload = isAi && !isToolInstalled(id);
                 return (
                   <button
                     key={id}
@@ -94,6 +99,9 @@ export function HomePage() {
                       <Icon className="h-4 w-4" />
                     </div>
                     <span className="text-xs font-medium text-foreground">{tool.name}</span>
+                    {needsDownload && (
+                      <Download className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                    )}
                   </button>
                 );
               })}
@@ -121,6 +129,8 @@ export function HomePage() {
                       const Icon =
                         (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ??
                         ICON_MAP.FileImage;
+                      const isAi = (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(tool.id);
+                      const needsDownload = isAi && !isToolInstalled(tool.id);
                       return (
                         <button
                           key={tool.id}
@@ -130,6 +140,9 @@ export function HomePage() {
                         >
                           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm">{tool.name}</span>
+                          {needsDownload && (
+                            <Download className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                          )}
                         </button>
                       );
                     })}
