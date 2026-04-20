@@ -741,6 +741,40 @@ describe("API lib", () => {
     });
   });
 
+  // -- api network error → connection store ---------------------------------
+
+  describe("api network error → connection store", () => {
+    it("triggers disconnected state on TypeError from fetch", async () => {
+      const { useConnectionStore } = await import("@/stores/connection-store");
+      useConnectionStore.setState({
+        status: "connected",
+        failedSince: null,
+        lastHealthCheck: null,
+      });
+
+      fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      await expect(apiGet("/v1/test")).rejects.toThrow("Failed to fetch");
+
+      expect(useConnectionStore.getState().status).toBe("disconnected");
+    });
+
+    it("does NOT trigger disconnected on HTTP errors", async () => {
+      const { useConnectionStore } = await import("@/stores/connection-store");
+      useConnectionStore.setState({
+        status: "connected",
+        failedSince: null,
+        lastHealthCheck: null,
+      });
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Not found" }), { status: 404 }),
+      );
+      await expect(apiGet("/v1/test")).rejects.toThrow();
+
+      expect(useConnectionStore.getState().status).toBe("connected");
+    });
+  });
+
   // -- Cross-cutting: token is read fresh on every call --------------------
 
   describe("token freshness", () => {
