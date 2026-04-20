@@ -7,9 +7,14 @@ when the DDColor model is unavailable.
 import sys
 import json
 import os
-import numpy as np
-import cv2
-from PIL import Image
+
+try:
+    import numpy as np
+    import cv2
+    from PIL import Image
+except ImportError as _e:
+    print(json.dumps({"error": f"Missing dependency: {_e}. Install opencv-python-headless, numpy, and Pillow."}))
+    sys.exit(1)
 
 
 def emit_progress(percent, stage):

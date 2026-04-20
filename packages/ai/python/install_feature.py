@@ -63,6 +63,7 @@ def cpu_fallback_packages(packages: list[str]) -> list[str]:
 
     Called on amd64 when no NVIDIA GPU is detected so that onnxruntime /
     paddlepaddle don't crash with a CUDA segfault.
+    Also replaces CUDA-pinned torch/torchvision with CPU-only versions.
     """
     replacements = {
         "onnxruntime-gpu": "onnxruntime",
@@ -70,6 +71,23 @@ def cpu_fallback_packages(packages: list[str]) -> list[str]:
     }
     result = []
     for pkg in packages:
+        # Handle multi-package CUDA torch entries like:
+        # "torch==2.6.0+cu126 torchvision==0.21.0+cu126 --index-url ..."
+        first_token = pkg.split()[0] if pkg.strip() else ""
+        if first_token.startswith("torch==") and "+cu" in first_token:
+            # Extract torch and torchvision versions, strip CUDA suffix
+            cpu_pkgs = []
+            for token in pkg.split():
+                if token.startswith("torch==") and "+cu" in token:
+                    base_ver = token.split("+")[0]  # "torch==2.6.0"
+                    cpu_pkgs.append(base_ver)
+                elif token.startswith("torchvision==") and "+cu" in token:
+                    base_ver = token.split("+")[0]  # "torchvision==0.21.0"
+                    cpu_pkgs.append(base_ver)
+                # Drop --index-url and its argument (not needed for CPU torch)
+            result.extend(cpu_pkgs)
+            continue
+
         name = pkg.split("==")[0].split(">=")[0].split("[")[0].strip()
         if name in replacements:
             version = pkg[len(name):]  # e.g. "==1.20.1"
@@ -143,7 +161,10 @@ def install_packages(bundle: dict, arch: str) -> None:
 
     for i, pkg in enumerate(all_pkgs):
         progress = int((i / total_pkgs) * 50)
-        pkg_name = pkg.split("==")[0].split(">=")[0].split("[")[0].strip()
+        # Extract display name(s) from package spec (may contain multiple
+        # packages and flags like "torch==2.6.0+cu126 torchvision==... --index-url ...")
+        tokens = [t for t in pkg.split() if not t.startswith("-") and "://" not in t]
+        pkg_name = ", ".join(t.split("==")[0].split(">=")[0].split("[")[0] for t in tokens) if tokens else pkg
         emit_progress(progress, f"Installing {pkg_name}...")
 
         # Check for package-specific pip flags

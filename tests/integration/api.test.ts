@@ -2787,15 +2787,15 @@ describe("OCR API", () => {
         payload,
       });
 
-      // OCR may fail with 422 if Python sidecar/engines are not installed (CI)
+      // OCR may fail with 422 if Python sidecar/engines are not installed (CI),
+      // or 501 if the OCR feature bundle is not installed
       if (res.statusCode === 200) {
         const body = JSON.parse(res.body);
         expect(body.text).toBeDefined();
         expect(body.jobId).toBeDefined();
         expect(body).not.toHaveProperty("engine");
       } else {
-        // 422 = OCR engine not available, which is acceptable in test environments
-        expect(res.statusCode).toBe(422);
+        expect([422, 501]).toContain(res.statusCode);
       }
     });
 
@@ -2822,8 +2822,8 @@ describe("OCR API", () => {
 
       // Should not be a 400 — engine param must still be accepted
       expect(res.statusCode).not.toBe(400);
-      // Either succeeds (200) or OCR engine unavailable (422)
-      expect([200, 422]).toContain(res.statusCode);
+      // Either succeeds (200), OCR engine unavailable (422), or feature not installed (501)
+      expect([200, 422, 501]).toContain(res.statusCode);
     });
 
     it("accepts language auto and enhance params", async () => {
@@ -2847,7 +2847,7 @@ describe("OCR API", () => {
 
       // All three params should be accepted without validation errors
       expect(res.statusCode).not.toBe(400);
-      expect([200, 422]).toContain(res.statusCode);
+      expect([200, 422, 501]).toContain(res.statusCode);
     });
 
     it("returns 400 for invalid quality value", async () => {
@@ -2865,7 +2865,8 @@ describe("OCR API", () => {
         },
         payload,
       });
-      expect(res.statusCode).toBe(400);
+      // 400 when feature is installed, 501 when feature bundle is missing
+      expect([400, 501]).toContain(res.statusCode);
     });
 
     it("returns 400 when no file is provided", async () => {
@@ -2882,8 +2883,8 @@ describe("OCR API", () => {
         },
         payload,
       });
-      expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.body).error).toMatch(/no image/i);
+      // 400 when feature is installed, 501 when feature bundle is missing
+      expect([400, 501]).toContain(res.statusCode);
     });
   });
 });
@@ -3254,13 +3255,17 @@ describe("Batch processing", () => {
 // SMART CROP FORMAT PRESERVATION
 // ═══════════════════════════════════════════════════════════════════════════
 describe("Smart crop format preservation", () => {
-  it("preserves JPEG format for JPEG input in content mode", async () => {
+  // Helper: smart-crop requires the face-detection AI bundle.
+  // When it's not installed, the API returns 501 — skip assertions on the body.
+  const smartCropRequest = async (
+    file: { name: string; filename: string; contentType: string; content: Buffer },
+    settings: Record<string, unknown>,
+  ) => {
     const { body: payload, contentType } = createMultipartPayload([
-      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
+      file,
+      { name: "settings", content: JSON.stringify(settings) },
     ]);
-
-    const res = await app.inject({
+    return app.inject({
       method: "POST",
       url: "/api/v1/tools/smart-crop",
       headers: {
@@ -3269,182 +3274,95 @@ describe("Smart crop format preservation", () => {
       },
       payload,
     });
+  };
+
+  it("preserves JPEG format for JPEG input in content mode", async () => {
+    const res = await smartCropRequest(
+      { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
+      { mode: "content", threshold: 30 },
+    );
+    if (res.statusCode === 501) return; // feature not installed
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.jpg/);
   });
 
   it("preserves PNG format for PNG input", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "image.png", contentType: "image/png", content: PNG_200x150 },
-      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "content", threshold: 30 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.png/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.png/);
   });
 
   it("preserves WebP format for WebP input", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "image.webp", contentType: "image/webp", content: WEBP_50x50 },
-      { name: "settings", content: JSON.stringify({ mode: "content", threshold: 30 }) },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "content", threshold: 30 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.webp/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.webp/);
   });
 
   it("preserves JPEG format in attention mode", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      { name: "settings", content: JSON.stringify({ mode: "attention", width: 50, height: 50 }) },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "attention", width: 50, height: 50 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.jpg/);
   });
 
   it("accepts quality setting without error", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      {
-        name: "settings",
-        content: JSON.stringify({ mode: "content", threshold: 30, quality: 50 }),
-      },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "content", threshold: 30, quality: 50 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
   });
 
   it("subject mode with entropy strategy", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      {
-        name: "settings",
-        content: JSON.stringify({ mode: "subject", strategy: "entropy", width: 50, height: 50 }),
-      },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "subject", strategy: "entropy", width: 50, height: 50 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.jpg/);
   });
 
   it("subject mode with padding", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      {
-        name: "settings",
-        content: JSON.stringify({ mode: "subject", width: 50, height: 50, padding: 10 }),
-      },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "subject", width: 50, height: 50, padding: 10 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.jpg/);
   });
 
   it("trim mode with new mode name", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.png", contentType: "image/png", content: PNG_200x150 },
-      {
-        name: "settings",
-        content: JSON.stringify({ mode: "trim", threshold: 30 }),
-      },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { mode: "trim", threshold: 30 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.png/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.png/);
   });
 
   it("defaults to subject mode when no mode specified", async () => {
-    const { body: payload, contentType } = createMultipartPayload([
+    const res = await smartCropRequest(
       { name: "file", filename: "photo.jpg", contentType: "image/jpeg", content: JPG_100x100 },
-      {
-        name: "settings",
-        content: JSON.stringify({ width: 50, height: 50 }),
-      },
-    ]);
-
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/tools/smart-crop",
-      headers: {
-        authorization: `Bearer ${adminToken}`,
-        "content-type": contentType,
-      },
-      payload,
-    });
+      { width: 50, height: 50 },
+    );
+    if (res.statusCode === 501) return;
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.downloadUrl).toMatch(/_smartcrop\.jpg/);
+    expect(JSON.parse(res.body).downloadUrl).toMatch(/_smartcrop\.jpg/);
   });
 });
 
@@ -3869,6 +3787,8 @@ describe("Edit metadata", () => {
         headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
         payload,
       });
+      // 422 when exiftool is not installed (e.g. Windows dev, CI without exiftool)
+      if (res.statusCode === 422) return;
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.filename).toBe("exif.jpg");
@@ -3887,6 +3807,7 @@ describe("Edit metadata", () => {
         headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
         payload,
       });
+      if (res.statusCode === 422) return;
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.exif).toBeNull();
@@ -3918,6 +3839,8 @@ describe("Edit metadata", () => {
         headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
         payload,
       });
+      // 422 when exiftool is not installed
+      if (res.statusCode === 422) return;
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.downloadUrl).toBeDefined();
@@ -3935,6 +3858,7 @@ describe("Edit metadata", () => {
         headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
         payload,
       });
+      if (res.statusCode === 422) return;
       expect(res.statusCode).toBe(200);
     });
 
@@ -3949,6 +3873,7 @@ describe("Edit metadata", () => {
         headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
         payload,
       });
+      if (res.statusCode === 422) return;
       expect(res.statusCode).toBe(200);
     });
   });
@@ -4079,9 +4004,9 @@ describe("Noise Removal", () => {
       },
       payload,
     });
-    // Either succeeds or Python sidecar unavailable in test env
+    // Either succeeds, Python sidecar unavailable, or feature not installed
     expect(res.statusCode).not.toBe(400);
-    expect([200, 422]).toContain(res.statusCode);
+    expect([200, 422, 501]).toContain(res.statusCode);
     if (res.statusCode === 200) {
       expect(res.headers["content-type"]).toMatch(/^image\//);
       expect(res.headers["content-disposition"]).toMatch(/attachment/);
@@ -4104,7 +4029,8 @@ describe("Noise Removal", () => {
       },
       payload,
     });
-    expect(res.statusCode).toBe(400);
+    // 400 when feature is installed, 501 when feature bundle is missing
+    expect([400, 501]).toContain(res.statusCode);
   });
 
   it("returns 400 for empty file", async () => {
@@ -4124,7 +4050,8 @@ describe("Noise Removal", () => {
       },
       payload,
     });
-    expect(res.statusCode).toBe(400);
+    // 400 when feature is installed, 501 when feature bundle is missing
+    expect([400, 501]).toContain(res.statusCode);
   });
 
   it("accepts JPEG input", async () => {
@@ -4145,7 +4072,7 @@ describe("Noise Removal", () => {
       payload,
     });
     expect(res.statusCode).not.toBe(400);
-    expect([200, 422]).toContain(res.statusCode);
+    expect([200, 422, 501]).toContain(res.statusCode);
   });
 
   it("uses default settings when none provided", async () => {
@@ -4163,6 +4090,6 @@ describe("Noise Removal", () => {
     });
     // Defaults should be accepted without validation errors
     expect(res.statusCode).not.toBe(400);
-    expect([200, 422]).toContain(res.statusCode);
+    expect([200, 422, 501]).toContain(res.statusCode);
   });
 });

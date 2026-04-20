@@ -94,8 +94,14 @@ def main():
                 # Libraries like basicsr, realesrgan, gfpgan, and torch print
                 # download progress and init messages to stdout which would
                 # corrupt our JSON result.
-                stdout_fd = os.dup(1)
-                os.dup2(2, 1)
+                stdout_fd = None
+                try:
+                    stdout_fd = os.dup(1)
+                    os.dup2(2, 1)
+                except OSError:
+                    # os.dup may fail on Windows with piped stdio
+                    stdout_fd = None
+                sys.stdout = sys.stderr
 
                 try:
                     from basicsr.archs.rrdbnet_arch import RRDBNet
@@ -166,8 +172,10 @@ def main():
 
                 finally:
                     # Restore stdout after ALL AI processing
-                    os.dup2(stdout_fd, 1)
-                    os.close(stdout_fd)
+                    if stdout_fd is not None:
+                        os.dup2(stdout_fd, 1)
+                        os.close(stdout_fd)
+                    sys.stdout = sys.__stdout__
 
             except (ImportError, FileNotFoundError, RuntimeError, OSError) as e:
                 import traceback

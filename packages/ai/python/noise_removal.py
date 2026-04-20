@@ -300,8 +300,13 @@ def denoise_quality(img_array, strength, detail, color_noise, model_path):
     emit_progress(15, "Loading SCUNet model")
 
     # Redirect stdout during model loading/inference
-    stdout_fd = os.dup(1)
-    os.dup2(2, 1)
+    stdout_fd = None
+    try:
+        stdout_fd = os.dup(1)
+        os.dup2(2, 1)
+    except OSError:
+        stdout_fd = None
+    sys.stdout = sys.stderr
 
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
@@ -313,7 +318,10 @@ def denoise_quality(img_array, strength, detail, color_noise, model_path):
         model = SCUNet(in_nc=3, config=[4, 4, 4, 4, 4, 4, 4], dim=64)
 
         resolved_path = _get_model_path(model_path, "scunet_color_real_psnr.pth", SCUNET_URL)
-        checkpoint = torch.load(resolved_path, map_location=device, weights_only=True)
+        try:
+            checkpoint = torch.load(resolved_path, map_location=device, weights_only=True)
+        except Exception:
+            checkpoint = torch.load(resolved_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint)
 
         model = model.to(device)
@@ -330,8 +338,10 @@ def denoise_quality(img_array, strength, detail, color_noise, model_path):
 
         return result
     finally:
-        os.dup2(stdout_fd, 1)
-        os.close(stdout_fd)
+        if stdout_fd is not None:
+            os.dup2(stdout_fd, 1)
+            os.close(stdout_fd)
+        sys.stdout = sys.__stdout__
 
 
 def denoise_maximum(img_array, strength, detail, color_noise, model_path):
@@ -346,8 +356,13 @@ def denoise_maximum(img_array, strength, detail, color_noise, model_path):
     emit_progress(15, "Loading NAFNet model")
 
     # Redirect stdout during model loading/inference
-    stdout_fd = os.dup(1)
-    os.dup2(2, 1)
+    stdout_fd = None
+    try:
+        stdout_fd = os.dup(1)
+        os.dup2(2, 1)
+    except OSError:
+        stdout_fd = None
+    sys.stdout = sys.stderr
 
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
@@ -365,7 +380,10 @@ def denoise_maximum(img_array, strength, detail, color_noise, model_path):
         )
 
         resolved_path = _get_model_path(model_path, "NAFNet-SIDD-width64.pth", NAFNET_URL)
-        checkpoint = torch.load(resolved_path, map_location=device, weights_only=True)
+        try:
+            checkpoint = torch.load(resolved_path, map_location=device, weights_only=True)
+        except Exception:
+            checkpoint = torch.load(resolved_path, map_location=device, weights_only=False)
 
         # NAFNet checkpoints may wrap state_dict under "params" key
         if "params" in checkpoint:
@@ -387,8 +405,10 @@ def denoise_maximum(img_array, strength, detail, color_noise, model_path):
 
         return result
     finally:
-        os.dup2(stdout_fd, 1)
-        os.close(stdout_fd)
+        if stdout_fd is not None:
+            os.dup2(stdout_fd, 1)
+            os.close(stdout_fd)
+        sys.stdout = sys.__stdout__
 
 
 def _process_single_image(img_array, settings, tier, strength, detail, color_noise):

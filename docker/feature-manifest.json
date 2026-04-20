@@ -130,9 +130,13 @@
       "description": "AI upscaling, face enhancement, and noise removal",
       "estimatedSize": "4-5 GB",
       "packages": {
-        "common": ["codeformer-pip==0.0.4", "lpips", "huggingface-hub"],
-        "amd64": ["realesrgan==0.3.0 --extra-index-url https://download.pytorch.org/whl/cu126"],
-        "arm64": ["realesrgan==0.3.0"]
+        "common": ["codeformer-pip==0.0.4", "huggingface-hub", "einops"],
+        "amd64": [
+          "torch==2.6.0+cu126 torchvision==0.21.0+cu126 --index-url https://download.pytorch.org/whl/cu126",
+          "lpips",
+          "realesrgan==0.3.0"
+        ],
+        "arm64": ["lpips", "realesrgan==0.3.0"]
       },
       "pipFlags": {
         "codeformer-pip==0.0.4": "--no-deps"
@@ -199,13 +203,15 @@
       "description": "Restore old or damaged photos",
       "estimatedSize": "800 MB - 1 GB",
       "packages": {
-        "common": ["codeformer-pip==0.0.4", "lpips", "huggingface-hub"],
+        "common": ["codeformer-pip==0.0.4", "huggingface-hub"],
         "amd64": [
           "onnxruntime-gpu==1.20.1",
           "mediapipe==0.10.21",
-          "realesrgan==0.3.0 --extra-index-url https://download.pytorch.org/whl/cu126"
+          "torch==2.6.0+cu126 torchvision==0.21.0+cu126 --index-url https://download.pytorch.org/whl/cu126",
+          "lpips",
+          "realesrgan==0.3.0"
         ],
-        "arm64": ["onnxruntime==1.20.1", "mediapipe==0.10.18", "realesrgan==0.3.0"]
+        "arm64": ["onnxruntime==1.20.1", "mediapipe==0.10.18", "lpips", "realesrgan==0.3.0"]
       },
       "pipFlags": {
         "codeformer-pip==0.0.4": "--no-deps"

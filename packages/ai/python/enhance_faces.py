@@ -262,10 +262,16 @@ def main():
         # Libraries like basicsr, gfpgan, and torch print download
         # progress and init messages to stdout which would corrupt
         # our JSON result.
-        stdout_fd = os.dup(1)
-        sys.stdout.flush()  # Flush before redirect to avoid mixing buffers
-        os.dup2(2, 1)
-        sys.stdout = os.fdopen(1, "w", closefd=False)  # Rebind sys.stdout to new fd 1
+        stdout_fd = None
+        try:
+            stdout_fd = os.dup(1)
+            sys.stdout.flush()  # Flush before redirect to avoid mixing buffers
+            os.dup2(2, 1)
+        except OSError:
+            # os.dup may fail on Windows when launched via child_process.spawn
+            # with piped stdio — fall back to just suppressing sys.stdout
+            stdout_fd = None
+        sys.stdout = sys.stderr  # Python-level redirect regardless of OS
 
         enhanced = None
         model_used = None
@@ -298,8 +304,9 @@ def main():
         finally:
             # Restore stdout after ALL AI processing
             sys.stdout.flush()
-            os.dup2(stdout_fd, 1)
-            os.close(stdout_fd)
+            if stdout_fd is not None:
+                os.dup2(stdout_fd, 1)
+                os.close(stdout_fd)
             sys.stdout = sys.__stdout__  # Restore Python-level stdout
 
         if enhanced is None:

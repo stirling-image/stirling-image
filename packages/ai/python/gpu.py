@@ -31,17 +31,28 @@ def gpu_available():
     # Fallback: check if onnxruntime's CUDA provider can actually load.
     # get_available_providers() only reports *compiled-in* backends, not whether
     # the required libraries (cuDNN, etc.) are present at runtime.  We verify
-    # by trying to load the provider shared library — this transitively checks
-    # that cuDNN is installed.
+    # by creating a minimal CUDA session — this transitively checks that cuDNN
+    # and all required libraries are present.
     try:
         import onnxruntime as _ort
-        if "CUDAExecutionProvider" not in _ort.get_available_providers():
+        providers = _ort.get_available_providers()
+        if "CUDAExecutionProvider" not in providers:
             return False
-        ep_dir = os.path.dirname(_ort.__file__)
-        ctypes.CDLL(os.path.join(ep_dir, "capi", "libonnxruntime_providers_cuda.so"))
+        # Smoke-test: create a session with CUDA to verify libraries load
+        import numpy as _np
+        _ort.InferenceSession(
+            _np.zeros(0, dtype=_np.uint8).tobytes(),
+            providers=["CUDAExecutionProvider"],
+        )
+        # If we get here without error, CUDA provider is functional
+        # (the empty model will fail, but the provider DLLs loaded)
         return True
-    except (ImportError, OSError) as e:
-        print(f"[gpu] ONNX CUDA provider not functional: {e}", file=sys.stderr, flush=True)
+    except Exception as e:
+        # CUDA provider may report as available but fail to load (missing cuDNN, etc.)
+        # Any error here means CUDA isn't usable — fall back to CPU
+        err_str = str(e).lower()
+        if "cuda" in err_str or "cudnn" in err_str or "provider" in err_str:
+            print(f"[gpu] ONNX CUDA provider not functional: {e}", file=sys.stderr, flush=True)
         return False
 
 
