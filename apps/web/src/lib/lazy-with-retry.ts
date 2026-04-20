@@ -1,4 +1,5 @@
 import { type ComponentType, lazy } from "react";
+import { useConnectionStore } from "@/stores/connection-store";
 
 export function isChunkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -21,7 +22,12 @@ export async function retryDynamicImport<T>(
     try {
       return await importFn();
     } catch (error) {
-      if (!isChunkError(error) || attempt === retries) throw error;
+      if (!isChunkError(error) || attempt === retries) {
+        if (isChunkError(error)) {
+          useConnectionStore.getState().setDisconnected();
+        }
+        throw error;
+      }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
