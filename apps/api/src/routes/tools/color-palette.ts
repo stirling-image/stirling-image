@@ -12,9 +12,9 @@ function extractColors(pixels: Buffer, channelCount: number, maxColors: number):
 
   for (let i = 0; i < pixels.length; i += channelCount) {
     // Quantize to reduce noise (round to nearest 16)
-    const r = Math.round(pixels[i] / 16) * 16;
-    const g = Math.round(pixels[i + 1] / 16) * 16;
-    const b = Math.round(pixels[i + 2] / 16) * 16;
+    const r = Math.min(Math.round(pixels[i] / 16) * 16, 255);
+    const g = Math.min(Math.round(pixels[i + 1] / 16) * 16, 255);
+    const b = Math.min(Math.round(pixels[i + 2] / 16) * 16, 255);
     const key = `${r},${g},${b}`;
     colorMap.set(key, (colorMap.get(key) ?? 0) + 1);
   }

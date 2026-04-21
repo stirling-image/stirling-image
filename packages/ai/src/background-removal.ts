@@ -20,7 +20,8 @@ export async function removeBackground(
   const inputPath = join(tmpdir(), `rembg_in_${id}.png`);
   const outputPath = join(outputDir, `rembg_out_${id}.png`);
 
-  await writeFile(inputPath, inputBuffer);
+  const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+  await writeFile(inputPath, pngBuffer);
   try {
     const meta = await sharp(inputBuffer).metadata();
     const megapixels = ((meta.width ?? 0) * (meta.height ?? 0)) / 1_000_000;

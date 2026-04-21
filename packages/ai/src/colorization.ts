@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import sharp from "sharp";
 import { type ProgressCallback, parseStdoutJson, runPythonWithProgress } from "./bridge.js";
 
 export interface ColorizeOptions {
@@ -23,7 +24,8 @@ export async function colorize(
   const inputPath = join(outputDir, "input_colorize.png");
   const outputPath = join(outputDir, "output_colorize.png");
 
-  await writeFile(inputPath, inputBuffer);
+  const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+  await writeFile(inputPath, pngBuffer);
   const { stdout } = await runPythonWithProgress(
     "colorize.py",
     [inputPath, outputPath, JSON.stringify(options)],

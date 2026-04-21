@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import sharp from "sharp";
 import { type ProgressCallback, parseStdoutJson, runPythonWithProgress } from "./bridge.js";
 
 export interface RestorePhotoOptions {
@@ -32,7 +33,8 @@ export async function restorePhoto(
   const inputPath = join(outputDir, "input_restore.png");
   const outputPath = join(outputDir, "output_restore.png");
 
-  await writeFile(inputPath, inputBuffer);
+  const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+  await writeFile(inputPath, pngBuffer);
   const { stdout } = await runPythonWithProgress(
     "restore.py",
     [inputPath, outputPath, JSON.stringify(options)],

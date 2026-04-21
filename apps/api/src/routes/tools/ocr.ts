@@ -150,10 +150,12 @@ export function registerOcr(app: FastifyInstance) {
             });
           }
 
-          if (result.engine && result.engine !== tier) {
+          const expectedEngine =
+            tier === "fast" ? "tesseract" : tier === "balanced" ? "paddleocr" : "paddleocr-vl";
+          if (result.engine && result.engine !== expectedEngine) {
             request.log.warn(
-              { toolId: "ocr", requested: tier, actual: result.engine },
-              `OCR engine fallback: requested ${tier} but used ${result.engine}`,
+              { toolId: "ocr", requested: tier, expected: expectedEngine, actual: result.engine },
+              `OCR engine fallback: requested ${tier} (${expectedEngine}) but used ${result.engine}`,
             );
           }
 

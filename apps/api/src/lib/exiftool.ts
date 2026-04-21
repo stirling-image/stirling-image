@@ -137,6 +137,8 @@ export async function writeMetadata(
 
 /** Settings shape that buildTagArgs accepts */
 export interface EditMetadataSettings {
+  title?: string;
+  author?: string;
   artist?: string;
   copyright?: string;
   imageDescription?: string;
@@ -165,11 +167,16 @@ export interface EditMetadataSettings {
 export function buildTagArgs(settings: EditMetadataSettings): string[] {
   const args: string[] = [];
 
+  // Common aliases
+  const artist = settings.artist || settings.author;
+  const description = settings.imageDescription || settings.title;
+
   // Basic EXIF fields
-  if (settings.artist) args.push(`-Artist=${settings.artist}`);
+  if (artist) args.push(`-Artist=${artist}`);
   if (settings.copyright) args.push(`-Copyright=${settings.copyright}`);
-  if (settings.imageDescription) args.push(`-ImageDescription=${settings.imageDescription}`);
+  if (description) args.push(`-ImageDescription=${description}`);
   if (settings.software) args.push(`-Software=${settings.software}`);
+  if (settings.title) args.push(`-XMP:Title=${settings.title}`);
 
   // Date fields
   if (settings.dateTime) args.push(`-ModifyDate=${settings.dateTime}`);

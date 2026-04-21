@@ -17,6 +17,8 @@ import { createWorkspace } from "../../lib/workspace.js";
 import { registerToolProcessFn } from "../tool-factory.js";
 
 const settingsSchema = z.object({
+  title: z.string().optional(),
+  author: z.string().optional(),
   artist: z.string().optional(),
   copyright: z.string().optional(),
   imageDescription: z.string().optional(),
