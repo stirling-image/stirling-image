@@ -24,13 +24,19 @@ export function HomePage() {
     currentEntry,
   } = useFileStore();
   const navigate = useNavigate();
-  const { fetch: fetchSettings } = useSettingsStore();
+  const { fetch: fetchSettings, defaultToolView, loaded: settingsLoaded } = useSettingsStore();
   const { fetch: fetchFeatures, isToolInstalled } = useFeaturesStore();
 
   useEffect(() => {
     fetchSettings();
     fetchFeatures();
   }, [fetchSettings, fetchFeatures]);
+
+  useEffect(() => {
+    if (settingsLoaded && defaultToolView === "fullscreen" && files.length === 0) {
+      navigate("/fullscreen", { replace: true });
+    }
+  }, [settingsLoaded, defaultToolView, files.length, navigate]);
 
   const handleFiles = useCallback(
     (newFiles: File[]) => {

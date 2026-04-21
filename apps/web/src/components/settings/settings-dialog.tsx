@@ -27,6 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiDelete, apiGet, apiPost, apiPut, clearToken, formatHeaders } from "@/lib/api";
 import { cn, copyToClipboard } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settings-store";
 import { GemLogo } from "../common/gem-logo";
 import { AiFeaturesSection } from "./ai-features-section";
 
@@ -179,19 +180,29 @@ interface TeamEntry {
 function GeneralSection() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [defaultToolView, setDefaultToolView] = useState("sidebar");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<{ user: SessionUser }>("/auth/session")
-      .then((data) => setUser(data.user))
-      .catch(() => {
-        // Fallback to localStorage if session endpoint fails
-        setUser({
-          id: 0,
-          username: localStorage.getItem("ashim-username") || "",
-          role: "unknown",
-        });
-      })
-      .finally(() => setLoading(false));
+    Promise.all([
+      apiGet<{ user: SessionUser }>("/auth/session")
+        .then((data) => setUser(data.user))
+        .catch(() => {
+          setUser({
+            id: 0,
+            username: localStorage.getItem("ashim-username") || "",
+            role: "unknown",
+          });
+        }),
+      apiGet<{ settings: Record<string, string> }>("/v1/settings")
+        .then((data) => {
+          if (data.settings.defaultToolView) {
+            setDefaultToolView(data.settings.defaultToolView);
+          }
+        })
+        .catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const handleLogout = () => {
@@ -199,6 +210,23 @@ function GeneralSection() {
     localStorage.removeItem("ashim-username");
     window.location.href = "/login";
   };
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      await apiPut("/v1/settings", { defaultToolView });
+      setSaveMsg("Settings saved.");
+      useSettingsStore.setState({
+        defaultToolView: defaultToolView as "sidebar" | "fullscreen",
+      });
+    } catch {
+      setSaveMsg("Failed to save settings.");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaveMsg(null), 3000);
+    }
+  }, [defaultToolView]);
 
   const username = user?.username || "admin";
   const role = user?.role || "unknown";
@@ -237,7 +265,11 @@ function GeneralSection() {
 
       {/* Default view */}
       <SettingRow label="Default Tool View" description="How tools are displayed on the home page">
-        <select className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground">
+        <select
+          value={defaultToolView}
+          onChange={(e) => setDefaultToolView(e.target.value)}
+          className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground"
+        >
           <option value="sidebar">Sidebar</option>
           <option value="fullscreen">Fullscreen Grid</option>
         </select>
@@ -247,6 +279,30 @@ function GeneralSection() {
       <SettingRow label="App Version" description="Current version of ashim">
         <span className="text-sm font-mono text-muted-foreground">{APP_VERSION}</span>
       </SettingRow>
+
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Save Settings
+        </button>
+        {saveMsg && (
+          <span
+            className={cn(
+              "text-sm",
+              saveMsg.includes("Failed")
+                ? "text-destructive"
+                : "text-green-600 dark:text-green-400",
+            )}
+          >
+            {saveMsg}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

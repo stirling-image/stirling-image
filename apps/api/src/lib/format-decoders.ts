@@ -70,11 +70,9 @@ async function decodeIco(buffer: Buffer): Promise<Buffer> {
   try {
     await writeFile(inputPath, buffer);
     // ICO contains multiple sizes; extract the largest by sorting
-    await execFileAsync(
-      cmd,
-      magickArgs(cmd, [`${inputPath}[-1]`, `png:${outputPath}`]),
-      { timeout: 120_000 },
-    );
+    await execFileAsync(cmd, magickArgs(cmd, [`${inputPath}[-1]`, `png:${outputPath}`]), {
+      timeout: 120_000,
+    });
     return await readFile(outputPath);
   } finally {
     await rm(inputPath, { force: true }).catch(() => {});

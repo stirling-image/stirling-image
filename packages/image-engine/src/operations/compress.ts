@@ -22,9 +22,9 @@ export async function compress(image: Sharp, options: CompressOptions): Promise<
 
   const metadata = await image.metadata();
   const detected = metadata.format ?? "jpeg";
-  const outputFormat = (
-    FORMAT_MAP[format ?? ""] ?? FORMAT_MAP[detected] ?? detected
-  ) as keyof import("sharp").FormatEnum;
+  const outputFormat = (FORMAT_MAP[format ?? ""] ??
+    FORMAT_MAP[detected] ??
+    detected) as keyof import("sharp").FormatEnum;
 
   if (targetSizeBytes !== undefined) {
     if (targetSizeBytes <= 0) {
