@@ -317,12 +317,11 @@ def main():
                     model_used = "codeformer"
                 except Exception as e:
                     import traceback
-                    print(f"[enhance-faces] CodeFormer failed: {e}", file=sys.stderr, flush=True)
+                    print(f"[enhance-faces] CodeFormer failed, falling back to GFPGAN: {e}", file=sys.stderr, flush=True)
                     traceback.print_exc(file=sys.stderr)
-                    raise RuntimeError(
-                        f"CodeFormer is not available: {e}. "
-                        "Install the face-enhance feature or use model=gfpgan."
-                    ) from e
+                    emit_progress(50, "Falling back to GFPGAN")
+                    enhanced = enhance_with_gfpgan(img_array, only_center_face)
+                    model_used = "gfpgan"
 
         finally:
             # Restore stdout after ALL AI processing
