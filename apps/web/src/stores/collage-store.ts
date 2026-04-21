@@ -3,7 +3,7 @@ import { COLLAGE_TEMPLATES, getDefaultTemplate } from "@/lib/collage-templates";
 import { fetchDecodedPreview, needsServerPreview, revokePreviewUrl } from "@/lib/image-preview";
 
 export type AspectRatio = "free" | "1:1" | "4:3" | "3:2" | "16:9" | "9:16" | "4:5";
-export type OutputFormat = "png" | "jpeg" | "webp";
+export type OutputFormat = "png" | "jpeg" | "webp" | "avif";
 export type Phase = "upload" | "editing" | "processing" | "result";
 
 export interface CollageImage {

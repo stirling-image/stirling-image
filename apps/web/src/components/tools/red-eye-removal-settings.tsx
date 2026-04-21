@@ -4,7 +4,7 @@ import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
-const LOSSY_FORMATS = new Set(["jpeg", "webp"]);
+const LOSSY_FORMATS = new Set(["jpeg", "webp", "avif"]);
 
 export interface RedEyeRemovalControlsProps {
   settings?: Record<string, unknown>;
@@ -17,7 +17,7 @@ export function RedEyeRemovalControls({
 }: RedEyeRemovalControlsProps) {
   const [sensitivity, setSensitivity] = useState(50);
   const [strength, setStrength] = useState(70);
-  const [outputFormat, setOutputFormat] = useState<"original" | "png" | "jpeg" | "webp">(
+  const [outputFormat, setOutputFormat] = useState<"original" | "png" | "jpeg" | "webp" | "avif">(
     "original",
   );
   const [quality, setQuality] = useState(90);
@@ -30,7 +30,7 @@ export function RedEyeRemovalControls({
     if (initialSettings.sensitivity != null) setSensitivity(Number(initialSettings.sensitivity));
     if (initialSettings.strength != null) setStrength(Number(initialSettings.strength));
     if (initialSettings.format != null)
-      setOutputFormat(initialSettings.format as "original" | "png" | "jpeg" | "webp");
+      setOutputFormat(initialSettings.format as "original" | "png" | "jpeg" | "webp" | "avif");
     if (initialSettings.quality != null) setQuality(Number(initialSettings.quality));
   }, [initialSettings]);
 
@@ -101,8 +101,8 @@ export function RedEyeRemovalControls({
       {/* Output format */}
       <div>
         <p className="text-xs text-muted-foreground mb-1">Output Format</p>
-        <div className="grid grid-cols-4 gap-1">
-          {(["original", "png", "jpeg", "webp"] as const).map((f) => (
+        <div className="grid grid-cols-5 gap-1">
+          {(["original", "png", "jpeg", "webp", "avif"] as const).map((f) => (
             <button
               key={f}
               type="button"

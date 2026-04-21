@@ -14,7 +14,7 @@ const settingsSchema = z.object({
   rows: z.number().min(1).max(100).default(3),
   tileWidth: z.number().min(10).optional(),
   tileHeight: z.number().min(10).optional(),
-  outputFormat: z.enum(["original", "png", "jpg", "webp"]).default("original"),
+  outputFormat: z.enum(["original", "png", "jpg", "webp", "avif"]).default("original"),
   quality: z.number().min(1).max(100).default(90),
 });
 
@@ -29,6 +29,7 @@ function resolveOutputFormat(
     png: { sharpFormat: "png", ext: ".png" },
     jpg: { sharpFormat: "jpeg", ext: ".jpg" },
     webp: { sharpFormat: "webp", ext: ".webp" },
+    avif: { sharpFormat: "avif", ext: ".avif" },
   };
   return map[outputFormat] ?? { sharpFormat: null, ext: originalExt };
 }
@@ -137,8 +138,11 @@ export function registerSplit(app: FastifyInstance) {
           let pipeline = sharp(fileBuffer).extract({ left, top, width: w, height: h });
           if (sharpFormat) {
             const formatOpts: Record<string, unknown> = {};
-            if (sharpFormat === "jpeg" || sharpFormat === "webp") {
+            if (sharpFormat === "jpeg" || sharpFormat === "webp" || sharpFormat === "avif") {
               formatOpts.quality = settings.quality;
+            }
+            if (sharpFormat === "avif") {
+              formatOpts.effort = 4;
             }
             pipeline = pipeline.toFormat(sharpFormat, formatOpts);
           }
@@ -220,8 +224,11 @@ export function registerSplit(app: FastifyInstance) {
           let pipeline = sharp(inputBuffer).extract({ left, top, width: w, height: h });
           if (sharpFormat) {
             const formatOpts: Record<string, unknown> = {};
-            if (sharpFormat === "jpeg" || sharpFormat === "webp") {
+            if (sharpFormat === "jpeg" || sharpFormat === "webp" || sharpFormat === "avif") {
               formatOpts.quality = settings.quality;
+            }
+            if (sharpFormat === "avif") {
+              formatOpts.effort = 4;
             }
             pipeline = pipeline.toFormat(sharpFormat, formatOpts);
           }

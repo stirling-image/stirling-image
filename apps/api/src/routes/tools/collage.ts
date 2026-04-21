@@ -332,7 +332,7 @@ const settingsSchema = z.object({
   cornerRadius: z.number().min(0).max(500).default(0),
   backgroundColor: z.string().default("#FFFFFF"),
   aspectRatio: z.string().default("free"),
-  outputFormat: z.enum(["png", "jpeg", "webp"]).default("png"),
+  outputFormat: z.enum(["png", "jpeg", "webp", "avif"]).default("png"),
   quality: z.number().min(1).max(100).default(90),
 });
 
@@ -632,6 +632,10 @@ export function registerCollage(app: FastifyInstance) {
         case "webp":
           pipeline = pipeline.webp({ quality: settings.quality });
           outputExt = "webp";
+          break;
+        case "avif":
+          pipeline = pipeline.avif({ quality: settings.quality, effort: 4 });
+          outputExt = "avif";
           break;
         default:
           pipeline = pipeline.png();

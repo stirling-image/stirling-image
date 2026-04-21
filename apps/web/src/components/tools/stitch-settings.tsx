@@ -6,7 +6,7 @@ import { useFileStore } from "@/stores/file-store";
 type Direction = "horizontal" | "vertical" | "grid";
 type ResizeMode = "fit" | "original" | "stretch" | "crop";
 type Alignment = "start" | "center" | "end";
-type OutputFormat = "png" | "jpeg" | "webp";
+type OutputFormat = "png" | "jpeg" | "webp" | "avif";
 
 export function StitchSettings() {
   const { files, processing, error, setProcessing, setError, setProcessedUrl, setSizes, setJobId } =
@@ -227,7 +227,7 @@ export function StitchSettings() {
       <div>
         <p className="text-xs text-muted-foreground">Format</p>
         <div className="grid grid-cols-3 gap-1 mt-1">
-          {(["png", "jpeg", "webp"] as const).map((f) => (
+          {(["png", "jpeg", "webp", "avif"] as const).map((f) => (
             <button
               type="button"
               key={f}
@@ -240,7 +240,7 @@ export function StitchSettings() {
         </div>
       </div>
 
-      {(format === "jpeg" || format === "webp") && (
+      {(format === "jpeg" || format === "webp" || format === "avif") && (
         <div>
           <div className="flex justify-between items-center">
             <label htmlFor="stitch-quality" className="text-xs text-muted-foreground">

@@ -18,7 +18,7 @@ interface SplitState {
   rows: number;
   tileWidth: number;
   tileHeight: number;
-  outputFormat: "original" | "png" | "jpg" | "webp";
+  outputFormat: "original" | "png" | "jpg" | "webp" | "avif";
   quality: number;
 
   // Image dimensions (set when image loads in the canvas)
@@ -36,7 +36,7 @@ interface SplitState {
   setRows: (n: number) => void;
   setTileWidth: (n: number) => void;
   setTileHeight: (n: number) => void;
-  setOutputFormat: (f: "original" | "png" | "jpg" | "webp") => void;
+  setOutputFormat: (f: "original" | "png" | "jpg" | "webp" | "avif") => void;
   setQuality: (q: number) => void;
   setImageDimensions: (d: { width: number; height: number } | null) => void;
   setProcessing: (p: boolean) => void;

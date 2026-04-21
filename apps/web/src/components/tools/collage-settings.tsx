@@ -25,6 +25,7 @@ const OUTPUT_FORMATS: { value: OutputFormat; label: string }[] = [
   { value: "png", label: "PNG" },
   { value: "jpeg", label: "JPEG" },
   { value: "webp", label: "WebP" },
+  { value: "avif", label: "AVIF" },
 ];
 
 const BG_PRESETS = [
