@@ -165,12 +165,13 @@ export function registerOcr(app: FastifyInstance) {
           });
         } catch (err) {
           lastError = err;
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
           // If the Python process crashed (segfault, dispatcher exit), try next tier
           if (
             msg.includes("exited unexpectedly") ||
             msg.includes("exited with code") ||
-            msg.includes("Segmentation fault")
+            msg.includes("segmentation fault") ||
+            msg.includes("process crashed")
           ) {
             request.log.warn(
               { toolId: "ocr", quality: tier, err },

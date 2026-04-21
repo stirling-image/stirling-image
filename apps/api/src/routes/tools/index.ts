@@ -92,7 +92,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
     { id: "compress", register: registerCompress },
     { id: "strip-metadata", register: registerStripMetadata },
     { id: "edit-metadata", register: registerEditMetadata },
-    { id: "color-adjustments", register: registerColorAdjustments },
+    { id: "adjust-colors", register: registerColorAdjustments },
     { id: "sharpening", register: registerSharpening },
 
     // Watermark & Overlay

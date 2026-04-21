@@ -120,12 +120,104 @@ def _detect_with_tasks(img_array, min_confidence):
     return faces
 
 
-def _detect_faces(img_array, min_confidence):
-    """Detect faces, trying legacy API first then falling back to tasks API."""
+_MAX_DETECT_DIM = 1920
+
+
+def _downscale_for_detection(img_array):
+    """Downscale image if needed so MediaPipe can detect faces reliably.
+
+    Returns (scaled_array, scale_factor). Coordinates from detection on
+    the scaled image must be multiplied by scale_factor to map back to
+    the original resolution.
+    """
+    h, w = img_array.shape[:2]
+    longest = max(h, w)
+    if longest <= _MAX_DETECT_DIM:
+        return img_array, 1.0
+
+    import cv2
+    scale = _MAX_DETECT_DIM / longest
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+    resized = cv2.resize(img_array, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    return resized, 1.0 / scale
+
+
+def _detect_single_orientation(img_array, min_confidence):
+    """Run face detection on a single image orientation."""
     try:
         return _detect_with_solutions(img_array, min_confidence)
     except AttributeError:
         return _detect_with_tasks(img_array, min_confidence)
+
+
+def _remap_faces_from_rotation(faces, rotation, orig_h, orig_w):
+    """Map face coordinates from a rotated image back to the original.
+
+    rotation: 90, 180, or 270 (clockwise degrees applied to the original).
+    orig_h, orig_w: dimensions of the original (un-rotated) image.
+
+    When the original is (orig_h, orig_w):
+      90 CW  -> rotated is (orig_w, orig_h).  (rx, ry) -> (ry, orig_h - rx - rw_box)
+      180    -> rotated is (orig_h, orig_w).   (rx, ry) -> (orig_w - rx - rw_box, orig_h - ry - rh_box)
+      270 CW -> rotated is (orig_w, orig_h).   (rx, ry) -> (orig_w - ry - rh_box, rx)
+    """
+    remapped = []
+    for f in faces:
+        x, y, w, h = f["x"], f["y"], f["w"], f["h"]
+        if rotation == 90:
+            remapped.append({"x": y, "y": orig_h - x - w, "w": h, "h": w})
+        elif rotation == 180:
+            remapped.append({"x": orig_w - x - w, "y": orig_h - y - h, "w": w, "h": h})
+        elif rotation == 270:
+            remapped.append({"x": orig_w - y - h, "y": x, "w": h, "h": w})
+        else:
+            remapped.append(f)
+    return remapped
+
+
+def _detect_faces(img_array, min_confidence):
+    """Detect faces, trying multiple orientations if needed.
+
+    MediaPipe BlazeFace can miss faces in portrait-oriented or rotated
+    images.  We first try the image as-is; if no faces are found we
+    retry at 90, 180, and 270-degree rotations and map the coordinates
+    back.  Large images are downscaled before detection.
+    """
+    import cv2
+
+    orig_h, orig_w = img_array.shape[:2]
+    scaled, inv_scale = _downscale_for_detection(img_array)
+
+    faces = _detect_single_orientation(scaled, min_confidence)
+
+    # If nothing found, try rotated copies and merge all detections.
+    # Different rotations can catch different faces, so we union them
+    # and de-duplicate with NMS.
+    if not faces:
+        rotations = [
+            (cv2.ROTATE_90_CLOCKWISE, 90),
+            (cv2.ROTATE_180, 180),
+            (cv2.ROTATE_90_COUNTERCLOCKWISE, 270),
+        ]
+        all_rotated_faces = []
+        sh, sw = scaled.shape[:2]
+        for cv2_flag, degrees in rotations:
+            rotated = cv2.rotate(scaled, cv2_flag)
+            found = _detect_single_orientation(rotated, min_confidence)
+            if found:
+                remapped = _remap_faces_from_rotation(found, degrees, sh, sw)
+                all_rotated_faces.extend(remapped)
+        faces = _nms_faces(all_rotated_faces)
+
+    if inv_scale != 1.0:
+        for f in faces:
+            f["x"] = int(f["x"] * inv_scale)
+            f["y"] = int(f["y"] * inv_scale)
+            f["w"] = int(f["w"] * inv_scale)
+            f["h"] = int(f["h"] * inv_scale)
+
+    return faces
 
 
 def main():

@@ -259,38 +259,51 @@ def enhance_faces(img_bgr, fidelity=0.7):
     import mediapipe as mp
     from gpu import safe_onnx_session
 
-    # Detect faces
+    # Detect faces — downscale large images for reliable MediaPipe detection
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     ih, iw = img_bgr.shape[:2]
 
+    max_dim = 1920
+    longest = max(ih, iw)
+    if longest > max_dim:
+        det_scale = max_dim / longest
+        det_rgb = cv2.resize(
+            img_rgb,
+            (int(iw * det_scale), int(ih * det_scale)),
+            interpolation=cv2.INTER_AREA,
+        )
+        inv_scale = 1.0 / det_scale
+    else:
+        det_rgb = img_rgb
+        inv_scale = 1.0
+
     try:
         mp_face = mp.solutions.face_detection
-        detections = []
+        all_detections = []
         for model_sel in [0, 1]:
             detector = mp_face.FaceDetection(
                 model_selection=model_sel, min_detection_confidence=0.4
             )
-            results = detector.process(img_rgb)
+            results = detector.process(det_rgb)
             detector.close()
-            if results.detections:
-                detections = results.detections
-                break
+            for detection in (results.detections or []):
+                all_detections.append(detection)
 
-        if not detections:
+        if not all_detections:
             return img_bgr, 0
 
+        dh, dw = det_rgb.shape[:2]
         face_boxes = []
-        for detection in detections:
+        for detection in all_detections:
             bbox = detection.location_data.relative_bounding_box
             face_boxes.append({
-                "x": int(bbox.xmin * iw),
-                "y": int(bbox.ymin * ih),
-                "w": int(bbox.width * iw),
-                "h": int(bbox.height * ih),
+                "x": int(bbox.xmin * dw * inv_scale),
+                "y": int(bbox.ymin * dh * inv_scale),
+                "w": int(bbox.width * dw * inv_scale),
+                "h": int(bbox.height * dh * inv_scale),
             })
 
     except AttributeError:
-        # mediapipe >= 0.10.30 removed mp.solutions, use tasks API
         model_path = _ensure_face_detect_model()
         options = mp.tasks.vision.FaceDetectorOptions(
             base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
@@ -298,7 +311,7 @@ def enhance_faces(img_bgr, fidelity=0.7):
             min_detection_confidence=0.4,
         )
         fd = mp.tasks.vision.FaceDetector.create_from_options(options)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=det_rgb)
         result = fd.detect(mp_image)
         fd.close()
 
@@ -309,10 +322,10 @@ def enhance_faces(img_bgr, fidelity=0.7):
         for detection in result.detections:
             bbox = detection.bounding_box
             face_boxes.append({
-                "x": bbox.origin_x,
-                "y": bbox.origin_y,
-                "w": bbox.width,
-                "h": bbox.height,
+                "x": int(bbox.origin_x * inv_scale),
+                "y": int(bbox.origin_y * inv_scale),
+                "w": int(bbox.width * inv_scale),
+                "h": int(bbox.height * inv_scale),
             })
 
     # Load CodeFormer model

@@ -283,7 +283,7 @@
           "paddlepaddle-gpu>=3.2.1 --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu126/",
           "paddleocr[doc-parser]>=3.4.0,<3.5.0"
         ],
-        "arm64": ["paddlepaddle==3.0.0", "paddleocr[doc-parser]>=3.4.0,<3.5.0"]
+        "arm64": ["paddlepaddle>=3.2.1", "paddleocr[doc-parser]>=3.4.0,<3.5.0"]
       },
       "pipFlags": {},
       "postInstall": [],
