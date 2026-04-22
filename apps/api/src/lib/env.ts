@@ -44,6 +44,14 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  ANALYTICS_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+  ANALYTICS_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1.0),
+  POSTHOG_API_KEY: z.string().default(""),
+  POSTHOG_HOST: z.string().default("https://us.i.posthog.com"),
+  SENTRY_DSN: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

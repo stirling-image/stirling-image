@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { isGpuAvailable } from "@ashim/ai";
 import { APP_VERSION } from "@ashim/shared";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import { eq } from "drizzle-orm";
 import Fastify from "fastify";
 import { env } from "./config.js";
 import { db, schema } from "./db/index.js";
@@ -34,6 +36,19 @@ console.log("Database initialized");
 
 // Create default admin user if no users exist
 await ensureDefaultAdmin();
+
+function ensureInstanceId() {
+  const existing = db
+    .select()
+    .from(schema.settings)
+    .where(eq(schema.settings.key, "instance_id"))
+    .get();
+  if (!existing) {
+    db.insert(schema.settings).values({ key: "instance_id", value: randomUUID() }).run();
+  }
+}
+
+ensureInstanceId();
 
 // Mark any jobs left in processing/queued from a previous unclean shutdown
 recoverStaleJobs();

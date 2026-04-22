@@ -13,6 +13,9 @@ export const users = sqliteTable("users", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
+  analyticsEnabled: integer("analytics_enabled", { mode: "boolean" }),
+  analyticsConsentShownAt: integer("analytics_consent_shown_at", { mode: "timestamp" }),
+  analyticsConsentRemindAt: integer("analytics_consent_remind_at", { mode: "timestamp" }),
 });
 
 export const teams = sqliteTable("teams", {
