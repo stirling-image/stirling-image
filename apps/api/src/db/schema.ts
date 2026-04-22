@@ -4,7 +4,7 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["admin", "user"] })
+  role: text("role", { enum: ["admin", "editor", "user"] })
     .notNull()
     .default("user"),
   team: text("team").notNull().default("Default"),
@@ -69,6 +69,7 @@ export const apiKeys = sqliteTable("api_keys", {
   keyHash: text("key_hash").notNull(),
   keyPrefix: text("key_prefix"),
   name: text("name").notNull().default("Default API Key"),
+  permissions: text("permissions"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -81,6 +82,20 @@ export const pipelines = sqliteTable("pipelines", {
   name: text("name").notNull(),
   description: text("description"),
   steps: text("steps").notNull(), // JSON array of { toolId, settings }
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const auditLog = sqliteTable("audit_log", {
+  id: text("id").primaryKey(),
+  actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorUsername: text("actor_username").notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

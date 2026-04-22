@@ -43,6 +43,13 @@
       "when": 1774700000000,
       "tag": "0005_add_teams_table",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1745366400000,
+      "tag": "0006_rbac_revamp",
+      "breakpoints": true
     }
   ]
 }
