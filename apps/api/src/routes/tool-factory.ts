@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
-import { getBundleForTool, TOOL_BUNDLE_MAP } from "@ashim/shared";
+import { ANALYTICS_EVENTS, getBundleForTool, TOOL_BUNDLE_MAP, TOOLS } from "@ashim/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import sharp from "sharp";
 import type { z } from "zod";
 import { db, schema } from "../db/index.js";
+import { trackEvent } from "../lib/analytics.js";
 import { autoOrient } from "../lib/auto-orient.js";
 import { formatZodErrors } from "../lib/errors.js";
 import { isToolInstalled } from "../lib/feature-status.js";
@@ -242,6 +243,7 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
       }
 
       // Process the image (worker thread or main thread)
+      const startTime = Date.now();
       try {
         let result: { buffer: Buffer; filename: string; contentType: string };
 
@@ -381,6 +383,14 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
           }
         }
 
+        trackEvent(request, ANALYTICS_EVENTS.TOOL_USED, {
+          tool_id: config.toolId,
+          status: "completed",
+          duration_ms: Date.now() - startTime,
+          category: TOOLS.find((t) => t.id === config.toolId)?.category ?? "unknown",
+          is_ai_tool: getBundleForTool(config.toolId) !== null,
+        });
+
         return reply.send({
           jobId,
           downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(result.filename)}`,
@@ -393,6 +403,13 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
         // Catch Sharp / processing errors and return a clean API error
         const message = err instanceof Error ? err.message : "Image processing failed";
         request.log.error({ err, toolId: config.toolId }, "Tool processing failed");
+        trackEvent(request, ANALYTICS_EVENTS.TOOL_USED, {
+          tool_id: config.toolId,
+          status: "failed",
+          duration_ms: Date.now() - startTime,
+          category: TOOLS.find((t) => t.id === config.toolId)?.category ?? "unknown",
+          is_ai_tool: getBundleForTool(config.toolId) !== null,
+        });
         return reply.status(422).send({
           error: "Processing failed",
           details: message,

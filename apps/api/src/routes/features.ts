@@ -12,8 +12,9 @@ import crypto from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { shutdownDispatcher } from "@ashim/ai";
-import { FEATURE_BUNDLES } from "@ashim/shared";
+import { ANALYTICS_EVENTS, FEATURE_BUNDLES } from "@ashim/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { trackEvent } from "../lib/analytics.js";
 import {
   acquireInstallLock,
   getAiDir,
@@ -133,6 +134,9 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
       const manifestPath = getManifestPath();
       const modelsDir = getModelsDir();
 
+      const installStartTime = Date.now();
+      const reqRef = request;
+
       const child = spawn(pythonPath, [scriptPath, bundleId, manifestPath, modelsDir], {
         stdio: ["ignore", "pipe", "pipe"],
         env: {
@@ -192,6 +196,11 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
           shutdownDispatcher();
           setInstallProgress(null, null, null);
           updateSingleFileProgress({ jobId, phase: "complete", percent: 100, stage: "Complete" });
+          trackEvent(reqRef, ANALYTICS_EVENTS.AI_BUNDLE_ACTION, {
+            bundle_id: bundleId,
+            action: "installed",
+            duration_ms: Date.now() - installStartTime,
+          });
         } else {
           const errorDetail =
             lastStderrLines.filter((l) => !l.startsWith("{")).join("\n") || stdoutBuffer.trim();
@@ -263,6 +272,12 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
 
       markUninstalled(bundleId);
       shutdownDispatcher();
+
+      trackEvent(request, ANALYTICS_EVENTS.AI_BUNDLE_ACTION, {
+        bundle_id: bundleId,
+        action: "uninstalled",
+        duration_ms: 0,
+      });
 
       return reply.send({ ok: true });
     },

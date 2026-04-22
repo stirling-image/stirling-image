@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getBundleForTool, TOOL_BUNDLE_MAP } from "@ashim/shared";
+import { ANALYTICS_EVENTS, getBundleForTool, TOOL_BUNDLE_MAP } from "@ashim/shared";
 import archiver from "archiver";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -17,6 +17,7 @@ import PQueue from "p-queue";
 import { z } from "zod";
 import { env } from "../config.js";
 import { db, schema } from "../db/index.js";
+import { trackEvent } from "../lib/analytics.js";
 import { autoOrient } from "../lib/auto-orient.js";
 import { resolveConcurrency } from "../lib/env.js";
 import { formatZodErrors } from "../lib/errors.js";
@@ -204,6 +205,7 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
     }
 
     // Execute the pipeline: pass the buffer through each step sequentially
+    const startTime = Date.now();
     let currentBuffer = fileBuffer;
     let currentFilename = filename;
     const stepResults: Array<{ step: number; toolId: string; size: number }> = [];
@@ -244,6 +246,13 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Pipeline processing failed";
+      trackEvent(request, ANALYTICS_EVENTS.PIPELINE_EXECUTED, {
+        step_count: pipeline.steps.length,
+        tool_ids: pipeline.steps.map((s: { toolId: string }) => s.toolId),
+        is_batch: false,
+        duration_ms: Date.now() - startTime,
+        status: "failed",
+      });
       return reply.status(422).send({
         error: message,
         completedSteps: stepResults,
@@ -259,6 +268,14 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
     // Also save the original input for reference
     const inputPath = join(workspacePath, "input", filename);
     await writeFile(inputPath, fileBuffer);
+
+    trackEvent(request, ANALYTICS_EVENTS.PIPELINE_EXECUTED, {
+      step_count: pipeline.steps.length,
+      tool_ids: pipeline.steps.map((s: { toolId: string }) => s.toolId),
+      is_batch: false,
+      duration_ms: Date.now() - startTime,
+      status: "completed",
+    });
 
     return reply.send({
       jobId,
@@ -508,6 +525,7 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
     }
 
     // ── Progress tracking ────────────────────────────────────────────
+    const batchStartTime = Date.now();
     const jobId = clientJobId || randomUUID();
 
     const progress: JobProgress = {
@@ -651,11 +669,28 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
 
     // If every file failed, return an error instead of an empty ZIP
     if (progress.status === "failed") {
+      trackEvent(request, ANALYTICS_EVENTS.PIPELINE_EXECUTED, {
+        step_count: pipeline.steps.length,
+        tool_ids: pipeline.steps.map((s: { toolId: string }) => s.toolId),
+        is_batch: true,
+        file_count: files.length,
+        duration_ms: Date.now() - batchStartTime,
+        status: "failed",
+      });
       return reply.status(422).send({
         error: "All files failed processing",
         errors: progress.errors,
       });
     }
+
+    trackEvent(request, ANALYTICS_EVENTS.PIPELINE_EXECUTED, {
+      step_count: pipeline.steps.length,
+      tool_ids: pipeline.steps.map((s: { toolId: string }) => s.toolId),
+      is_batch: true,
+      file_count: files.length,
+      duration_ms: Date.now() - batchStartTime,
+      status: "completed",
+    });
 
     // ── Stream ZIP response ──────────────────────────────────────────
     reply.hijack();
