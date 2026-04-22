@@ -301,6 +301,33 @@ export const en = {
     help: "Help",
     settings: "Settings",
   },
+  analytics: {
+    consentTitle: "Make ashim better for you",
+    consentDescription:
+      'Anonymous product analytics — like "crop tool used" or "an error occurred" — help us fix bugs faster and build the tools you actually want.',
+    consentPrivacy: "Your images never leave your machine. Ever.",
+    whatShared: "What's shared:",
+    whatSharedItems: [
+      "Which tools you use",
+      "Error reports (no file data)",
+      "App version and performance",
+    ],
+    whatNever: "What NEVER leaves your machine:",
+    whatNeverItems: [
+      "Your images, PDFs, and files",
+      "File names and contents",
+      "Any personal information",
+    ],
+    consentProviders: "Data is sent to PostHog (analytics) and Sentry (errors) — both open-source.",
+    consentChangeable: "You can change this anytime in Settings.",
+    acceptButton: "Sure, sounds good",
+    declineButton: "Maybe later",
+    settingsTitle: "Product Analytics",
+    settingsDescription: "Share anonymous usage data to help improve ashim.",
+    settingsPrivacy: "Your images never leave your machine.",
+    settingsDisabledByAdmin: "Product analytics has been disabled by the server administrator.",
+    learnMore: "Learn more",
+  },
 } as const;
 
 export type TranslationKeys = typeof en;
