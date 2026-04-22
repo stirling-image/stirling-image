@@ -14,7 +14,7 @@ export function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mb-8">Last updated: March 29, 2026</p>
+        <p className="text-sm text-muted-foreground mb-8">Last updated: April 22, 2026</p>
 
         <div className="space-y-6 text-sm leading-relaxed text-muted-foreground">
           <section>
@@ -37,11 +37,52 @@ export function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">No Tracking or Analytics</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Product Analytics</h2>
             <p>
-              ashim does not include any telemetry, analytics, or tracking. No data is collected
-              about your usage patterns, and no information is sent to ashim developers or any third
-              party. There are no cookies used for tracking purposes.
+              ashim includes optional, anonymous product analytics. When you choose to participate,
+              the following is collected:
+            </p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Which tools you use (e.g., "crop tool used")</li>
+              <li>Error reports without file data</li>
+              <li>App version and performance metrics</li>
+            </ul>
+            <p className="mt-2 font-medium">What is never collected:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Your images, PDFs, and files</li>
+              <li>File names and contents</li>
+              <li>Any personal information or IP addresses</li>
+            </ul>
+            <p className="mt-2">
+              Analytics data is sent to{" "}
+              <a
+                href="https://posthog.com"
+                className="text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                PostHog
+              </a>{" "}
+              (usage analytics) and{" "}
+              <a
+                href="https://sentry.io"
+                className="text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Sentry
+              </a>{" "}
+              (error tracking) — both open-source projects.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Your Choice</h2>
+            <p>
+              Each user is asked individually on first login whether to participate. You can change
+              your choice anytime in Settings. Server administrators can disable analytics entirely
+              by setting{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">ANALYTICS_ENABLED=false</code>.
             </p>
           </section>
 
@@ -56,11 +97,12 @@ export function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">No Third-Party Services</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Third-Party Services</h2>
             <p>
-              ashim does not integrate with or send data to any external services. AI-powered
-              features (background removal, upscaling, OCR) run locally using bundled models. No
-              cloud APIs are involved.
+              All image processing happens locally — your images are never sent anywhere. If you opt
+              in to product analytics, anonymous usage data is sent to PostHog and Sentry as
+              described above. AI-powered features run locally using bundled models. No other
+              external services are contacted.
             </p>
           </section>
 
