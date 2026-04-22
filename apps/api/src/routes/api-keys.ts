@@ -6,10 +6,12 @@
  * DELETE /api/v1/api-keys/:id  — Delete an API key
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import type { Role } from "@ashim/shared";
 import { and, eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db, schema } from "../db/index.js";
 import { auditLog } from "../lib/audit.js";
+import { hasPermission } from "../permissions.js";
 import { computeKeyPrefix, hashPassword, requireAuth } from "../plugins/auth.js";
 
 export async function apiKeyRoutes(app: FastifyInstance): Promise<void> {
@@ -66,14 +68,13 @@ export async function apiKeyRoutes(app: FastifyInstance): Promise<void> {
       createdAt: schema.apiKeys.createdAt,
       lastUsedAt: schema.apiKeys.lastUsedAt,
     };
-    const keys =
-      user.role === "admin"
-        ? db.select(selectFields).from(schema.apiKeys).all()
-        : db
-            .select(selectFields)
-            .from(schema.apiKeys)
-            .where(eq(schema.apiKeys.userId, user.id))
-            .all();
+    const keys = hasPermission(user.role as Role, "apikeys:all")
+      ? db.select(selectFields).from(schema.apiKeys).all()
+      : db
+          .select(selectFields)
+          .from(schema.apiKeys)
+          .where(eq(schema.apiKeys.userId, user.id))
+          .all();
 
     return reply.send({
       apiKeys: keys.map((k) => ({

@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
+import type { Role } from "@ashim/shared";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import sharp from "sharp";
@@ -29,6 +30,7 @@ import {
 import { validateImageBuffer } from "../lib/file-validation.js";
 import { sanitizeFilename } from "../lib/filename.js";
 import { ensureSharpCompat } from "../lib/heic-converter.js";
+import { hasPermission } from "../permissions.js";
 import { getAuthUser, requireAuth } from "../plugins/auth.js";
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -115,8 +117,8 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
       // Build the where clauses
       const conditions = [latestCondition];
 
-      // Non-admin users only see their own files; admins see all
-      if (user.role !== "admin") {
+      // Users without files:all only see their own files
+      if (!hasPermission(user.role as Role, "files:all")) {
         conditions.push(eq(schema.userFiles.userId, user.id));
       }
 
@@ -241,7 +243,7 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
 
       const file = db.select().from(schema.userFiles).where(eq(schema.userFiles.id, id)).get();
 
-      if (!file || (user.role !== "admin" && file.userId !== user.id)) {
+      if (!file || (file.userId !== user.id && !hasPermission(user.role as Role, "files:all"))) {
         return reply.status(404).send({ error: "File not found" });
       }
 
@@ -321,7 +323,7 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
 
       const file = db.select().from(schema.userFiles).where(eq(schema.userFiles.id, id)).get();
 
-      if (!file || (user.role !== "admin" && file.userId !== user.id)) {
+      if (!file || (file.userId !== user.id && !hasPermission(user.role as Role, "files:all"))) {
         return reply.status(404).send({ error: "File not found" });
       }
 
@@ -422,7 +424,8 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
     for (const id of ids) {
       // Ownership check: non-admin users can only delete their own files
       const file = db.select().from(schema.userFiles).where(eq(schema.userFiles.id, id)).get();
-      if (!file || (user.role !== "admin" && file.userId !== user.id)) continue;
+      if (!file || (file.userId !== user.id && !hasPermission(user.role as Role, "files:all")))
+        continue;
       // Collect all files in the chain using a recursive CTE
       const chainRows = sqlite
         .prepare(`
