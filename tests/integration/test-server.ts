@@ -33,6 +33,7 @@ import { requirePermission } from "../../apps/api/src/permissions.js";
 import { authMiddleware, authRoutes, ensureDefaultAdmin } from "../../apps/api/src/plugins/auth.js";
 import { registerUpload } from "../../apps/api/src/plugins/upload.js";
 import { apiKeyRoutes } from "../../apps/api/src/routes/api-keys.js";
+import { auditLogRoutes } from "../../apps/api/src/routes/audit-log.js";
 import { registerBatchRoutes } from "../../apps/api/src/routes/batch.js";
 import { brandingRoutes } from "../../apps/api/src/routes/branding.js";
 import { docsRoutes } from "../../apps/api/src/routes/docs.js";
@@ -111,6 +112,9 @@ export async function buildTestApp(): Promise<TestApp> {
 
   // Teams routes
   await teamsRoutes(app);
+
+  // Audit log routes
+  await auditLogRoutes(app);
 
   // API docs (Scalar)
   await docsRoutes(app);

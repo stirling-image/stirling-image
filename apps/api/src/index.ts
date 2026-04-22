@@ -14,6 +14,7 @@ import { authMiddleware, authRoutes, ensureDefaultAdmin } from "./plugins/auth.j
 import { registerStatic } from "./plugins/static.js";
 import { registerUpload } from "./plugins/upload.js";
 import { apiKeyRoutes } from "./routes/api-keys.js";
+import { auditLogRoutes } from "./routes/audit-log.js";
 import { registerBatchRoutes } from "./routes/batch.js";
 import { brandingRoutes } from "./routes/branding.js";
 import { docsRoutes } from "./routes/docs.js";
@@ -134,6 +135,9 @@ await brandingRoutes(app);
 
 // Teams routes
 await teamsRoutes(app);
+
+// Audit log routes
+await auditLogRoutes(app);
 
 // API docs (Scalar)
 await docsRoutes(app);
