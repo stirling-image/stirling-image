@@ -1,54 +1,54 @@
 import { FadeIn } from "./fade-in";
 
-const steps = [
-  {
-    number: "1",
-    title: "Pull",
-    code: "docker pull snapotter/snapotter",
-    description: "One image. Everything included.",
-  },
-  {
-    number: "2",
-    title: "Deploy",
-    code: "docker run -p 8080:8080 snapotter/snapotter",
-    description: "One command. Any server.",
-  },
-  {
-    number: "3",
-    title: "Use",
-    code: null,
-    description: "Browser UI, REST API, or pipeline automation.",
-  },
-];
-
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="px-6 py-24 md:py-36">
-      <div className="mx-auto max-w-6xl">
+    <section id="how-it-works" className="bg-background-alt px-6 py-24 md:py-36">
+      <div className="mx-auto max-w-3xl">
         <FadeIn>
           <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">
-            Up and running in 60 seconds.
+            Get started in seconds.
           </h2>
+          <p className="mx-auto mt-4 max-w-xl text-center text-lg text-muted">
+            One command. Everything included.
+          </p>
         </FadeIn>
 
-        <div className="mt-16 grid gap-8 md:grid-cols-3 md:gap-12">
-          {steps.map((step, i) => (
-            <FadeIn key={step.number} delay={i * 0.1}>
-              <div className="text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground text-sm font-bold">
-                  {step.number}
-                </div>
-                <h3 className="mt-4 text-xl font-bold">{step.title}</h3>
-                {step.code && (
-                  <div className="mt-3 rounded-lg bg-dark-bg px-4 py-2.5 font-mono text-sm text-dark-fg">
-                    {step.code}
-                  </div>
-                )}
-                <p className="mt-3 text-muted">{step.description}</p>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
+        <FadeIn delay={0.1}>
+          <div className="mt-12 overflow-hidden rounded-2xl border border-border bg-[#1e1e1e] shadow-xl">
+            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+              <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <div className="h-3 w-3 rounded-full bg-[#28c840]" />
+              <span className="ml-2 text-xs text-white/40">Terminal</span>
+            </div>
+            <div className="p-6 font-mono text-sm leading-loose">
+              <p className="text-white/50"># Pull the image</p>
+              <p className="text-white">
+                <span className="text-green-400">$</span> docker pull snapotter/snapotter
+              </p>
+              <p className="mt-4 text-white/50"># Run it</p>
+              <p className="text-white">
+                <span className="text-green-400">$</span> docker run -p 8080:8080
+                snapotter/snapotter
+              </p>
+              <p className="mt-4 text-white/50"># That's it. Open your browser.</p>
+              <p className="text-amber-400">SnapOtter is running at http://localhost:8080</p>
+            </div>
+          </div>
+        </FadeIn>
+
+        <FadeIn delay={0.2}>
+          <p className="mt-8 text-center text-sm text-muted">
+            Works on Linux, macOS, and Windows. ARM and x86 supported.
+            <br />
+            <a
+              href="https://docs.snapotter.com"
+              className="mt-1 inline-block font-medium text-accent hover:underline"
+            >
+              Read the full installation guide
+            </a>
+          </p>
+        </FadeIn>
       </div>
     </section>
   );

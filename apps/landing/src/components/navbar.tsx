@@ -6,7 +6,6 @@ import { useState } from "react";
 const links = [
   { label: "Features", href: "#features" },
   { label: "Download", href: "#how-it-works" },
-  { label: "API", href: "#api" },
   { label: "Pricing", href: "#enterprise" },
   { label: "Docs", href: "https://docs.snapotter.com" },
   { label: "About", href: "#open-source" },
