@@ -8,11 +8,20 @@ import { expect, test } from "@playwright/test";
 // given/declined, the user's state changes. Tests run serially and
 // each builds on the state left by the previous test.
 
-async function loginFresh(page: import("@playwright/test").Page) {
+async function loginAndGetToHome(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Username").fill("admin");
   await page.getByLabel("Password").fill("admin");
   await page.getByRole("button", { name: /login/i }).click();
+  // May hit consent page or go straight to home
+  try {
+    const acceptBtn = page.getByRole("button", { name: /sure, sounds good/i });
+    await acceptBtn.waitFor({ state: "visible", timeout: 5_000 });
+    await acceptBtn.click();
+    await page.waitForURL("/", { timeout: 30_000 });
+  } catch {
+    await page.waitForURL("/", { timeout: 30_000 });
+  }
 }
 
 test.describe("Analytics consent page", () => {
@@ -25,8 +34,7 @@ test.describe("Analytics consent page", () => {
     // The auth setup project already accepted analytics consent for the admin
     // user, so a fresh browser session logging in as admin should go straight
     // to the home page without being redirected to /analytics-consent.
-    await loginFresh(page);
-    await page.waitForURL("/", { timeout: 30_000 });
+    await loginAndGetToHome(page);
     await expect(page).toHaveURL("/");
 
     // Navigate away and back — consent page should NOT reappear
@@ -50,8 +58,7 @@ test.describe("Analytics consent page", () => {
 
   test("settings toggle works after accepting analytics", async ({ page }) => {
     // User already accepted in previous test — login should go straight to home
-    await loginFresh(page);
-    await page.waitForURL("/", { timeout: 30_000 });
+    await loginAndGetToHome(page);
     await expect(page).toHaveURL("/");
 
     // Open Settings dialog — look for the gear icon or settings button

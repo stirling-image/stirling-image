@@ -36,11 +36,13 @@ async function loginFresh(page: import("@playwright/test").Page) {
   await page.getByLabel("Password").fill("admin");
   await page.getByRole("button", { name: /login/i }).click();
   // May land on "/" or "/analytics-consent" depending on user state
-  await page.waitForURL(/\/(analytics-consent)?$/, { timeout: 30_000 });
-  if (page.url().includes("/analytics-consent")) {
-    // Accept consent so the test can proceed to the home page
-    await page.getByRole("button", { name: /sure, sounds good/i }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
+  try {
+    const acceptBtn = page.getByRole("button", { name: /sure, sounds good/i });
+    await acceptBtn.waitFor({ state: "visible", timeout: 5_000 });
+    await acceptBtn.click();
+    await page.waitForURL("/", { timeout: 30_000 });
+  } catch {
+    await page.waitForURL("/", { timeout: 30_000 });
   }
 }
 
