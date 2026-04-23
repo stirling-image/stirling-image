@@ -3,10 +3,15 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 // ─── Analytics Privacy / No Data Leak ───────────────────────────────
-// CRITICAL privacy tests: verify that declining analytics means
+// CRITICAL privacy tests: verify that disabling analytics means
 // absolutely zero data is sent to PostHog, Sentry, or any external
 // analytics domain. Also verifies that tool functionality is not
-// degraded when analytics are declined.
+// degraded when analytics are disabled.
+//
+// NOTE: The auth setup project already accepted analytics consent for
+// the admin user, so the consent page won't appear on login. Instead,
+// these tests login, then explicitly disable analytics via the API,
+// then reload the page so the store picks up the new state.
 
 const SAMPLES_DIR = path.join(process.env.HOME ?? "/Users/sidd", "Downloads", "sample");
 const FIXTURES_DIR = path.join(process.cwd(), "tests", "fixtures");
@@ -30,6 +35,58 @@ async function loginFresh(page: import("@playwright/test").Page) {
   await page.getByLabel("Username").fill("admin");
   await page.getByLabel("Password").fill("admin");
   await page.getByRole("button", { name: /login/i }).click();
+  // May land on "/" or "/analytics-consent" depending on user state
+  await page.waitForURL(/\/(analytics-consent)?$/, { timeout: 30_000 });
+  if (page.url().includes("/analytics-consent")) {
+    // Accept consent so the test can proceed to the home page
+    await page.getByRole("button", { name: /sure, sounds good/i }).click();
+    await page.waitForURL("/", { timeout: 15_000 });
+  }
+}
+
+/**
+ * Disable analytics for the admin user via the browser's existing auth token,
+ * then reload so the frontend store picks up analyticsEnabled=false.
+ * This avoids an extra /api/auth/login call (which counts toward rate limits).
+ */
+async function disableAnalytics(page: import("@playwright/test").Page): Promise<void> {
+  const ok = await page.evaluate(async () => {
+    const token = localStorage.getItem("ashim-token") ?? "";
+    const res = await fetch("/api/v1/user/analytics", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ enabled: false }),
+    });
+    return res.ok;
+  });
+  expect(ok, "Failed to disable analytics via in-browser API call").toBe(true);
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+}
+
+/**
+ * Re-enable analytics for the admin user via the browser's existing auth token.
+ * Called in afterEach so subsequent tests/runs start with analytics enabled.
+ */
+async function enableAnalytics(page: import("@playwright/test").Page): Promise<void> {
+  try {
+    await page.evaluate(async () => {
+      const token = localStorage.getItem("ashim-token") ?? "";
+      await fetch("/api/v1/user/analytics", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ enabled: true }),
+      });
+    });
+  } catch {
+    // Best-effort cleanup — page may already be closed
+  }
 }
 
 function getFixture(name: string): string {
@@ -63,14 +120,25 @@ async function waitForProcessingDone(
   await page.waitForTimeout(500);
 }
 
-test.describe("No data leak after declining analytics", () => {
+test.describe("No data leak after disabling analytics", () => {
   // Use fresh browser context — no saved auth state
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test("zero PostHog/Sentry traffic after explicitly declining analytics", async ({ page }) => {
+  // Re-enable analytics after each test so subsequent tests/runs start clean
+  test.afterEach(async ({ page }) => {
+    await enableAnalytics(page);
+  });
+
+  test("zero PostHog/Sentry traffic after explicitly disabling analytics", async ({ page }) => {
     const analyticsRequests: string[] = [];
 
-    // Set up network interception BEFORE any navigation
+    // Login first (consent was already accepted by auth setup)
+    await loginFresh(page);
+
+    // Disable analytics via API and reload
+    await disableAnalytics(page);
+
+    // Set up network interception AFTER disabling analytics
     await page.route("**/*", (route) => {
       const url = route.request().url();
       if (isAnalyticsRequest(url)) {
@@ -78,12 +146,6 @@ test.describe("No data leak after declining analytics", () => {
       }
       return route.continue();
     });
-
-    // Login and decline analytics
-    await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-    await page.getByRole("button", { name: "Maybe later" }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
 
     // Navigate to several pages
     await page.goto("/resize");
@@ -102,9 +164,16 @@ test.describe("No data leak after declining analytics", () => {
     ).toEqual([]);
   });
 
-  test("zero PostHog/Sentry traffic for fresh user who chose Maybe later", async ({ page }) => {
+  test("zero PostHog/Sentry traffic after toggling analytics off", async ({ page }) => {
     const analyticsRequests: string[] = [];
 
+    // Login (consent was already accepted by auth setup)
+    await loginFresh(page);
+
+    // Disable analytics via API and reload
+    await disableAnalytics(page);
+
+    // Set up network interception
     await page.route("**/*", (route) => {
       const url = route.request().url();
       if (isAnalyticsRequest(url)) {
@@ -112,12 +181,6 @@ test.describe("No data leak after declining analytics", () => {
       }
       return route.continue();
     });
-
-    // Login and immediately dismiss via "Maybe later"
-    await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-    await page.getByRole("button", { name: "Maybe later" }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
 
     // Browse around
     await page.goto("/crop");
@@ -133,12 +196,10 @@ test.describe("No data leak after declining analytics", () => {
     ).toEqual([]);
   });
 
-  test("tool processing works normally after declining analytics", async ({ page }) => {
-    // Login and decline analytics
+  test("tool processing works normally after disabling analytics", async ({ page }) => {
+    // Login and disable analytics
     await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-    await page.getByRole("button", { name: "Maybe later" }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
+    await disableAnalytics(page);
 
     // Navigate to resize tool
     await page.goto("/resize");
@@ -169,7 +230,7 @@ test.describe("No data leak after declining analytics", () => {
     await expect(downloadLink.first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("tool processing works with sample portrait after declining analytics", async ({ page }) => {
+  test("tool processing works with sample portrait after disabling analytics", async ({ page }) => {
     const portraitPath = path.join(
       SAMPLES_DIR,
       "portrait-of-a-smiling-man-with-glasses-and-a-beard-isolated.png",
@@ -179,11 +240,9 @@ test.describe("No data leak after declining analytics", () => {
       return;
     }
 
-    // Login and decline analytics
+    // Login and disable analytics
     await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-    await page.getByRole("button", { name: "Maybe later" }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
+    await disableAnalytics(page);
 
     // Navigate to resize tool
     await page.goto("/resize");

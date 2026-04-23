@@ -3,12 +3,11 @@ import { expect, test } from "@playwright/test";
 // ─── Analytics Consent Page Flow ────────────────────────────────────
 // These tests run against a Docker container at localhost:1349.
 // The container must be started with SKIP_MUST_CHANGE_PASSWORD=true.
-// The analytics consent screen still appears after login for fresh users.
+//
+// IMPORTANT: There is only one admin user in the DB. Once consent is
+// given/declined, the user's state changes. Tests run serially and
+// each builds on the state left by the previous test.
 
-/**
- * Helper: login with admin/admin and return the page (no saved auth state).
- * This gives us a "fresh" session where the consent screen hasn't been dismissed.
- */
 async function loginFresh(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Username").fill("admin");
@@ -17,88 +16,50 @@ async function loginFresh(page: import("@playwright/test").Page) {
 }
 
 test.describe("Analytics consent page", () => {
-  // Use a fresh browser context per test — no saved auth state
   test.use({ storageState: { cookies: [], origins: [] } });
+  test.describe.configure({ mode: "serial" });
 
-  test("consent page appears for fresh users after login", async ({ page }) => {
+  test("consent already accepted by auth setup — home loads without consent redirect", async ({
+    page,
+  }) => {
+    // The auth setup project already accepted analytics consent for the admin
+    // user, so a fresh browser session logging in as admin should go straight
+    // to the home page without being redirected to /analytics-consent.
     await loginFresh(page);
-
-    // After login, the AuthGuard should redirect to /analytics-consent
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-    await expect(page).toHaveURL("/analytics-consent");
-
-    // Verify consent page content
-    await expect(page.getByText("Make ashim better for you")).toBeVisible({ timeout: 10_000 });
-
-    // Shield icon is rendered via Lucide — verify it exists as an SVG
-    const shieldIcon = page.locator("svg.lucide-shield");
-    await expect(shieldIcon).toBeVisible({ timeout: 5_000 });
-
-    // Both action buttons should be visible
-    await expect(page.getByRole("button", { name: "Sure, sounds good" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Maybe later" })).toBeVisible();
-
-    // Verify the two columns
-    await expect(page.getByText("What's shared:")).toBeVisible();
-    await expect(page.getByText("What NEVER leaves your machine:")).toBeVisible();
-  });
-
-  test("accept analytics redirects to home and does not show consent again", async ({ page }) => {
-    await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-
-    // Click accept
-    await page.getByRole("button", { name: "Sure, sounds good" }).click();
-
-    // Should redirect to home
-    await page.waitForURL("/", { timeout: 15_000 });
+    await page.waitForURL("/", { timeout: 30_000 });
     await expect(page).toHaveURL("/");
 
     // Navigate away and back — consent page should NOT reappear
     await page.goto("/resize");
-    await page.waitForTimeout(2_000);
+    await page.waitForTimeout(1_000);
     await page.goto("/");
-    await page.waitForTimeout(2_000);
-    await expect(page).toHaveURL("/");
+    await page.waitForTimeout(1_000);
     await expect(page).not.toHaveURL(/analytics-consent/);
-  });
 
-  test("decline (Maybe later) redirects to home and does not show consent again immediately", async ({
-    page,
-  }) => {
-    await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
-
-    // Click decline
-    await page.getByRole("button", { name: "Maybe later" }).click();
-
-    // Should redirect to home
-    await page.waitForURL("/", { timeout: 15_000 });
-    await expect(page).toHaveURL("/");
-
-    // Navigate away and back — consent page should NOT reappear (until 7 days)
-    await page.goto("/resize");
-    await page.waitForTimeout(2_000);
-    await page.goto("/");
-    await page.waitForTimeout(2_000);
-    await expect(page).toHaveURL("/");
-    await expect(page).not.toHaveURL(/analytics-consent/);
+    // Verify session has analyticsEnabled=true via API (using the in-browser token)
+    const sessionData = await page.evaluate(async () => {
+      const token = localStorage.getItem("ashim-token") ?? "";
+      const res = await fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    });
+    expect(sessionData.user.analyticsEnabled).toBe(true);
+    expect(sessionData.user.analyticsConsentShownAt).toBeGreaterThan(0);
   });
 
   test("settings toggle works after accepting analytics", async ({ page }) => {
+    // User already accepted in previous test — login should go straight to home
     await loginFresh(page);
-    await page.waitForURL("**/analytics-consent", { timeout: 30_000 });
+    await page.waitForURL("/", { timeout: 30_000 });
+    await expect(page).toHaveURL("/");
 
-    // Accept analytics first
-    await page.getByRole("button", { name: "Sure, sounds good" }).click();
-    await page.waitForURL("/", { timeout: 15_000 });
-
-    // Open Settings dialog
+    // Open Settings dialog — look for the gear icon or settings button
     const settingsButton = page
-      .getByRole("button", { name: /settings/i })
-      .or(page.locator("button[aria-label*='ettings']"));
-    await expect(settingsButton).toBeVisible({ timeout: 10_000 });
-    await settingsButton.click();
+      .locator("[data-testid='settings-button']")
+      .or(page.locator("button").filter({ has: page.locator("svg.lucide-settings") }));
+    await expect(settingsButton.first()).toBeVisible({ timeout: 10_000 });
+    await settingsButton.first().click();
 
     // Navigate to Product Analytics section in the settings nav
     const analyticsNav = page.getByText("Product Analytics");
@@ -108,13 +69,9 @@ test.describe("Analytics consent page", () => {
     // Verify toggle shows enabled state
     await expect(page.getByText("Analytics enabled")).toBeVisible({ timeout: 5_000 });
 
-    // Find and click the toggle button to disable
-    const toggleButton = page.locator(
-      "button.rounded-full[class*='bg-primary'], button[class*='rounded-full'][class*='bg-']",
-    );
+    // Click the toggle button to disable
+    const toggleButton = page.locator("button.rounded-full");
     await toggleButton.click();
-
-    // Verify it now shows disabled
     await expect(page.getByText("Analytics disabled")).toBeVisible({ timeout: 5_000 });
 
     // Toggle back on

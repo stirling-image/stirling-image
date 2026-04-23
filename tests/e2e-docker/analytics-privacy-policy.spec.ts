@@ -37,8 +37,8 @@ test.describe("Privacy policy page", () => {
 
   test("mentions PostHog and Sentry by name", async ({ page }) => {
     await page.goto("/privacy");
-    await expect(page.getByText("PostHog")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Sentry")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("link", { name: "PostHog" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("link", { name: "Sentry" })).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows correct last-updated date", async ({ page }) => {
