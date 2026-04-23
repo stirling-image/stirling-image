@@ -1,6 +1,5 @@
 "use client";
 
-import { Github } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FadeIn } from "./fade-in";
 import { TypingCursor } from "./typing-cursor";
@@ -142,8 +141,7 @@ export function Hero() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-accent px-10 py-4 text-base font-semibold text-accent-foreground shadow-lg shadow-accent/20 transition-colors hover:bg-accent-hover"
             >
-              <Github size={20} />
-              Get Started for Free
+              Start Using It &rarr;
             </a>
           </div>
         </FadeIn>
