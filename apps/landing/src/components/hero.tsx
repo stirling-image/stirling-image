@@ -139,9 +139,12 @@ export function Hero() {
               href="https://github.com/ashim-hq/ashim"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-accent px-10 py-4 text-base font-semibold text-accent-foreground shadow-lg shadow-accent/20 transition-colors hover:bg-accent-hover"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 bg-[length:200%_100%] px-10 py-4 text-base font-semibold text-white shadow-[0_0_32px_-8px] shadow-amber-500/40 transition-all duration-500 hover:bg-[position:100%_0] hover:shadow-[0_0_40px_-4px] hover:shadow-amber-500/50"
             >
-              Start Using It &rarr;
+              Get it for free
+              <span className="transition-transform duration-300 group-hover:translate-x-1">
+                &rarr;
+              </span>
             </a>
           </div>
         </FadeIn>

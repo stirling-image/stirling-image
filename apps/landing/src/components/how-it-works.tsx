@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Terminal } from "lucide-react";
 import { useState } from "react";
 
 import { FadeIn } from "./fade-in";
@@ -23,44 +23,62 @@ export function HowItWorks() {
         <FadeIn>
           <p className="text-sm font-medium text-accent">Get started in seconds</p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
-            One command. That's it.
+            One command. That&apos;s it.
           </h2>
         </FadeIn>
 
         <FadeIn delay={0.1}>
-          <button
-            type="button"
-            onClick={copyCommand}
-            className="group relative mt-8 w-full cursor-pointer overflow-hidden rounded-xl border border-border bg-[#1e1e1e] text-left shadow-lg transition-all hover:border-accent/40"
-          >
-            <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap px-5 py-4 font-mono text-xs md:text-sm">
-              <span className="text-green-400 shrink-0">$</span>
-              <span className="text-white">{command}</span>
-              <span className="ml-auto shrink-0 pl-4">
-                {copied ? (
-                  <span className="flex items-center gap-1.5 text-green-400">
-                    <Check size={14} />
-                    <span className="text-xs">Copied!</span>
-                  </span>
-                ) : (
-                  <Copy
-                    size={14}
-                    className="text-white/30 transition-colors group-hover:text-white/70"
-                  />
-                )}
-              </span>
-            </div>
-          </button>
+          <div className="relative mx-auto mt-8 max-w-2xl">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-500/20 blur-lg" />
+            <button
+              type="button"
+              onClick={copyCommand}
+              className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#151515] text-left shadow-2xl transition-all hover:border-amber-500/30"
+            >
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                  <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                  <div className="h-3 w-3 rounded-full bg-[#28c840]" />
+                </div>
+                <div className="flex items-center gap-2 text-white/30">
+                  <Terminal size={13} />
+                  <span className="text-xs">Quick Start</span>
+                </div>
+                <div className="w-[52px]" />
+              </div>
+
+              <div className="flex items-center gap-3 overflow-x-auto px-6 py-5">
+                <span className="shrink-0 text-emerald-400 font-mono text-sm">$</span>
+                <code className="whitespace-nowrap font-mono text-[13px] text-white/90">
+                  {command}
+                </code>
+                <span className="ml-auto shrink-0 pl-3">
+                  {copied ? (
+                    <span className="flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
+                      <Check size={13} />
+                      <span className="text-xs font-medium">Copied!</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-white/25 transition-colors group-hover:bg-white/5 group-hover:text-white/60">
+                      <Copy size={13} />
+                      <span className="hidden text-xs md:inline">Copy</span>
+                    </span>
+                  )}
+                </span>
+              </div>
+            </button>
+          </div>
         </FadeIn>
 
         <FadeIn delay={0.15}>
-          <p className="mt-6 text-sm text-muted">
-            Linux, macOS, Windows. ARM and x86.{" "}
+          <p className="mt-8 text-sm text-muted">
+            Works on Linux, macOS, and Windows. ARM and x86 supported.{" "}
             <a
               href="https://docs.snapotter.com"
               className="font-medium text-accent hover:underline"
             >
-              Full docs
+              Read the docs
             </a>
           </p>
         </FadeIn>
