@@ -84,7 +84,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     analyticsConsentShownAt,
   } = useAuth();
   const storeConsent = useAnalyticsStore((s) => s.consent);
+  const setStoreConsent = useAnalyticsStore((s) => s.setConsent);
   const location = useLocation();
+
+  // Hydrate the analytics store from session data on initial load
+  useEffect(() => {
+    if (!loading && analyticsEnabled !== undefined) {
+      setStoreConsent({
+        analyticsEnabled: analyticsEnabled ?? null,
+        analyticsConsentShownAt: analyticsConsentShownAt ?? null,
+        analyticsConsentRemindAt: null,
+      });
+    }
+  }, [loading, analyticsEnabled, analyticsConsentShownAt, setStoreConsent]);
 
   // Don't guard the login or change-password pages
   if (
