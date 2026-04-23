@@ -2,6 +2,9 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const authFile = path.join(__dirname, "test-results", ".auth", "user.json");
+const testDbPath = path.join(__dirname, "test-results", ".e2e-db", "ashim.db");
+
+const TEST_WEB_PORT = 2349;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -20,7 +23,7 @@ export default defineConfig({
   workers: 1,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:1349",
+    baseURL: `http://localhost:${TEST_WEB_PORT}`,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
@@ -40,23 +43,28 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @ashim/api dev",
+      command: `rm -f "${testDbPath}" "${testDbPath}-shm" "${testDbPath}-wal" && mkdir -p "${path.dirname(testDbPath)}" && pnpm --filter @ashim/api dev`,
       port: 13490,
       reuseExistingServer: !process.env.CI,
       env: {
-        PORT: "13490",
         AUTH_ENABLED: "true",
         DEFAULT_USERNAME: "admin",
         DEFAULT_PASSWORD: "admin",
         RATE_LIMIT_PER_MIN: "50000",
         SKIP_MUST_CHANGE_PASSWORD: "true",
+        ANALYTICS_ENABLED: "false",
+        DB_PATH: testDbPath,
       },
       timeout: 30_000,
     },
     {
       command: "pnpm --filter @ashim/web dev",
-      port: 1349,
+      port: TEST_WEB_PORT,
       reuseExistingServer: !process.env.CI,
+      env: {
+        PORT: String(TEST_WEB_PORT),
+        VITE_API_URL: "http://localhost:13490",
+      },
       timeout: 30_000,
     },
   ],

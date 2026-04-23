@@ -8,7 +8,8 @@ const t = en.analytics;
 
 export function AnalyticsConsentPage() {
   const navigate = useNavigate();
-  const { config, configLoaded, fetchConfig, acceptAnalytics, remindLater } = useAnalyticsStore();
+  const { config, configLoaded, fetchConfig, acceptAnalytics, declineAnalytics, remindLater } =
+    useAnalyticsStore();
 
   useEffect(() => {
     fetchConfig();
@@ -16,9 +17,9 @@ export function AnalyticsConsentPage() {
 
   useEffect(() => {
     if (configLoaded && !config?.enabled) {
-      navigate("/", { replace: true });
+      declineAnalytics().then(() => navigate("/", { replace: true }));
     }
-  }, [configLoaded, config, navigate]);
+  }, [configLoaded, config, navigate, declineAnalytics]);
 
   if (!configLoaded) {
     return (

@@ -14,8 +14,21 @@ setup("authenticate", async ({ page }) => {
   await page.getByLabel("Password").fill("admin");
   await page.getByRole("button", { name: /login/i }).click();
 
-  // Wait for the full-page redirect to "/"
-  await page.waitForURL("/", { timeout: 15_000 });
+  // Wait for login to complete and grab the token in one step
+  const handle = await page.waitForFunction(() => localStorage.getItem("ashim-token"), null, {
+    timeout: 15_000,
+  });
+  const token = await handle.jsonValue();
+
+  // Dismiss analytics consent via API so it won't block any test
+  const apiBase = process.env.API_URL || "http://localhost:13490";
+  await page.request.put(`${apiBase}/api/v1/user/analytics`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { enabled: false },
+  });
+
+  // Now navigate to "/" - consent guard is satisfied
+  await page.goto("/");
   await expect(page).toHaveURL("/");
 
   // Save storage state (includes localStorage with the token)

@@ -12,9 +12,9 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   server: {
-    port: 1349,
+    port: Number(process.env.PORT) || 1349,
     proxy: {
-      "/api": "http://localhost:13490",
+      "/api": process.env.VITE_API_URL || "http://localhost:13490",
     },
   },
   build: {
