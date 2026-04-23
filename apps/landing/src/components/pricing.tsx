@@ -76,7 +76,7 @@ export function Pricing() {
               <ul className="mt-8 flex-1 space-y-3">
                 {freePlan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check size={16} className="mt-0.5 shrink-0 text-accent" />
+                    <Check size={16} className="mt-0.5 shrink-0 text-emerald-500" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -102,7 +102,7 @@ export function Pricing() {
               <ul className="mt-8 flex-1 space-y-3">
                 {enterprisePlan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check size={16} className="mt-0.5 shrink-0 text-accent" />
+                    <Check size={16} className="mt-0.5 shrink-0 text-emerald-500" />
                     <span>{feature}</span>
                   </li>
                 ))}
