@@ -1,7 +1,15 @@
 "use client";
 
 import { Github, Menu, Star, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+function formatStarCount(count: number): string {
+  if (count >= 1000) {
+    const k = count / 1000;
+    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`;
+  }
+  return count.toString();
+}
 
 const links = [
   { label: "Features", href: "#features" },
@@ -12,6 +20,18 @@ const links = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [stars, setStars] = useState<string>("Star");
+
+  useEffect(() => {
+    fetch("https://api.github.com/repos/ashim-hq/ashim")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.stargazers_count === "number") {
+          setStars(formatStarCount(data.stargazers_count));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-gradient-to-r after:from-transparent after:via-accent/30 after:to-transparent">
@@ -47,7 +67,7 @@ export function Navbar() {
           >
             <Github size={16} />
             <Star size={12} className="text-accent" />
-            <span>Star</span>
+            <span>{stars}</span>
           </a>
           <a
             href="/contact"

@@ -34,12 +34,21 @@ const columns = [
       },
     ],
   },
+  {
+    title: "Legal",
+    links: [
+      { label: "Licensing", href: "/#pricing" },
+      { label: "Terms and Conditions", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "FAQ", href: "/faq" },
+    ],
+  },
 ];
 
 export function Footer() {
   return (
     <footer className="border-t border-border bg-background-alt px-6 py-16">
-      <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-5">
         <div>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
