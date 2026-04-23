@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 // If the container has analytics enabled, these tests will be skipped
 // automatically by checking the config endpoint first.
 
-const BASE_URL = "http://localhost:1349";
+const BASE_URL = process.env.API_URL ?? "http://localhost:1349";
 
 async function loginFresh(page: import("@playwright/test").Page) {
   await page.goto("/login");
