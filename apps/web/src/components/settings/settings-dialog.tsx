@@ -202,6 +202,7 @@ interface TeamEntry {
 /* ────────────────────── General ────────────────────── */
 
 function GeneralSection() {
+  const { authEnabled } = useAuth();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [defaultToolView, setDefaultToolView] = useState("sidebar");
@@ -277,14 +278,16 @@ function GeneralSection() {
             <p className="text-xs text-muted-foreground capitalize">{role}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Log out
-        </button>
+        {authEnabled && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Log out
+          </button>
+        )}
       </div>
 
       {/* Default view */}

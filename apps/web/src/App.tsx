@@ -87,9 +87,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const setStoreConsent = useAnalyticsStore((s) => s.setConsent);
   const location = useLocation();
 
-  // Hydrate the analytics store from session data on initial load.
-  // Only hydrate if the store is still in its initial state (user hasn't taken
-  // an explicit action like accepting/declining on the consent page).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only hydrate on session load, not on store changes
   useEffect(() => {
     if (
       !loading &&
@@ -103,8 +101,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         analyticsConsentRemindAt: null,
       });
     }
-    // eslint-disable-next-line -- only hydrate on session load, not on store changes
   }, [loading, analyticsEnabled, analyticsConsentShownAt, setStoreConsent]);
+
+  // When auth is disabled, redirect away from login/change-password to prevent escalation
+  if (
+    !loading &&
+    !authEnabled &&
+    (location.pathname === "/login" || location.pathname === "/change-password")
+  ) {
+    return <Navigate to="/" replace />;
+  }
 
   // Don't guard the login or change-password pages
   if (

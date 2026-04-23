@@ -160,6 +160,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     "/api/auth/login",
     { config: { rateLimit: { max: getLoginAttemptLimit, timeWindow: "1 minute" } } },
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!env.AUTH_ENABLED) {
+        return reply.status(403).send({ error: "Authentication is disabled" });
+      }
+
       const body = request.body as { username?: string; password?: string } | null;
 
       if (!body?.username || !body?.password) {
@@ -230,6 +234,22 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /api/auth/session
   app.get("/api/auth/session", async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!env.AUTH_ENABLED) {
+      return reply.send({
+        user: {
+          id: "anonymous",
+          username: "anonymous",
+          role: "user",
+          mustChangePassword: false,
+          permissions: getPermissions("user"),
+          analyticsEnabled: null,
+          analyticsConsentShownAt: null,
+          analyticsConsentRemindAt: null,
+        },
+        expiresAt: null,
+      });
+    }
+
     const token = extractToken(request);
     if (!token) {
       return reply.status(401).send({ error: "No session token provided" });
@@ -238,7 +258,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, token)).get();
 
     if (!session || session.expiresAt < new Date()) {
-      // Clean up expired session if it exists
       if (session) {
         db.delete(schema.sessions).where(eq(schema.sessions.id, token)).run();
       }

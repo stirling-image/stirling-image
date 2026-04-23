@@ -36,8 +36,10 @@ import { userFileRoutes } from "./routes/user-files.js";
 runMigrations();
 console.log("Database initialized");
 
-// Create default admin user if no users exist
-await ensureDefaultAdmin();
+// Create default admin user if no users exist and auth is enabled
+if (env.AUTH_ENABLED) {
+  await ensureDefaultAdmin();
+}
 
 function ensureInstanceId() {
   const existing = db
