@@ -38,15 +38,9 @@ export default function ContactPage() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    const lines = [
-      `Name: ${name}`,
-      company ? `Company: ${company}` : "",
-      `Email: ${email}`,
-      "",
-      message,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const lines = [`Name: ${name}`, `Company: ${company}`, `Email: ${email}`, "", message].join(
+      "\n",
+    );
 
     const mailto = `mailto:contact@snapotter.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines)}`;
     window.location.href = mailto;
@@ -129,11 +123,12 @@ export default function ContactPage() {
 
                   <div>
                     <label htmlFor="company" className="mb-1.5 block text-sm font-medium">
-                      Company
+                      Company <span className="text-accent">*</span>
                     </label>
                     <input
                       id="company"
                       type="text"
+                      required
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
                       className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent"
