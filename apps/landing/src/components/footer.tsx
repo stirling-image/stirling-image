@@ -6,7 +6,7 @@ const columns = [
     links: [
       { label: "Features", href: "#features" },
       { label: "Demo", href: "https://demo.snapotter.com" },
-      { label: "Enterprise", href: "#enterprise" },
+      { label: "Enterprise", href: "/contact" },
     ],
   },
   {

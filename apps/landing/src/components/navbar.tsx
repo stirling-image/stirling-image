@@ -7,10 +7,10 @@ const links = [
   { label: "Features", href: "#features" },
   { label: "Download", href: "#how-it-works" },
   { label: "API", href: "#api" },
-  { label: "Pricing", href: "/licensing" },
+  { label: "Pricing", href: "#enterprise" },
   { label: "Docs", href: "https://docs.snapotter.com" },
   { label: "About", href: "#open-source" },
-  { label: "Contact", href: "mailto:contact@snapotter.com" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export function Navbar() {
@@ -59,7 +59,7 @@ export function Navbar() {
             Try Demo
           </a>
           <a
-            href="mailto:contact@snapotter.com?subject=Book%20a%20Demo"
+            href="/contact"
             className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
           >
             Book a Demo
@@ -106,7 +106,7 @@ export function Navbar() {
               Try Demo
             </a>
             <a
-              href="mailto:contact@snapotter.com?subject=Book%20a%20Demo"
+              href="/contact"
               className="block rounded-lg bg-accent px-4 py-2 text-center text-sm font-medium text-accent-foreground"
             >
               Book a Demo
