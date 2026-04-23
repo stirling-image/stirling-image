@@ -30,12 +30,12 @@ export function AnalyticsConsentPage() {
 
   const handleAccept = async () => {
     await acceptAnalytics();
-    navigate("/", { replace: true });
+    window.location.href = "/";
   };
 
   const handleDecline = async () => {
     await remindLater();
-    navigate("/", { replace: true });
+    window.location.href = "/";
   };
 
   return (
