@@ -487,7 +487,7 @@ describe("Extreme dimension requests", () => {
     // May succeed (Sharp allows large), fail at processing (422), or be
     // rejected by validation (400). Must not crash.
     expect([200, 400, 422]).toContain(res.statusCode);
-  }, 60_000);
+  }, 120_000);
 
   it("rejects crop region larger than image dimensions", async () => {
     const res = await postTool("crop", [

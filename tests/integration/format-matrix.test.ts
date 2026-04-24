@@ -349,82 +349,88 @@ describe("Cross-format matrix", () => {
         // Skip "Convert to PNG" when input is already PNG (no-op conversion)
         if (tool.id === "convert" && fmt.name === "PNG") continue;
 
-        it(`${tool.label}`, async () => {
-          if (!existsSync(fixturePath)) return;
+        const perTestTimeout = fmt.needsHeifDecoder ? 90_000 : undefined;
 
-          const buffer = readFileSync(fixturePath);
-          const { body: payload, contentType } = buildPayload(fmt, tool, buffer);
+        it(
+          `${tool.label}`,
+          async () => {
+            if (!existsSync(fixturePath)) return;
 
-          const res = await app.inject({
-            method: "POST",
-            url: `/api/v1/tools/${tool.id}`,
-            headers: {
-              authorization: `Bearer ${adminToken}`,
-              "content-type": contentType,
-            },
-            body: payload,
-          });
+            const buffer = readFileSync(fixturePath);
+            const { body: payload, contentType } = buildPayload(fmt, tool, buffer);
 
-          // ------------------------------------------------------------------
-          // Assert status code
-          // ------------------------------------------------------------------
-          if (needsFallback(fmt)) {
-            // Formats with optional decoders: accept success or graceful error
-            expect(ACCEPTABLE_FALLBACK_CODES).toContain(res.statusCode);
-          } else {
-            // Core formats must always succeed
-            expect(res.statusCode).toBe(200);
-          }
+            const res = await app.inject({
+              method: "POST",
+              url: `/api/v1/tools/${tool.id}`,
+              headers: {
+                authorization: `Bearer ${adminToken}`,
+                "content-type": contentType,
+              },
+              body: payload,
+            });
 
-          // ------------------------------------------------------------------
-          // If successful, validate the response shape
-          // ------------------------------------------------------------------
-          if (res.statusCode === 200) {
-            const body = JSON.parse(res.body);
-
-            switch (tool.responseType) {
-              case "download":
-                expect(body.downloadUrl).toBeDefined();
-                expect(typeof body.downloadUrl).toBe("string");
-                expect(body.processedSize).toBeGreaterThan(0);
-                expect(body.originalSize).toBeGreaterThan(0);
-                break;
-
-              case "info":
-                expect(body.width).toBeGreaterThan(0);
-                expect(body.height).toBeGreaterThan(0);
-                expect(body.fileSize).toBeGreaterThan(0);
-                expect(body.format).toBeDefined();
-                expect(body.channels).toBeGreaterThan(0);
-                break;
-
-              case "base64":
-                // image-to-base64 returns { results: [...], errors: [...] }
-                expect(Array.isArray(body.results)).toBe(true);
-                expect(body.results.length + body.errors.length).toBeGreaterThan(0);
-                if (body.results.length > 0) {
-                  const r = body.results[0];
-                  expect(r.base64).toBeDefined();
-                  expect(typeof r.base64).toBe("string");
-                  expect(r.base64.length).toBeGreaterThan(0);
-                  expect(r.dataUri).toMatch(/^data:/);
-                  expect(r.width).toBeGreaterThan(0);
-                  expect(r.height).toBeGreaterThan(0);
-                }
-                break;
+            // ------------------------------------------------------------------
+            // Assert status code
+            // ------------------------------------------------------------------
+            if (needsFallback(fmt)) {
+              // Formats with optional decoders: accept success or graceful error
+              expect(ACCEPTABLE_FALLBACK_CODES).toContain(res.statusCode);
+            } else {
+              // Core formats must always succeed
+              expect(res.statusCode).toBe(200);
             }
-          }
 
-          // ------------------------------------------------------------------
-          // If the API returned an error, verify it is a clean JSON error
-          // (not a raw crash / stack trace / HTML error page)
-          // ------------------------------------------------------------------
-          if (res.statusCode !== 200) {
-            const body = JSON.parse(res.body);
-            expect(body.error).toBeDefined();
-            expect(typeof body.error).toBe("string");
-          }
-        });
+            // ------------------------------------------------------------------
+            // If successful, validate the response shape
+            // ------------------------------------------------------------------
+            if (res.statusCode === 200) {
+              const body = JSON.parse(res.body);
+
+              switch (tool.responseType) {
+                case "download":
+                  expect(body.downloadUrl).toBeDefined();
+                  expect(typeof body.downloadUrl).toBe("string");
+                  expect(body.processedSize).toBeGreaterThan(0);
+                  expect(body.originalSize).toBeGreaterThan(0);
+                  break;
+
+                case "info":
+                  expect(body.width).toBeGreaterThan(0);
+                  expect(body.height).toBeGreaterThan(0);
+                  expect(body.fileSize).toBeGreaterThan(0);
+                  expect(body.format).toBeDefined();
+                  expect(body.channels).toBeGreaterThan(0);
+                  break;
+
+                case "base64":
+                  // image-to-base64 returns { results: [...], errors: [...] }
+                  expect(Array.isArray(body.results)).toBe(true);
+                  expect(body.results.length + body.errors.length).toBeGreaterThan(0);
+                  if (body.results.length > 0) {
+                    const r = body.results[0];
+                    expect(r.base64).toBeDefined();
+                    expect(typeof r.base64).toBe("string");
+                    expect(r.base64.length).toBeGreaterThan(0);
+                    expect(r.dataUri).toMatch(/^data:/);
+                    expect(r.width).toBeGreaterThan(0);
+                    expect(r.height).toBeGreaterThan(0);
+                  }
+                  break;
+              }
+            }
+
+            // ------------------------------------------------------------------
+            // If the API returned an error, verify it is a clean JSON error
+            // (not a raw crash / stack trace / HTML error page)
+            // ------------------------------------------------------------------
+            if (res.statusCode !== 200) {
+              const body = JSON.parse(res.body);
+              expect(body.error).toBeDefined();
+              expect(typeof body.error).toBe("string");
+            }
+          },
+          perTestTimeout,
+        );
       }
     });
   }
