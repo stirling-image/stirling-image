@@ -115,5 +115,5 @@ jobs:
           push: false
           tags: snapotter:ci
           build-args: SKIP_MODEL_DOWNLOADS=true
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:cache-linux-amd64
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:cache-ci,mode=max
+          cache-from: type=registry,ref=ghcr.io/snapotter-hq/snapotter:cache-linux-amd64
+          cache-to: type=registry,ref=ghcr.io/snapotter-hq/snapotter:cache-ci,mode=max

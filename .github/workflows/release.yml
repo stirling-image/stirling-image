@@ -110,7 +110,7 @@ jobs:
         with:
           images: |
             snapotterhq/snapotter
-            ghcr.io/${{ github.repository }}
+            ghcr.io/snapotter-hq/snapotter
 
       - name: Build and push by digest
         id: build
@@ -120,9 +120,9 @@ jobs:
           file: docker/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=snapotterhq/snapotter,ghcr.io/${{ github.repository }}",push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:cache-${{ env.PLATFORM_PAIR }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:cache-${{ env.PLATFORM_PAIR }},mode=max
+          outputs: type=image,"name=snapotterhq/snapotter,ghcr.io/snapotter-hq/snapotter",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=ghcr.io/snapotter-hq/snapotter:cache-${{ env.PLATFORM_PAIR }}
+          cache-to: type=registry,ref=ghcr.io/snapotter-hq/snapotter:cache-${{ env.PLATFORM_PAIR }},mode=max
 
       - name: Export digest
         run: |
@@ -169,7 +169,7 @@ jobs:
         with:
           images: |
             snapotterhq/snapotter
-            ghcr.io/${{ github.repository }}
+            ghcr.io/snapotter-hq/snapotter
           tags: |
             type=semver,pattern={{version}},value=v${{ needs.release.outputs.new_version }}
             type=semver,pattern={{major}}.{{minor}},value=v${{ needs.release.outputs.new_version }}
@@ -188,4 +188,4 @@ jobs:
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map(select(startswith("ghcr.io/")) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
+            $(printf 'ghcr.io/snapotter-hq/snapotter@sha256:%s ' *)
