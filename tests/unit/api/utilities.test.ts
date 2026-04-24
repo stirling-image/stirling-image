@@ -304,12 +304,12 @@ describe("validateImageBuffer", () => {
     expect(result.valid).toBe(false);
   });
 
-  it("rejects BMP magic with no actual BMP structure", async () => {
+  it("accepts BMP magic (decoded via CLI, not Sharp)", async () => {
     const fakeBmp = Buffer.from([0x42, 0x4d, 0x00, 0x00]);
     const result = await validateImageBuffer(fakeBmp);
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      expect(result.reason).toBe("Failed to read image metadata");
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.format).toBe("bmp");
     }
   });
 

@@ -5,17 +5,17 @@ SnapOtter ships as a single Docker image that works on all platforms.
 ## Quick start
 
 ```bash
-docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest
+docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest \
+  && printf "\n  🦦 SnapOtter\n  ────────────────────────────────────────\n\n  ➜  Open   http://localhost:1349\n  ➜  Login  admin / admin\n  ➜  Docs   https://docs.snapotter.com\n\n"
 ```
-
-The app is available at `http://localhost:1349`.
 
 ## GPU acceleration
 
 The image includes CUDA support on amd64. If you have an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed, add `--gpus all`:
 
 ```bash
-docker run -d --name SnapOtter --gpus all -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest
+docker run -d --name SnapOtter --gpus all -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest \
+  && printf "\n  🦦 SnapOtter\n  ────────────────────────────────────────\n\n  ➜  Open   http://localhost:1349\n  ➜  Login  admin / admin\n  ➜  Docs   https://docs.snapotter.com\n\n"
 ```
 
 The image auto-detects your GPU at runtime. Without `--gpus all`, it runs on CPU. Same image either way.

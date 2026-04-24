@@ -25,6 +25,18 @@ if [ ! -d "$AI_VENV" ] && [ -d "/opt/venv" ]; then
   echo "AI venv ready at $AI_VENV"
 fi
 
+print_banner() {
+  RST='\033[0m'
+  printf '\n'
+  printf '  \033[1;36m🦦 SnapOtter%b\n' "$RST"
+  printf '  \033[2m────────────────────────────────────────%b\n' "$RST"
+  printf '\n'
+  printf '  \033[32m➜%b  Open   \033[1;4mhttp://localhost:%s%b\n' "$RST" "${PORT:-1349}" "$RST"
+  printf '  \033[33m➜%b  Login  \033[1m%s%b / \033[1m%s%b\n' "$RST" "${DEFAULT_USERNAME}" "$RST" "${DEFAULT_PASSWORD}" "$RST"
+  printf '  \033[36m➜%b  Docs   \033[2mhttps://docs.snapotter.com%b\n' "$RST" "$RST"
+  printf '\n'
+}
+
 # Fix ownership of mounted volumes so the non-root snapotter user can write.
 # This runs as root, fixes permissions, then drops to snapotter via gosu.
 if [ "$(id -u)" = "0" ]; then
@@ -68,8 +80,10 @@ if [ "$(id -u)" = "0" ]; then
   chown -R snapotter:snapotter /data /tmp/workspace 2>&1 || \
     echo "WARNING: Could not fix volume permissions. Use named volumes (not Windows bind mounts) to avoid this. See docs for details." >&2
 
+  print_banner
   exec gosu snapotter "$@"
 fi
 
 # Already running as snapotter (e.g. Kubernetes runAsUser)
+print_banner
 exec "$@"

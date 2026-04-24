@@ -67,7 +67,7 @@ export interface ValidationError {
 const RAW_EXTENSIONS = new Set(["dng", "cr2", "nef", "arw", "orf", "rw2"]);
 
 /** Formats that Sharp cannot decode natively — skip dimension check. */
-const CLI_DECODED_FORMATS = new Set(["raw", "ico", "tga", "psd", "exr", "hdr"]);
+const CLI_DECODED_FORMATS = new Set(["raw", "ico", "tga", "psd", "exr", "hdr", "bmp", "jxl"]);
 
 /**
  * Check whether a file extension corresponds to a Camera RAW format.

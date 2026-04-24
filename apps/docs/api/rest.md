@@ -42,7 +42,7 @@ curl http://localhost:1349/api/v1/tools/resize \
   -H "Authorization: Bearer si_<your-key>"
 ```
 
-Keys are prefixed `si_` and stored as SHA-256 hashes - the raw key is shown once and never retrievable again.
+Keys are prefixed `si_` and stored as scrypt hashes - the raw key is shown once and never retrievable again.
 
 ### Auth Endpoints
 
@@ -57,6 +57,7 @@ Keys are prefixed `si_` and stored as SHA-256 hashes - the raw key is shown once
 | `PUT` | `/api/auth/users/:id` | Admin | Update user role or team |
 | `POST` | `/api/auth/users/:id/reset-password` | Admin | Reset user's password |
 | `DELETE` | `/api/auth/users/:id` | Admin | Delete a user |
+| `GET` | `/api/v1/config/auth` | Public | Check if authentication is enabled (`{ authEnabled: bool }`) |
 
 ### Permissions
 
@@ -107,16 +108,16 @@ curl -X POST http://localhost:1349/api/v1/tools/<toolId>/batch \
 | Tool ID | Name | Key settings |
 |---------|------|-------------|
 | `resize` | Resize | `width`, `height`, `fit` (cover/contain/fill/inside/outside), `percentage`, `withoutEnlargement`, plus 23 social media presets |
-| `crop` | Crop | `left`, `top`, `width`, `height`, `aspectRatio`, `shape` (rectangle/circle/rounded) |
-| `rotate` | Rotate & Flip | `angle`, `flip` (horizontal/vertical/both), `background` |
-| `convert` | Convert | `format` (jpeg/png/webp/avif/tiff/gif/heif), `quality` |
-| `compress` | Compress | `quality` (1–100), `format`, `targetSizeKB` |
+| `crop` | Crop | `left`, `top`, `width`, `height`, `unit` (px/percent) |
+| `rotate` | Rotate & Flip | `angle`, `horizontal` (bool), `vertical` (bool) |
+| `convert` | Convert | `format` (jpg/png/webp/avif/tiff/gif/heic/heif), `quality` |
+| `compress` | Compress | `mode` (quality/targetSize), `quality` (1–100), `targetSizeKb` |
 
 ### Optimization
 
 | Tool ID | Name | Key settings |
 |---------|------|-------------|
-| `optimize-for-web` | Optimize for Web | `format` (auto/jpeg/webp/avif), `quality`, `maxWidthPx`, `stripMetadata` |
+| `optimize-for-web` | Optimize for Web | `format` (webp/jpeg/avif/png), `quality`, `maxWidth`, `maxHeight`, `progressive`, `stripMetadata` |
 | `strip-metadata` | Strip Metadata | - |
 | `edit-metadata` | Edit Metadata | `title`, `description`, `author`, `copyright`, `keywords`, `gps` (lat/lon), `dateTime` |
 | `bulk-rename` | Bulk Rename | `pattern` (supports `{n}`, `{date}`, `{original}`), `startIndex`, `padding` |
@@ -127,9 +128,9 @@ curl -X POST http://localhost:1349/api/v1/tools/<toolId>/batch \
 
 | Tool ID | Name | Key settings |
 |---------|------|-------------|
-| `adjust-colors` | Adjust Colors | `brightness`, `contrast`, `exposure`, `saturation`, `temperature`, `sharpness`, `vibrance`, effects (grayscale/sepia/invert/vignette) |
-| `sharpening` | Sharpening | `mode` (adaptive/unsharp/highpass), `amount`, `radius`, `threshold` |
-| `replace-color` | Replace Color | `targetColor`, `replacementColor`, `tolerance`, `invert` |
+| `adjust-colors` | Adjust Colors | `brightness`, `contrast`, `exposure`, `saturation`, `temperature`, `tint`, `hue`, `sharpness`, `red`, `green`, `blue`, `effect` (none/grayscale/sepia/invert) |
+| `sharpening` | Sharpening | `method` (adaptive/unsharp-mask/high-pass), `sigma`, `m1`, `m2`, `x1`, `y2`, `y3`, `amount`, `radius`, `threshold`, `strength`, `kernelSize` (3/5), `denoise` (off/light/medium/strong) |
+| `replace-color` | Replace Color | `sourceColor`, `targetColor` (replacement), `makeTransparent`, `tolerance` |
 
 ### AI Tools
 
@@ -137,16 +138,16 @@ All AI tools run on your hardware (CPU or NVIDIA GPU). No internet required.
 
 | Tool ID | Name | AI Model | Key settings |
 |---------|------|---------|-------------|
-| `remove-background` | Remove Background | rembg (BiRefNet / U2-Net) | `model`, `alphaMattingForeground`, `alphaMattingBackground`, `returnMask`, background color/image |
+| `remove-background` | Remove Background | rembg (BiRefNet / U2-Net) | `model`, `backgroundType` (transparent/color/gradient/blur/image), `backgroundColor`, `gradientColor1`, `gradientColor2`, `gradientAngle`, `blurEnabled`, `blurIntensity`, `shadowEnabled`, `shadowOpacity` |
 | `upscale` | Image Upscaling | RealESRGAN | `scale` (2/4), `model`, `faceEnhance`, `denoise`, `format`, `quality` |
-| `erase-object` | Object Eraser | LaMa (ONNX) | `maskData` (base64 PNG), `maskThreshold` |
+| `erase-object` | Object Eraser | LaMa (ONNX) | Mask sent as second file part (fieldname `mask`), `format`, `quality` |
 | `ocr` | OCR / Text Extraction | PaddleOCR / Tesseract | `quality` (fast/balanced/best), `language`, `enhance` |
 | `blur-faces` | Face / PII Blur | MediaPipe | `blurRadius`, `sensitivity` |
-| `smart-crop` | Smart Crop | MediaPipe + Sharp | `mode` (subject/face/trim), `width`, `height`, `facePreset` (close-up/head-and-shoulders/upper-body/half-body) |
+| `smart-crop` | Smart Crop | MediaPipe + Sharp | `mode` (subject/face/trim), `strategy` (attention/entropy), `width`, `height`, `padding`, `facePreset` (closeup/head-shoulders/upper-body/half-body), `sensitivity`, `threshold`, `padToSquare`, `padColor`, `targetSize`, `quality` |
 | `image-enhancement` | Image Enhancement | Analysis-based | `mode` (auto/exposure/contrast/color/sharpness), `strength` |
 | `enhance-faces` | Face Enhancement | GFPGAN / CodeFormer | `model` (gfpgan/codeformer), `strength`, `sensitivity`, `centerFace` |
 | `colorize` | AI Colorization | DDColor | `intensity`, `model` |
-| `noise-removal` | Noise Removal | Tiered denoising | `quality` (fast/balanced/best), `strength`, `preserveDetail`, `colorNoise` |
+| `noise-removal` | Noise Removal | Tiered denoising | `tier` (quick/balanced/quality/maximum), `strength`, `detailPreservation`, `colorNoise`, `format`, `quality` |
 | `red-eye-removal` | Red Eye Removal | Face landmark + color analysis | `sensitivity`, `strength` |
 | `restore-photo` | Photo Restoration | Multi-step pipeline | `mode` (auto/light/heavy), `scratchRemoval`, `faceEnhancement`, `fidelity`, `denoise`, `denoiseStrength`, `colorize` |
 | `passport-photo` | Passport Photo | MediaPipe landmarks | `country` (37 countries), `printLayout` (4x6/A4/none), `backgroundColor` |
@@ -191,6 +192,24 @@ All AI tools run on your hardware (CPU or NVIDIA GPU). No internet required.
 | `gif-tools` | GIF Tools | `action` (resize/optimize/reverse/speed/extract-frames/rotate/add-text), action-specific params |
 | `pdf-to-image` | PDF to Image | `pages` (all/range), `format`, `dpi`, `quality` |
 
+### Tool Sub-Routes
+
+Some tools expose additional endpoints beyond the standard `POST /api/v1/tools/<toolId>`:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/tools/remove-background/effects` | Apply background effects (color/gradient/blur/shadow) without re-running AI. Uses cached mask from initial removal. |
+| `POST` | `/api/v1/tools/edit-metadata/inspect` | Read existing EXIF/IPTC/XMP metadata from an image |
+| `POST` | `/api/v1/tools/strip-metadata/inspect` | Inspect metadata fields before stripping |
+| `POST` | `/api/v1/tools/passport-photo/analyze` | Phase 1: AI face detection + background removal. Returns face landmarks and cached data. |
+| `POST` | `/api/v1/tools/passport-photo/generate` | Phase 2: Crop, resize, and tile using cached analysis. No AI re-run. |
+| `POST` | `/api/v1/tools/gif-tools/info` | Get GIF metadata (frame count, dimensions, duration) |
+| `POST` | `/api/v1/tools/pdf-to-image/info` | Get PDF metadata (page count, dimensions) |
+| `POST` | `/api/v1/tools/pdf-to-image/preview` | Generate a preview of a specific PDF page |
+| `POST` | `/api/v1/tools/svg-to-raster/batch` | Batch convert multiple SVGs to raster |
+| `POST` | `/api/v1/tools/image-enhancement/analyze` | Analyze image quality and return enhancement recommendations |
+| `POST` | `/api/v1/tools/optimize-for-web/preview` | Lightweight preview for live parameter tuning. Returns optimized image with size headers. |
+
 ## Batch Processing
 
 Apply any tool to multiple files at once. Returns a ZIP archive.
@@ -215,18 +234,18 @@ Concurrency is controlled by `CONCURRENT_JOBS` (default: auto-detected from CPU 
 curl -X POST http://localhost:1349/api/v1/pipeline/execute \
   -H "Authorization: Bearer <token>" \
   -F "file=@input.jpg" \
-  -F 'pipeline=[
+  -F 'pipeline={"steps":[
     {"toolId":"resize","settings":{"width":1200}},
     {"toolId":"compress","settings":{"quality":80}},
     {"toolId":"watermark-text","settings":{"text":"© 2025"}}
-  ]'
+  ]}'
 
 # Batch (multiple files → ZIP)
 curl -X POST http://localhost:1349/api/v1/pipeline/batch \
   -H "Authorization: Bearer <token>" \
   -F "files=@a.jpg" \
   -F "files=@b.jpg" \
-  -F 'pipeline=[{"toolId":"resize","settings":{"width":800}}]'
+  -F 'pipeline={"steps":[{"toolId":"resize","settings":{"width":800}}]}'
 ```
 
 Each step's output is the next step's input. Unlimited steps per pipeline by default (configurable via `MAX_PIPELINE_STEPS`).
@@ -235,7 +254,7 @@ Each step's output is the next step's input. Unlimited steps per pipeline by def
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/pipeline/save` | Save a named pipeline (`name`, `description`, `steps`) |
+| `POST` | `/api/v1/pipeline/save` | Save a named pipeline (`name`, `description`, `steps[]`) |
 | `GET` | `/api/v1/pipeline/list` | List saved pipelines (admins see all; users see own) |
 | `DELETE` | `/api/v1/pipeline/:id` | Delete (owner or admin) |
 | `GET` | `/api/v1/pipeline/tools` | List tool IDs valid for pipeline steps |
@@ -262,12 +281,16 @@ Persistent file storage with version history.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/upload` | Upload files to workspace |
+| `POST` | `/api/v1/upload` | Upload files to workspace (temp processing) |
+| `POST` | `/api/v1/files/upload` | Upload files to the persistent file library |
+| `POST` | `/api/v1/files/save-result` | Save a tool processing result as a new file version |
 | `GET` | `/api/v1/files` | List saved files (paginated, with search) |
 | `GET` | `/api/v1/files/:id` | Get file metadata + version chain |
 | `GET` | `/api/v1/files/:id/download` | Download file |
 | `GET` | `/api/v1/files/:id/thumbnail` | Get 300px JPEG thumbnail |
-| `DELETE` | `/api/v1/files/:id` | Delete file (and its version chain) |
+| `DELETE` | `/api/v1/files` | Bulk delete files and their version chains (body: `{ ids: [...] }`) |
+| `POST` | `/api/v1/preview` | Generate a browser-compatible WebP preview (for HEIC/HEIF/RAW formats) |
+| `GET` | `/api/v1/download/:jobId/:filename` | Download a processed file from a workspace |
 
 To auto-save a tool result to the library, include `fileId` in the settings payload referencing an existing library file. The processed result will be saved as a new version.
 
@@ -283,18 +306,18 @@ To auto-save a tool result to the library, include `fileId` in the settings payl
 
 | Method | Path | Access | Description |
 |--------|------|--------|-------------|
-| `GET` | `/api/v1/teams` | Auth | List teams |
-| `POST` | `/api/v1/teams` | Admin | Create team |
-| `PUT` | `/api/v1/teams/:id` | Admin | Rename team |
-| `DELETE` | `/api/v1/teams/:id` | Admin | Delete team (cannot delete default team or teams with members) |
+| `GET` | `/api/v1/teams` | Admin (`teams:manage`) | List teams |
+| `POST` | `/api/v1/teams` | Admin (`teams:manage`) | Create team |
+| `PUT` | `/api/v1/teams/:id` | Admin (`teams:manage`) | Rename team |
+| `DELETE` | `/api/v1/teams/:id` | Admin (`teams:manage`) | Delete team (cannot delete default team or teams with members) |
 
 ## Branding
 
 | Method | Path | Access | Description |
 |--------|------|--------|-------------|
-| `POST` | `/api/v1/branding/logo` | Admin | Upload custom logo (max 500 KB, converted to 128×128 PNG) |
-| `GET` | `/api/v1/branding/logo` | Public | Serve current logo |
-| `DELETE` | `/api/v1/branding/logo` | Admin | Remove custom logo |
+| `POST` | `/api/v1/settings/logo` | Admin | Upload custom logo (max 500 KB, converted to 128×128 PNG) |
+| `GET` | `/api/v1/settings/logo` | Public | Serve current logo |
+| `DELETE` | `/api/v1/settings/logo` | Admin | Remove custom logo |
 
 ## Settings
 
@@ -303,7 +326,8 @@ Runtime key-value configuration (read by any authenticated user, write by admin 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/settings` | Get all settings |
-| `PUT` | `/api/v1/settings/:key` | Set a value |
+| `PUT` | `/api/v1/settings` | Bulk update settings (JSON body with key-value pairs) |
+| `GET` | `/api/v1/settings/:key` | Get a specific setting by key |
 
 Known keys: `disabledTools` (JSON array of tool IDs), `enableExperimentalTools` (bool string), `loginAttemptLimit` (number), `customLogo` (managed via branding endpoint).
 

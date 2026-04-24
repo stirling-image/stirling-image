@@ -24,6 +24,14 @@ export async function resize(image: Sharp, options: ResizeOptions): Promise<Shar
     throw new Error("Resize requires width, height, or percentage");
   }
 
+  if (withoutEnlargement) {
+    const meta = await image.metadata();
+    const curW = meta.width ?? 0;
+    const curH = meta.height ?? 0;
+    if (width !== undefined && width > curW) width = curW;
+    if (height !== undefined && height > curH) height = curH;
+  }
+
   return image.resize({
     width,
     height,

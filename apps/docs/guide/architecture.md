@@ -70,7 +70,7 @@ The built frontend gets served by the Fastify backend in production, so there is
 
 ### Docs (`apps/docs`)
 
-This VitePress site. Deployed to GitHub Pages automatically on push to `main`.
+This VitePress site. Deployed to Cloudflare Pages automatically on push to `main`.
 
 ## How a request flows
 

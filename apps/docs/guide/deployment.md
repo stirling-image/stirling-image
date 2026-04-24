@@ -393,7 +393,7 @@ The GitHub repository has three workflows:
 
 - **ci.yml** -- Runs automatically on every push and PR. Lints, typechecks, tests, builds, and validates the Docker image (without pushing).
 - **release.yml** -- Triggered manually via `workflow_dispatch`. Runs semantic-release to create a version tag and GitHub release, then builds a multi-arch Docker image (amd64 + arm64) and pushes to Docker Hub (`snapotter/snapotter`) and GitHub Container Registry (`ghcr.io/snapotter-hq/snapotter`).
-- **deploy-docs.yml** -- Builds this documentation site and deploys it to GitHub Pages on push to `main`.
+- **deploy-docs.yml** -- Builds this documentation site and deploys it to Cloudflare Pages on push to `main`.
 
 To create a release, go to **Actions > Release > Run workflow** in the GitHub UI, or run:
 
