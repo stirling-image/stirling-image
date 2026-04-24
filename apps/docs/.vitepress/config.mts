@@ -2,9 +2,9 @@ import { defineConfig } from "vitepress";
 import llmstxt from "vitepress-plugin-llms";
 
 export default defineConfig({
-  title: "ashim",
+  title: "SnapOtter",
   description:
-    "Documentation for ashim - A Self Hosted Image Manipulator. 45+ tools, local AI, pipelines, REST API.",
+    "Documentation for SnapOtter - A Self Hosted Image Manipulator. 45+ tools, local AI, pipelines, REST API.",
   base: "/",
   srcDir: ".",
   outDir: "./.vitepress/dist",
@@ -12,7 +12,7 @@ export default defineConfig({
 
   head: [
     ["meta", { name: "theme-color", content: "#3b82f6" }],
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
+    ["link", { rel: "icon", type: "image/png", href: "/favicon.png" }],
     ["link", { rel: "llms-txt", href: "/ashim/llms.txt" }],
   ],
 
@@ -47,7 +47,7 @@ export default defineConfig({
 `,
         customTemplateVariables: {
           description:
-            "Self-hosted, open-source image processing platform with 45+ tools including AI/ML. Runs in a single Docker container with GPU auto-detection.",
+            "SnapOtter is a self-hosted, open-source image processing platform with 45+ tools including AI/ML. Runs in a single Docker container with GPU auto-detection.",
           details:
             "Resize, compress, convert, remove backgrounds, upscale, run OCR, and more - without sending images to external services.",
         },
@@ -56,7 +56,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: "/logo.svg",
+    logo: "/logo.png",
 
     nav: [
       { text: "Home", link: "/" },

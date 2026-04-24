@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "ashim"
+  name: "SnapOtter"
   text: "A Self Hosted Image Manipulator"
   tagline: 45+ tools. Local AI. No cloud. Your images stay on your machine.
   actions:
