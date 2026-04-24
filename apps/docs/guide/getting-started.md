@@ -3,14 +3,14 @@
 ## Quick Start
 
 ```bash
-docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data ghcr.io/snapotter-hq/snapotter:latest
+docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest
 ```
 
 Open [http://localhost:1349](http://localhost:1349) in your browser.
 
-::: tip Also on Docker Hub
+::: tip Also on GHCR
 ```bash
-docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest
+docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data ghcr.io/snapotter-hq/snapotter:latest
 ```
 
 Both registries publish the same image on every release.
@@ -40,7 +40,7 @@ Requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud
 ```yaml
 services:
   SnapOtter:
-    image: ghcr.io/snapotter-hq/snapotter:latest  # or snapotter/snapotter:latest
+    image: snapotter/snapotter:latest  # or ghcr.io/snapotter-hq/snapotter:latest
     ports:
       - "1349:1349"
     volumes:

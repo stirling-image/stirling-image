@@ -25,7 +25,7 @@
 ## Quick Start
 
 ```bash
-docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data ghcr.io/snapotter-hq/snapotter:latest
+docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest
 ```
 Open http://localhost:1349 in your browser.
 
@@ -36,7 +36,7 @@ Open http://localhost:1349 in your browser.
 Add `--gpus all` for GPU-accelerated background removal, upscaling, and OCR:
 
 ```bash
-docker run -d --name SnapOtter -p 1349:1349 --gpus all -v SnapOtter-data:/data ghcr.io/snapotter-hq/snapotter:latest
+docker run -d --name SnapOtter -p 1349:1349 --gpus all -v SnapOtter-data:/data snapotter/snapotter:latest
 ```
 
 > Requires an NVIDIA GPU and [Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Falls back to CPU if no GPU is found. See [Docker Tags](https://docs.snapotter.com/guide/docker-tags) for benchmarks and Docker Compose examples.

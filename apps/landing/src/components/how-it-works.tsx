@@ -6,7 +6,7 @@ import { useState } from "react";
 import { FadeIn } from "./fade-in";
 
 const command =
-  "docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data ghcr.io/snapotter-hq/snapotter:latest";
+  "docker run -d --name SnapOtter -p 1349:1349 -v SnapOtter-data:/data snapotter/snapotter:latest";
 
 export function HowItWorks() {
   const [copied, setCopied] = useState(false);
