@@ -40,6 +40,7 @@ CLAUDE.md
 .superpowers/
 docs/*
 !docs/COMMUNITY_GUIDE.md
+!docs/prompts/
 PRD.md
 
 # Ad-hoc test screenshots and reports
