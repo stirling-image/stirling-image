@@ -858,8 +858,8 @@ import { useThemeStore } from "@/stores/theme-store";
 
 describe("useThemeStore", () => {
   beforeEach(() => {
-    // Reset to initial values
     useThemeStore.setState({ theme: "light", resolvedTheme: "light" });
+    localStorage.removeItem("snapotter-theme-user-set");
   });
 
   it("has correct initial state", () => {
@@ -889,6 +889,31 @@ describe("useThemeStore", () => {
     expect(s.theme).toBe("system");
     // matchMedia mock returns matches: false, so system resolves to "light"
     expect(s.resolvedTheme).toBe("light");
+  });
+
+  it("setTheme sets user-set flag in localStorage", () => {
+    useThemeStore.getState().setTheme("dark");
+    expect(localStorage.getItem("snapotter-theme-user-set")).toBe("1");
+  });
+
+  it("applyServerDefault applies theme when no user-set flag", () => {
+    useThemeStore.getState().applyServerDefault("dark");
+    const s = useThemeStore.getState();
+    expect(s.theme).toBe("dark");
+    expect(s.resolvedTheme).toBe("dark");
+  });
+
+  it("applyServerDefault skips when user-set flag exists", () => {
+    useThemeStore.getState().setTheme("light");
+    useThemeStore.getState().applyServerDefault("dark");
+    const s = useThemeStore.getState();
+    expect(s.theme).toBe("light");
+    expect(s.resolvedTheme).toBe("light");
+  });
+
+  it("applyServerDefault does not set user-set flag", () => {
+    useThemeStore.getState().applyServerDefault("dark");
+    expect(localStorage.getItem("snapotter-theme-user-set")).toBeNull();
   });
 });
 
@@ -1371,8 +1396,10 @@ describe("useSettingsStore", () => {
       disabledTools: [],
       experimentalEnabled: false,
       defaultToolView: "sidebar",
+      defaultTheme: "light",
       loaded: false,
     });
+    localStorage.removeItem("snapotter-theme-user-set");
     mockApiGet.mockReset();
   });
 
@@ -1381,6 +1408,7 @@ describe("useSettingsStore", () => {
     expect(s.disabledTools).toEqual([]);
     expect(s.experimentalEnabled).toBe(false);
     expect(s.defaultToolView).toBe("sidebar");
+    expect(s.defaultTheme).toBe("light");
     expect(s.loaded).toBe(false);
   });
 
@@ -1390,6 +1418,7 @@ describe("useSettingsStore", () => {
         disabledTools: JSON.stringify(["resize", "crop"]),
         enableExperimentalTools: "true",
         defaultToolView: "fullscreen",
+        defaultTheme: "dark",
       },
     });
 
@@ -1399,7 +1428,42 @@ describe("useSettingsStore", () => {
     expect(s.disabledTools).toEqual(["resize", "crop"]);
     expect(s.experimentalEnabled).toBe(true);
     expect(s.defaultToolView).toBe("fullscreen");
+    expect(s.defaultTheme).toBe("dark");
     expect(s.loaded).toBe(true);
+  });
+
+  it("fetch applies server default theme when no user preference", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      settings: { defaultTheme: "dark" },
+    });
+
+    await useSettingsStore.getState().fetch();
+
+    const theme = useThemeStore.getState();
+    expect(theme.theme).toBe("dark");
+    expect(theme.resolvedTheme).toBe("dark");
+  });
+
+  it("fetch does not override user theme preference", async () => {
+    useThemeStore.getState().setTheme("light");
+
+    mockApiGet.mockResolvedValueOnce({
+      settings: { defaultTheme: "dark" },
+    });
+
+    await useSettingsStore.getState().fetch();
+
+    const theme = useThemeStore.getState();
+    expect(theme.theme).toBe("light");
+  });
+
+  it("fetch defaults defaultTheme to light for invalid values", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      settings: { defaultTheme: "invalid" },
+    });
+
+    await useSettingsStore.getState().fetch();
+    expect(useSettingsStore.getState().defaultTheme).toBe("light");
   });
 
   it("fetch skips when already loaded", async () => {
@@ -1419,6 +1483,7 @@ describe("useSettingsStore", () => {
     expect(s.disabledTools).toEqual([]);
     expect(s.experimentalEnabled).toBe(false);
     expect(s.defaultToolView).toBe("sidebar");
+    expect(s.defaultTheme).toBe("light");
     expect(s.loaded).toBe(true);
   });
 

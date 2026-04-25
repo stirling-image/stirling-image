@@ -53,6 +53,21 @@ function ensureInstanceId() {
 }
 
 ensureInstanceId();
+
+function ensureDefaultSettings() {
+  const defaults: Record<string, string> = {
+    defaultTheme: env.DEFAULT_THEME,
+    defaultLocale: env.DEFAULT_LOCALE,
+  };
+  for (const [key, value] of Object.entries(defaults)) {
+    const existing = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
+    if (!existing) {
+      db.insert(schema.settings).values({ key, value }).run();
+    }
+  }
+}
+
+ensureDefaultSettings();
 await initAnalytics();
 
 // Mark any jobs left in processing/queued from a previous unclean shutdown
