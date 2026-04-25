@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import { isGpuAvailable } from "@snapotter/ai";
+import { getDispatcherStatus, isGpuAvailable } from "@snapotter/ai";
 import { APP_VERSION } from "@snapotter/shared";
 import { eq } from "drizzle-orm";
 import Fastify from "fastify";
@@ -222,7 +222,7 @@ app.get("/api/v1/admin/health", async (request, reply) => {
     storage: { mode: env.STORAGE_MODE, available: "N/A" },
     database: dbOk ? "ok" : "error",
     queue: { active: 0, pending: 0 },
-    ai: { gpu: isGpuAvailable() },
+    ai: { gpu: isGpuAvailable(), dispatcher: getDispatcherStatus() },
   };
 });
 

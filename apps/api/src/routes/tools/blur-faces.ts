@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { blurFaces } from "@snapotter/ai";
 import { getBundleForTool, TOOL_BUNDLE_MAP } from "@snapotter/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import sharp from "sharp";
 import { z } from "zod";
 import { autoOrient } from "../../lib/auto-orient.js";
 import { formatZodErrors } from "../../lib/errors.js";
@@ -11,6 +12,7 @@ import { isToolInstalled } from "../../lib/feature-status.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { decodeToSharpCompat, needsCliDecode } from "../../lib/format-decoders.js";
 import { decodeHeic, ensureSharpCompat } from "../../lib/heic-converter.js";
+import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 import { registerToolProcessFn } from "../tool-factory.js";
@@ -139,10 +141,19 @@ export function registerBlurFaces(app: FastifyInstance) {
         onProgress,
       );
 
-      // Save output
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_blurred.png`;
+      // Resolve output format to match input
+      const outputFormat = await resolveOutputFormat(fileBuffer, filename);
+      let outputBuffer = result.buffer;
+      if (outputFormat.format !== "png") {
+        outputBuffer = await sharp(result.buffer)
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
+          .toBuffer();
+      }
+
+      const ext = outputFormat.format === "jpeg" ? "jpg" : outputFormat.format;
+      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_blurred.${ext}`;
       const outputPath = join(workspacePath, "output", outputFilename);
-      await writeFile(outputPath, result.buffer);
+      await writeFile(outputPath, outputBuffer);
 
       if (clientJobId) {
         updateSingleFileProgress({
@@ -156,7 +167,7 @@ export function registerBlurFaces(app: FastifyInstance) {
         jobId,
         downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outputFilename)}`,
         originalSize: fileBuffer.length,
-        processedSize: result.buffer.length,
+        processedSize: outputBuffer.length,
         facesDetected: result.facesDetected,
         faces: result.faces,
         ...(result.facesDetected === 0 && {
@@ -189,8 +200,20 @@ export function registerBlurFaces(app: FastifyInstance) {
         blurRadius: s.blurRadius ?? 30,
         sensitivity: s.sensitivity ?? 0.5,
       });
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_blurred.png`;
-      return { buffer: result.buffer, filename: outputFilename, contentType: "image/png" };
+      const outputFormat = await resolveOutputFormat(inputBuffer, filename);
+      let outputBuffer = result.buffer;
+      if (outputFormat.format !== "png") {
+        outputBuffer = await sharp(result.buffer)
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
+          .toBuffer();
+      }
+      const ext = outputFormat.format === "jpeg" ? "jpg" : outputFormat.format;
+      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_blurred.${ext}`;
+      return {
+        buffer: outputBuffer,
+        filename: outputFilename,
+        contentType: outputFormat.contentType,
+      };
     },
   });
 }

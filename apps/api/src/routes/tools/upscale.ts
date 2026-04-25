@@ -12,6 +12,7 @@ import { isToolInstalled } from "../../lib/feature-status.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { decodeToSharpCompat, needsCliDecode } from "../../lib/format-decoders.js";
 import { decodeHeic, encodeHeic } from "../../lib/heic-converter.js";
+import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 import { registerToolProcessFn } from "../tool-factory.js";
@@ -21,7 +22,7 @@ const settingsSchema = z.object({
   model: z.string().default("auto"),
   faceEnhance: z.boolean().default(false),
   denoise: z.union([z.number(), z.string()]).transform(Number).default(0),
-  format: z.string().default("png"),
+  format: z.string().default("auto"),
   quality: z.union([z.number(), z.string()]).transform(Number).default(95),
 });
 
@@ -99,8 +100,13 @@ export function registerUpscale(app: FastifyInstance) {
       const model = settings.model;
       const faceEnhance = settings.faceEnhance;
       const denoise = settings.denoise;
-      const format = settings.format;
+      let format = settings.format;
       const outputQuality = settings.quality;
+
+      if (format === "auto") {
+        const detected = await resolveOutputFormat(fileBuffer, filename);
+        format = detected.format === "jpeg" ? "jpg" : detected.format;
+      }
       request.log.info(
         { toolId: "upscale", imageSize: fileBuffer.length, scale, model, format },
         "Starting upscale",
@@ -248,8 +254,20 @@ export function registerUpscale(app: FastifyInstance) {
       const jobId = randomUUID();
       const workspacePath = await createWorkspace(jobId);
       const result = await upscale(orientedBuffer, join(workspacePath, "output"), { scale });
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_${scale}x.png`;
-      return { buffer: result.buffer, filename: outputFilename, contentType: "image/png" };
+      const outputFormat = await resolveOutputFormat(inputBuffer, filename);
+      let outputBuffer = result.buffer;
+      if (outputFormat.format !== "png") {
+        outputBuffer = await sharp(result.buffer)
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
+          .toBuffer();
+      }
+      const ext = outputFormat.format === "jpeg" ? "jpg" : outputFormat.format;
+      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_${scale}x.${ext}`;
+      return {
+        buffer: outputBuffer,
+        filename: outputFilename,
+        contentType: outputFormat.contentType,
+      };
     },
   });
 }

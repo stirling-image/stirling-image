@@ -1,5 +1,6 @@
 export { removeBackground } from "./background-removal.js";
-export { isGpuAvailable, shutdownDispatcher } from "./bridge.js";
+export type { DispatcherStatus } from "./bridge.js";
+export { getDispatcherStatus, isGpuAvailable, shutdownDispatcher } from "./bridge.js";
 export { colorize } from "./colorization.js";
 export type { DetectFacesResult, FaceRegion } from "./face-detection.js";
 export { blurFaces, detectFaces } from "./face-detection.js";

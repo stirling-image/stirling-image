@@ -239,8 +239,20 @@ export function registerRestorePhoto(app: FastifyInstance) {
         denoiseStrength: s.denoiseStrength,
         colorize: s.colorize,
       });
-      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_restored.png`;
-      return { buffer: result.buffer, filename: outputFilename, contentType: "image/png" };
+      const outputFormat = await resolveOutputFormat(inputBuffer, filename);
+      let outputBuffer = result.buffer;
+      if (outputFormat.format !== "png") {
+        outputBuffer = await sharp(result.buffer)
+          .toFormat(outputFormat.format, { quality: outputFormat.quality })
+          .toBuffer();
+      }
+      const ext = outputFormat.format === "jpeg" ? "jpg" : outputFormat.format;
+      const outputFilename = `${filename.replace(/\.[^.]+$/, "")}_restored.${ext}`;
+      return {
+        buffer: outputBuffer,
+        filename: outputFilename,
+        contentType: outputFormat.contentType,
+      };
     },
   });
 }

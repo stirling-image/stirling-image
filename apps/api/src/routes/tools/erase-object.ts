@@ -11,6 +11,7 @@ import { isToolInstalled } from "../../lib/feature-status.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { decodeToSharpCompat, needsCliDecode } from "../../lib/format-decoders.js";
 import { decodeHeic, encodeHeic } from "../../lib/heic-converter.js";
+import { resolveOutputFormat } from "../../lib/output-format.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 
@@ -30,8 +31,8 @@ const BROWSER_PREVIEWABLE = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif"
 
 const settingsSchema = z.object({
   format: z
-    .enum(["png", "jpg", "jpeg", "webp", "tiff", "gif", "avif", "heic", "heif"])
-    .default("png"),
+    .enum(["auto", "png", "jpg", "jpeg", "webp", "tiff", "gif", "avif", "heic", "heif"])
+    .default("auto"),
   quality: z.number().int().min(1).max(100).default(95),
 });
 
@@ -121,6 +122,12 @@ export function registerEraseObject(app: FastifyInstance) {
       }
       format = settingsResult.data.format;
       quality = settingsResult.data.quality;
+
+      if (format === "auto") {
+        const detected = await resolveOutputFormat(imageBuffer, filename);
+        format = detected.format === "jpeg" ? "jpg" : detected.format;
+        quality = detected.quality;
+      }
 
       request.log.info(
         {

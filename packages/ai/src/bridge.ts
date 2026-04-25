@@ -74,6 +74,41 @@ let dispatcherGpuAvailable = false;
 const pendingRequests = new Map<string, PendingRequest>();
 let stdoutBuffer = "";
 
+// Crash recovery with exponential backoff
+// biome-ignore lint/style/useConst: reassigned on crash events
+let consecutiveCrashes = 0;
+// biome-ignore lint/style/useConst: reassigned on crash events
+let lastCrashTime = 0;
+// biome-ignore lint/style/useConst: reassigned on crash events
+let backoffUntil = 0;
+const CRASH_WINDOW_MS = 60_000;
+const MAX_CONSECUTIVE_CRASHES = 5;
+const BASE_BACKOFF_MS = 1_000;
+
+function recordCrash(): void {
+  const now = Date.now();
+  if (now - lastCrashTime > CRASH_WINDOW_MS) {
+    consecutiveCrashes = 1;
+  } else {
+    consecutiveCrashes++;
+  }
+  lastCrashTime = now;
+
+  if (consecutiveCrashes >= MAX_CONSECUTIVE_CRASHES) {
+    console.error(
+      `[bridge] Dispatcher crashed ${consecutiveCrashes} times in ${CRASH_WINDOW_MS / 1000}s, disabling permanently`,
+    );
+    dispatcherFailed = true;
+    return;
+  }
+
+  const delay = BASE_BACKOFF_MS * 2 ** (consecutiveCrashes - 1);
+  backoffUntil = now + delay;
+  console.warn(
+    `[bridge] Dispatcher crash #${consecutiveCrashes}, backing off ${delay}ms before restart`,
+  );
+}
+
 function startDispatcher(): ChildProcess | null {
   if (dispatcherFailed) return null;
 
@@ -100,6 +135,7 @@ function startDispatcher(): ChildProcess | null {
           if (parsed.ready === true) {
             dispatcherReady = true;
             dispatcherGpuAvailable = parsed.gpu === true;
+            consecutiveCrashes = 0;
             console.log(`[bridge] Python dispatcher ready (GPU: ${parsed.gpu === true})`);
             continue;
           }
@@ -168,10 +204,10 @@ function startDispatcher(): ChildProcess | null {
     child.on("error", (err: NodeJS.ErrnoException) => {
       console.error(`[bridge] Dispatcher error: ${err.message} (code: ${err.code})`);
       if (err.code === "ENOENT") {
-        // Venv python not found - mark as failed, will fall back to per-request
         dispatcherFailed = true;
+      } else {
+        recordCrash();
       }
-      // Reject all pending requests
       for (const [id, req] of pendingRequests.entries()) {
         req.reject(new Error(extractPythonError(err)));
         pendingRequests.delete(id);
@@ -181,11 +217,11 @@ function startDispatcher(): ChildProcess | null {
     });
 
     child.on("close", () => {
-      // Reject all pending requests
       for (const [id, req] of pendingRequests.entries()) {
         req.reject(new Error("Python dispatcher exited unexpectedly"));
         pendingRequests.delete(id);
       }
+      recordCrash();
       dispatcher = null;
       dispatcherReady = false;
     });
@@ -200,6 +236,7 @@ function startDispatcher(): ChildProcess | null {
 function getDispatcher(): ChildProcess | null {
   if (dispatcherFailed) return null;
   if (!dispatcher || dispatcher.killed) {
+    if (Date.now() < backoffUntil) return null;
     dispatcher = startDispatcher();
   }
   return dispatcher;
@@ -257,6 +294,26 @@ function dispatcherRun(
  */
 export function isGpuAvailable(): boolean {
   return dispatcherGpuAvailable;
+}
+
+export interface DispatcherStatus {
+  running: boolean;
+  ready: boolean;
+  failed: boolean;
+  gpu: boolean;
+  pid: number | null;
+  consecutiveCrashes: number;
+}
+
+export function getDispatcherStatus(): DispatcherStatus {
+  return {
+    running: dispatcher !== null && !dispatcher.killed,
+    ready: dispatcherReady,
+    failed: dispatcherFailed,
+    gpu: dispatcherGpuAvailable,
+    pid: dispatcher?.pid ?? null,
+    consecutiveCrashes,
+  };
 }
 
 /**
