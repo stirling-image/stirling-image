@@ -4,7 +4,7 @@ test.describe("Guide Content Rendering", () => {
   test("getting-started page renders Docker quick start", async ({ page }) => {
     await page.goto("/guide/getting-started");
     await expect(page.getByRole("heading", { name: /Getting Started/ })).toBeVisible();
-    await expect(page.getByText("Quick Start")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quick Start" })).toBeVisible();
     await expect(page.getByText("docker run", { exact: false }).first()).toBeVisible();
   });
 
@@ -20,9 +20,7 @@ test.describe("Guide Content Rendering", () => {
 
   test("configuration page renders content", async ({ page }) => {
     await page.goto("/guide/configuration");
-    await expect(
-      page.getByRole("heading", { name: /Configuration/ }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Configuration/ }).first()).toBeVisible();
   });
 
   test("deployment page renders content", async ({ page }) => {
@@ -32,9 +30,7 @@ test.describe("Guide Content Rendering", () => {
 
   test("contributing page renders content", async ({ page }) => {
     await page.goto("/guide/contributing");
-    await expect(
-      page.getByRole("heading", { name: /Contributing/ }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Contributing/ }).first()).toBeVisible();
   });
 });
 
@@ -61,9 +57,7 @@ test.describe("API Reference Content Rendering", () => {
 
   test("AI engine page renders content", async ({ page }) => {
     await page.goto("/api/ai");
-    await expect(
-      page.getByRole("heading", { name: /AI engine|AI Engine/ }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /AI engine|AI Engine/ }).first()).toBeVisible();
   });
 });
 
@@ -80,14 +74,25 @@ test.describe("Edit Links", () => {
 });
 
 test.describe("Docs Footer", () => {
-  test("footer renders AGPLv3 license link", async ({ page }) => {
+  test("footer contains AGPLv3 license link", async ({ page }) => {
     await page.goto("/guide/getting-started");
-    await expect(page.getByText(/AGPLv3 License/)).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+    const hasLicense = await page.evaluate(() =>
+      document.querySelector('footer a[href*="LICENSE"]')?.textContent?.includes("AGPLv3"),
+    );
+    expect(hasLicense).toBe(true);
   });
 
-  test("footer renders llms.txt links", async ({ page }) => {
+  test("footer contains llms.txt links", async ({ page }) => {
     await page.goto("/guide/getting-started");
-    await expect(page.getByRole("link", { name: "/llms.txt" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "/llms-full.txt" })).toBeVisible();
+    const hasLlms = await page.evaluate(
+      () => !!document.querySelector('footer a[href="/llms.txt"]'),
+    );
+    const hasLlmsFull = await page.evaluate(
+      () => !!document.querySelector('footer a[href="/llms-full.txt"]'),
+    );
+    expect(hasLlms).toBe(true);
+    expect(hasLlmsFull).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const LANDING_PORT = 1350;
+const LANDING_PORT = 4350;
 
 export default defineConfig({
   testDir: "./tests/e2e-landing",
@@ -22,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm --filter @snapotter/landing dev",
+    command: `cd apps/landing && npx next dev -p ${LANDING_PORT}`,
     port: LANDING_PORT,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

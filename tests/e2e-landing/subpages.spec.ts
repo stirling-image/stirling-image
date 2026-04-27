@@ -36,16 +36,22 @@ test.describe("Privacy Page", () => {
   });
 
   test("renders the page heading", async ({ page }) => {
-    await expect(page.getByText("Privacy Policy")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Privacy Policy" })).toBeVisible();
   });
 
   test("renders all section headings", async ({ page }) => {
     const headings = [
-      "Overview", "Website (snapotter.com)", "Self-Hosted Software",
-      "Optional Analytics", "Contact Form", "Open Source", "Changes", "Contact",
+      "Overview",
+      "Website (snapotter.com)",
+      "Self-Hosted Software",
+      "Optional Analytics",
+      "Contact Form",
+      "Open Source",
+      "Changes",
+      "Contact",
     ];
     for (const heading of headings) {
-      await expect(page.getByText(heading, { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     }
   });
 
@@ -61,16 +67,22 @@ test.describe("Terms Page", () => {
   });
 
   test("renders the page heading", async ({ page }) => {
-    await expect(page.getByText("Terms and Conditions")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Terms and Conditions" })).toBeVisible();
   });
 
   test("renders all section headings", async ({ page }) => {
     const headings = [
-      "Overview", "Software License", "Website Use", "Self-Hosted Software",
-      "Intellectual Property", "Limitation of Liability", "Changes", "Contact",
+      "Overview",
+      "Software License",
+      "Website Use",
+      "Self-Hosted Software",
+      "Intellectual Property",
+      "Limitation of Liability",
+      "Changes",
+      "Contact",
     ];
     for (const heading of headings) {
-      await expect(page.getByText(heading, { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     }
   });
 

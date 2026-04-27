@@ -18,11 +18,11 @@ test.describe("Docs Homepage", () => {
   });
 
   test("hero renders action buttons", async ({ page }) => {
-    const getStarted = page.getByRole("link", { name: "Get started" });
+    const getStarted = page.getByRole("link", { name: "Get started", exact: true });
     await expect(getStarted).toBeVisible();
     await expect(getStarted).toHaveAttribute("href", /getting-started/);
 
-    const apiRef = page.getByRole("link", { name: "API reference" });
+    const apiRef = page.getByRole("link", { name: "API reference", exact: true });
     await expect(apiRef).toBeVisible();
     await expect(apiRef).toHaveAttribute("href", /\/api\/rest/);
   });
@@ -37,7 +37,7 @@ test.describe("Docs Homepage", () => {
       "Teams & Access Control",
     ];
     for (const feature of features) {
-      await expect(page.getByText(feature)).toBeVisible();
+      await expect(page.getByRole("heading", { name: feature }).first()).toBeVisible();
     }
   });
 
@@ -57,7 +57,7 @@ test.describe("Docs Navbar", () => {
     await page.goto("/");
     await page.getByRole("link", { name: "Guide" }).first().click();
     await expect(page).toHaveURL(/getting-started/);
-    await expect(page.getByText("Getting Started")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Getting Started" })).toBeVisible();
   });
 
   test("API Reference nav link navigates to REST API", async ({ page }) => {
