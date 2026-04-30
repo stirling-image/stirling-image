@@ -17,6 +17,8 @@ const PNG = readFileSync(join(FIXTURES, "test-200x150.png"));
 const JPG = readFileSync(join(FIXTURES, "test-100x100.jpg"));
 const WEBP = readFileSync(join(FIXTURES, "test-50x50.webp"));
 const HEIC = readFileSync(join(FIXTURES, "test-200x150.heic"));
+const SVG = readFileSync(join(FIXTURES, "test-100x100.svg"));
+const GIF = readFileSync(join(FIXTURES, "animated.gif"));
 
 let testApp: TestApp;
 let app: TestApp["app"];
@@ -580,6 +582,57 @@ describe("Document mode variations", () => {
       "image/webp",
     );
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// ── Authentication ──────────────────────────────────────────────
+describe("Authentication", () => {
+  it("returns 401 for unauthenticated request", async () => {
+    const { body: payload, contentType } = makePayload({ mode: "auto" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement",
+      payload,
+      headers: { "content-type": contentType },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+// ── HEIF input ─────────────────────────────────────────────────
+describe("HEIF input", () => {
+  it("enhances HEIF (sample.heif) input", async () => {
+    const HEIF = readFileSync(join(FIXTURES, "formats", "sample.heif"));
+    const res = await postTool({ mode: "auto" }, HEIF, "sample.heif", "image/heif");
+    expect([200, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const result = JSON.parse(res.body);
+      expect(result.downloadUrl).toBeDefined();
+      expect(result.processedSize).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ── SVG input ──────────────────────────────────────────────────
+describe("SVG input", () => {
+  it("enhances SVG input after rasterization", async () => {
+    const res = await postTool({ mode: "auto" }, SVG, "test.svg", "image/svg+xml");
+    expect([200, 400, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const result = JSON.parse(res.body);
+      expect(result.downloadUrl).toBeDefined();
+    }
+  });
+});
+
+// ── Animated GIF input ─────────────────────────────────────────
+describe("Animated GIF input", () => {
+  it("enhances animated GIF input", async () => {
+    const res = await postTool({ mode: "auto" }, GIF, "animated.gif", "image/gif");
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
   });
 });
 

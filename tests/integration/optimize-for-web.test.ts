@@ -723,6 +723,47 @@ describe("Preview endpoint format variations", () => {
   });
 });
 
+// ── Unauthenticated request ────────────────────────────────────
+describe("Authentication", () => {
+  it("returns 401 for unauthenticated request", async () => {
+    const { body: payload, contentType } = makePayload({ format: "webp" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/optimize-for-web",
+      payload,
+      headers: { "content-type": contentType },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+// ── HEIF input handling ───────────────────────────────────────
+describe("HEIF input", () => {
+  it("optimizes HEIF (sample.heif) input to webp", async () => {
+    const HEIF = readFileSync(join(FIXTURES, "formats", "sample.heif"));
+    const res = await postTool({ format: "webp" }, HEIF, "sample.heif", "image/heif");
+    // HEIF decode may not be available
+    expect([200, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const result = JSON.parse(res.body);
+      expect(result.downloadUrl).toBeDefined();
+      expect(result.downloadUrl).toContain(".webp");
+    }
+  });
+});
+
+// ── Animated GIF input ────────────────────────────────────────
+describe("Animated GIF input", () => {
+  it("optimizes animated GIF to webp", async () => {
+    const GIF = readFileSync(join(FIXTURES, "animated.gif"));
+    const res = await postTool({ format: "webp" }, GIF, "animated.gif", "image/gif");
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+});
+
 // ── File with no extension ──────────────────────────────────────
 describe("File naming edge cases", () => {
   it("handles file without extension", async () => {

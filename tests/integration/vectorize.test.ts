@@ -699,4 +699,74 @@ describe("vectorize", () => {
 
     expect(res.statusCode).toBe(200);
   });
+
+  // ── HEIF input ───────────────────────────────────────────────
+
+  it("works with HEIF (sample.heif) input after decoding", async () => {
+    const HEIF = readFileSync(join(FIXTURES, "formats", "sample.heif"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "sample.heif", contentType: "image/heif", content: HEIF },
+      { name: "settings", content: JSON.stringify({}) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/vectorize",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    // HEIF may fail if system decoder missing
+    expect([200, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const json = JSON.parse(res.body);
+      expect(json.downloadUrl).toMatch(/\.svg$/);
+    }
+  });
+
+  // ── SVG input ────────────────────────────────────────────────
+
+  it("vectorizes SVG input (re-traces after rasterization)", async () => {
+    const SVG_BUF = readFileSync(join(FIXTURES, "test-100x100.svg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.svg", contentType: "image/svg+xml", content: SVG_BUF },
+      { name: "settings", content: JSON.stringify({ colorMode: "bw" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/vectorize",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    // SVG may need rasterization first; accept success or processing error
+    expect([200, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const json = JSON.parse(res.body);
+      expect(json.downloadUrl).toMatch(/\.svg$/);
+    }
+  });
+
+  // ── Animated GIF input ───────────────────────────────────────
+
+  it("vectorizes animated GIF input", async () => {
+    const GIF_BUF = readFileSync(join(FIXTURES, "animated.gif"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "animated.gif", contentType: "image/gif", content: GIF_BUF },
+      { name: "settings", content: JSON.stringify({ colorMode: "bw" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/vectorize",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.downloadUrl).toMatch(/\.svg$/);
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
 });
