@@ -15,6 +15,9 @@ const FIXTURES = join(__dirname, "..", "fixtures");
 const PNG = readFileSync(join(FIXTURES, "test-200x150.png"));
 const JPG = readFileSync(join(FIXTURES, "test-100x100.jpg"));
 const WEBP = readFileSync(join(FIXTURES, "test-50x50.webp"));
+const TINY_PNG = readFileSync(join(FIXTURES, "test-1x1.png"));
+const SVG = readFileSync(join(FIXTURES, "test-100x100.svg"));
+const GIF = readFileSync(join(FIXTURES, "animated.gif"));
 
 /** Extract sorted filenames from a ZIP buffer. */
 function zipEntryNames(buf: Buffer): string[] {
@@ -613,5 +616,162 @@ describe("Bulk Rename", () => {
     const filenames = zipEntryNames(res.rawPayload);
     expect(filenames).toHaveLength(1);
     expect(filenames[0]).toBe("solo-1.png");
+  });
+
+  // ── HEIF file handling ─────────────────────────────────────────
+
+  it("renames HEIF files preserving extension", async () => {
+    const HEIF = readFileSync(join(FIXTURES, "formats", "sample.heif"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "photo.heif", contentType: "image/heif", content: HEIF },
+      { name: "settings", content: JSON.stringify({ pattern: "renamed-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toContain("renamed-1.heif");
+  });
+
+  // ── Large file handling ────────────────────────────────────────
+
+  it("renames a large stress image preserving content", async () => {
+    const LARGE = readFileSync(join(FIXTURES, "content", "stress-large.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "big.jpg", contentType: "image/jpeg", content: LARGE },
+      { name: "settings", content: JSON.stringify({ pattern: "large-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toContain("large-1.jpg");
+
+    const zip = new AdmZip(res.rawPayload);
+    const entry = zip.getEntry("large-1.jpg");
+    expect(entry).not.toBeNull();
+    expect(entry!.getData().length).toBe(LARGE.length);
+  });
+
+  // ── Tiny file handling ─────────────────────────────────────────
+
+  it("renames a 1x1 pixel image", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "tiny.png", contentType: "image/png", content: TINY_PNG },
+      { name: "settings", content: JSON.stringify({ pattern: "small-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toContain("small-1.png");
+  });
+
+  // ── SVG file handling ──────────────────────────────────────────
+
+  it("renames SVG files preserving extension", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "icon.svg", contentType: "image/svg+xml", content: SVG },
+      { name: "settings", content: JSON.stringify({ pattern: "vector-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toContain("vector-1.svg");
+  });
+
+  // ── Animated GIF handling ──────────────────────────────────────
+
+  it("renames animated GIF files preserving extension", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "animation.gif", contentType: "image/gif", content: GIF },
+      { name: "settings", content: JSON.stringify({ pattern: "anim-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toContain("anim-1.gif");
+  });
+
+  // ── Mixed format batch (5+ files) ─────────────────────────────
+
+  it("renames a batch of 5+ mixed format files", async () => {
+    const HEIC = readFileSync(join(FIXTURES, "test-200x150.heic"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "c.webp", contentType: "image/webp", content: WEBP },
+      { name: "file", filename: "d.gif", contentType: "image/gif", content: GIF },
+      { name: "file", filename: "e.svg", contentType: "image/svg+xml", content: SVG },
+      { name: "file", filename: "f.heic", contentType: "image/heic", content: HEIC },
+      { name: "settings", content: JSON.stringify({ pattern: "batch-{{padded}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(6);
+    expect(filenames).toContain("batch-1.png");
+    expect(filenames).toContain("batch-2.jpg");
+    expect(filenames).toContain("batch-3.webp");
+    expect(filenames).toContain("batch-4.gif");
+    expect(filenames).toContain("batch-5.svg");
+    expect(filenames).toContain("batch-6.heic");
   });
 });
