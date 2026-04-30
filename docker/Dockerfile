@@ -10,7 +10,7 @@
 # Run on the native build platform to avoid QEMU crashes with esbuild on
 # Apple Silicon.  The output (HTML/CSS/JS) is architecture-agnostic so it
 # is safe to build on arm64 and copy into the amd64 production layer.
-FROM --platform=$BUILDPLATFORM node:22-bookworm AS builder
+FROM --platform=$BUILDPLATFORM node:25-bookworm AS builder
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
@@ -110,12 +110,12 @@ RUN set -e; \
 # Stage 3: Platform-specific base images
 # Pin tags to specific major.minor for reproducible builds.
 # ============================================
-FROM node:22-bookworm AS base-linux-arm64
+FROM node:25-bookworm AS base-linux-arm64
 FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04 AS base-linux-amd64
 
 # Node.js donor: provides Node binaries for the CUDA amd64 image without
 # relying on NodeSource apt repos or Ubuntu mirrors (which are flaky on CI).
-FROM node:22-bookworm AS node-bins
+FROM node:25-bookworm AS node-bins
 
 # ============================================
 # Stage 4: Production runtime

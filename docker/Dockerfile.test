@@ -3,7 +3,7 @@
 # Runs the full test suite (unit + integration)
 # ============================================
 
-FROM node:22-bookworm
+FROM node:25-bookworm
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
