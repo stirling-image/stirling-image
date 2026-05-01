@@ -8,6 +8,7 @@
   <a href="https://github.com/snapotter-hq/snapotter/actions"><img src="https://img.shields.io/github/actions/workflow/status/snapotter-hq/snapotter/ci.yml?label=CI" alt="CI"></a>
   <a href="https://github.com/snapotter-hq/snapotter/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-blue" alt="License"></a>
   <a href="https://github.com/snapotter-hq/snapotter/stargazers"><img src="https://img.shields.io/github/stars/snapotter-hq/snapotter?style=social" alt="Stars"></a>
+  <a href="https://discord.gg/hr3s7HPUsr"><img src="https://img.shields.io/discord/1499484269628751905?label=Discord&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 ![SnapOtter - Dashboard](images/dashboard.png)
@@ -71,6 +72,8 @@ For Docker Compose, persistent storage, and other setup options, see the [Gettin
 ## Feedback
 
 Found a bug or have a feature idea? Open a [GitHub Issue](https://github.com/snapotter-hq/snapotter/issues). We don't accept pull requests, but your feedback directly shapes the project. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+Join our [Discord](https://discord.gg/hr3s7HPUsr) for help, discussion, and community updates.
 
 ## License
 
