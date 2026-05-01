@@ -9,7 +9,7 @@
 
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { shutdownDispatcher } from "@snapotter/ai";
 import { ANALYTICS_EVENTS, FEATURE_BUNDLES } from "@snapotter/shared";
@@ -67,7 +67,12 @@ function getDirSize(dirPath: string): number {
   if (!existsSync(dirPath)) return 0;
 
   let total = 0;
-  const entries = readdirSync(dirPath, { withFileTypes: true });
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(dirPath, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
   for (const entry of entries) {
     const fullPath = join(dirPath, entry.name);
     if (entry.isDirectory()) {

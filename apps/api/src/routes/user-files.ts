@@ -198,21 +198,25 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
 
       // Create DB record
       const id = randomUUID();
-      db.insert(schema.userFiles)
-        .values({
-          id,
-          userId,
-          originalName: safeName,
-          storedName,
-          mimeType,
-          size: safeBuffer.length,
-          width: validation.width,
-          height: validation.height,
-          version: 1,
-          parentId: null,
-          toolChain: null,
-        })
-        .run();
+      try {
+        db.insert(schema.userFiles)
+          .values({
+            id,
+            userId,
+            originalName: safeName,
+            storedName,
+            mimeType,
+            size: safeBuffer.length,
+            width: validation.width,
+            height: validation.height,
+            version: 1,
+            parentId: null,
+            toolChain: null,
+          })
+          .run();
+      } catch {
+        return reply.status(409).send({ error: "Failed to save file record" });
+      }
 
       const row = db.select().from(schema.userFiles).where(eq(schema.userFiles.id, id)).get();
 
@@ -555,21 +559,25 @@ export async function userFileRoutes(app: FastifyInstance): Promise<void> {
 
     // Create DB record
     const id = randomUUID();
-    db.insert(schema.userFiles)
-      .values({
-        id,
-        userId,
-        originalName: resultName,
-        storedName,
-        mimeType,
-        size: safeResultBuffer.length,
-        width: validation.width,
-        height: validation.height,
-        version: nextVersion,
-        parentId,
-        toolChain: JSON.stringify(newChain),
-      })
-      .run();
+    try {
+      db.insert(schema.userFiles)
+        .values({
+          id,
+          userId,
+          originalName: resultName,
+          storedName,
+          mimeType,
+          size: safeResultBuffer.length,
+          width: validation.width,
+          height: validation.height,
+          version: nextVersion,
+          parentId,
+          toolChain: JSON.stringify(newChain),
+        })
+        .run();
+    } catch {
+      return reply.status(409).send({ error: "Failed to save result record" });
+    }
 
     const row = db.select().from(schema.userFiles).where(eq(schema.userFiles.id, id)).get();
 

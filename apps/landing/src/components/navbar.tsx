@@ -24,14 +24,18 @@ export function Navbar() {
   const [stars, setStars] = useState<string>("Star");
 
   useEffect(() => {
+    let cancelled = false;
     fetch("https://api.github.com/repos/snapotter-hq/snapotter")
       .then((res) => res.json())
       .then((data) => {
-        if (typeof data.stargazers_count === "number") {
+        if (!cancelled && typeof data.stargazers_count === "number") {
           setStars(formatStarCount(data.stargazers_count));
         }
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

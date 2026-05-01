@@ -57,3 +57,4 @@ audit_report.md
 .mcp.json
 tests/benchmark/bench-limits-results-mac.jsonl
 .superpowers/
+scripts/setup-cloudflare-email.sh

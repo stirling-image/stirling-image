@@ -329,15 +329,19 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
 
     const id = randomUUID();
 
-    db.insert(schema.pipelines)
-      .values({
-        id,
-        userId: user.id,
-        name,
-        description: description ?? null,
-        steps: JSON.stringify(steps),
-      })
-      .run();
+    try {
+      db.insert(schema.pipelines)
+        .values({
+          id,
+          userId: user.id,
+          name,
+          description: description ?? null,
+          steps: JSON.stringify(steps),
+        })
+        .run();
+    } catch {
+      return reply.status(409).send({ error: "Failed to save pipeline" });
+    }
 
     return reply.status(201).send({
       id,
