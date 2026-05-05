@@ -94,7 +94,8 @@ def _register_hr_matting_session(sessions_class):
             pred = ort_outs[0][:, 0, :, :]
             ma = np.max(pred)
             mi = np.min(pred)
-            pred = (pred - mi) / (ma - mi)
+            denom = ma - mi
+            pred = (pred - mi) / denom if denom > 0 else pred * 0
             pred = np.squeeze(pred)
             mask = Image.fromarray((pred * 255).astype("uint8"), mode="L")
             mask = mask.resize(img.size, Image.LANCZOS)
