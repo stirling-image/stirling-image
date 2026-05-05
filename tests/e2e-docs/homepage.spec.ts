@@ -13,7 +13,7 @@ test.describe("Docs Homepage", () => {
     await expect(page.getByText("SnapOtter").first()).toBeVisible();
     await expect(page.getByText("A Self Hosted Image Manipulator")).toBeVisible();
     await expect(
-      page.getByText("47 tools. Local AI. No cloud. Your images stay on your machine."),
+      page.getByText("47 tools. Local AI. No cloud. Your images never leave your home."),
     ).toBeVisible();
   });
 
