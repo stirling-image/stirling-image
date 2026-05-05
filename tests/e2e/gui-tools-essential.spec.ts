@@ -1,3 +1,4 @@
+import path from "node:path";
 import { expect, test, uploadTestImage, waitForProcessing } from "./helpers";
 
 // ---------------------------------------------------------------------------
@@ -194,6 +195,55 @@ test.describe("GUI Essential Tools", () => {
       await waitForProcessing(page);
 
       await expect(page.getByTestId("crop-download")).toBeVisible({ timeout: 15_000 });
+    });
+
+    test("tall portrait image (200x4000) fits within viewport without overflow", async ({
+      loggedInPage: page,
+    }) => {
+      await page.goto("/crop");
+
+      const portraitPath = path.join(process.cwd(), "tests", "fixtures", "test-portrait-tall.png");
+      const fileChooserPromise = page.waitForEvent("filechooser");
+      await page.locator("[class*='border-dashed']").first().click();
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles(portraitPath);
+      await page.waitForTimeout(1000);
+
+      const img = page.locator(".ReactCrop img");
+      await expect(img).toBeVisible();
+
+      const viewport = page.viewportSize()!;
+      const box = await img.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+      expect(box!.y).toBeGreaterThanOrEqual(0);
+    });
+
+    test("extremely tall portrait image (100x6000) fits within viewport without overflow", async ({
+      loggedInPage: page,
+    }) => {
+      await page.goto("/crop");
+
+      const extremePath = path.join(
+        process.cwd(),
+        "tests",
+        "fixtures",
+        "test-portrait-extreme.png",
+      );
+      const fileChooserPromise = page.waitForEvent("filechooser");
+      await page.locator("[class*='border-dashed']").first().click();
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles(extremePath);
+      await page.waitForTimeout(1000);
+
+      const img = page.locator(".ReactCrop img");
+      await expect(img).toBeVisible();
+
+      const viewport = page.viewportSize()!;
+      const box = await img.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+      expect(box!.y).toBeGreaterThanOrEqual(0);
     });
   });
 

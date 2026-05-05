@@ -98,7 +98,7 @@ export function CropCanvas({
   return (
     <div ref={containerRef} className="flex flex-col w-full h-full max-w-4xl mx-auto outline-none">
       {/* Crop area */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden bg-muted/20 p-4">
+      <div className="flex-1 flex items-center justify-center overflow-hidden bg-muted/20 p-4 min-h-0">
         <ReactCrop
           crop={crop}
           onChange={(_pixelCrop, percentCrop) => onCropChange(percentCrop)}
