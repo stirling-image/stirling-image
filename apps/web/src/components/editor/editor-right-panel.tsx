@@ -2,6 +2,7 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
+import { LayersPanel } from "./panels/layers-panel";
 
 const TABS = [
   { id: "layers" as const, label: "Layers" },
@@ -57,8 +58,8 @@ export function EditorRightPanel() {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
-        {/* Tab content rendered by agents: layers-panel, adjustments-panel, history-panel */}
-        <div id={`editor-panel-${activeTab}`} />
+        {activeTab === "layers" && <LayersPanel />}
+        {activeTab !== "layers" && <div id={`editor-panel-${activeTab}`} />}
       </div>
       {/* Color panel always visible at bottom (Agent 5) */}
       <div id="editor-color-panel" className="border-t border-border" />
