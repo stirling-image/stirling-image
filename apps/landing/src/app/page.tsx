@@ -1,3 +1,6 @@
+"use client";
+
+import { domAnimation, LazyMotion } from "framer-motion";
 import { BentoGrid } from "@/components/bento-grid";
 import { Enterprise } from "@/components/enterprise";
 import { Footer } from "@/components/footer";
@@ -10,9 +13,9 @@ import { WhyChoose } from "@/components/why-choose";
 
 export default function Home() {
   return (
-    <>
+    <LazyMotion features={domAnimation}>
       <Navbar />
-      <main>
+      <main id="main-content">
         <Hero />
         <HowItWorks />
         <WhyChoose />
@@ -22,6 +25,6 @@ export default function Home() {
         <OpenSource />
       </main>
       <Footer />
-    </>
+    </LazyMotion>
   );
 }
