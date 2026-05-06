@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, m } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   AppWindow,
@@ -50,7 +51,7 @@ import {
   Wand2,
   ZoomIn,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FadeIn } from "./fade-in";
 
 const categories = [
@@ -367,9 +368,147 @@ const tools: { name: string; description: string; category: string; icon: Lucide
 
 const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-function getCategoryCount(id: string) {
-  return tools.filter((t) => t.category === id).length;
+const FEATURED_2x2 = ["Remove Background", "Image Upscaling"];
+const FEATURED_2x1 = ["Compress", "Resize"];
+
+/* ------------------------------------------------------------------ */
+/*  BeforeAfter slider component                                       */
+/* ------------------------------------------------------------------ */
+
+function BeforeAfterRemoveBg() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState(50);
+
+  const handleDrag = useCallback((_: unknown, info: { point: { x: number } }) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setPosition(pct);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className="relative h-full min-h-[160px] w-full select-none overflow-hidden rounded-lg"
+      role="slider"
+      aria-label="Before and after comparison"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(position)}
+    >
+      {/* After side: checkerboard + shape */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "repeating-conic-gradient(#292524 0% 25%, #1c1917 0% 50%) 0 0 / 16px 16px",
+        }}
+      >
+        <div className="absolute top-1/2 left-1/2 h-16 w-12 -translate-x-1/2 -translate-y-1/2 rounded-md bg-stone-600" />
+      </div>
+      {/* Before side: solid bg + shape */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
+      >
+        <div className="h-full w-full bg-stone-800">
+          <div className="absolute top-1/2 left-1/2 h-16 w-12 -translate-x-1/2 -translate-y-1/2 rounded-md bg-stone-600" />
+        </div>
+      </div>
+      {/* Labels */}
+      <span className="absolute top-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+        Before
+      </span>
+      <span className="absolute top-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+        After
+      </span>
+      {/* Divider */}
+      <m.div
+        drag="x"
+        dragConstraints={containerRef}
+        dragElastic={0}
+        dragMomentum={false}
+        onDrag={handleDrag}
+        className="absolute top-0 z-10 flex h-full w-6 -translate-x-1/2 cursor-ew-resize items-center justify-center"
+        style={{ left: `${position}%` }}
+      >
+        <div className="h-full w-0.5 bg-white/80" />
+        <div className="absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-black/60">
+          <span className="text-[10px] text-white">&#x2194;</span>
+        </div>
+      </m.div>
+    </div>
+  );
 }
+
+function BeforeAfterUpscale() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState(50);
+
+  const handleDrag = useCallback((_: unknown, info: { point: { x: number } }) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setPosition(pct);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className="relative h-full min-h-[160px] w-full select-none overflow-hidden rounded-lg"
+      role="slider"
+      aria-label="Before and after comparison"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(position)}
+    >
+      {/* After side: crisp gradient */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-4 rounded-md bg-gradient-to-br from-amber-600/60 via-orange-500/40 to-rose-600/60" />
+      </div>
+      {/* Before side: blurry gradient */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
+      >
+        <div className="h-full w-full" style={{ filter: "blur(6px)" }}>
+          <div className="absolute inset-4 rounded-md bg-gradient-to-br from-amber-600/60 via-orange-500/40 to-rose-600/60" />
+        </div>
+      </div>
+      {/* Labels */}
+      <span className="absolute top-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+        Before
+      </span>
+      <span className="absolute top-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+        After
+      </span>
+      {/* Divider */}
+      <m.div
+        drag="x"
+        dragConstraints={containerRef}
+        dragElastic={0}
+        dragMomentum={false}
+        onDrag={handleDrag}
+        className="absolute top-0 z-10 flex h-full w-6 -translate-x-1/2 cursor-ew-resize items-center justify-center"
+        style={{ left: `${position}%` }}
+      >
+        <div className="h-full w-0.5 bg-white/80" />
+        <div className="absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-black/60">
+          <span className="text-[10px] text-white">&#x2194;</span>
+        </div>
+      </m.div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main BentoGrid component                                           */
+/* ------------------------------------------------------------------ */
 
 export function BentoGrid() {
   const [search, setSearch] = useState("");
@@ -391,60 +530,72 @@ export function BentoGrid() {
     });
   }, [search, activeCategory]);
 
+  const isFeatured2x2 = (name: string) => FEATURED_2x2.includes(name);
+  const isFeatured2x1 = (name: string) => FEATURED_2x1.includes(name);
+
   return (
     <section id="features" className="px-6 py-24 md:py-36">
       <div className="mx-auto max-w-6xl">
         <FadeIn>
-          <h2 className="font-[family-name:var(--font-nunito)] text-center text-3xl font-bold tracking-tight md:text-4xl">
-            48 tools. Zero cloud dependency.
-          </h2>
+          <div className="flex items-center justify-center gap-3">
+            <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight md:text-4xl">
+              48 tools. Zero cloud dependency.
+            </h2>
+            <span className="hidden shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent md:inline-block">
+              48 tools and counting
+            </span>
+          </div>
           <p className="mx-auto mt-4 max-w-xl text-center text-lg text-muted">
             Search to find exactly what you need. Every tool runs 100% locally.
           </p>
         </FadeIn>
 
         {/* Search bar */}
-        <div className="mx-auto mt-12 max-w-md">
-          <div className="relative">
-            <Search size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-muted" />
-            <input
-              type="text"
-              placeholder="Search tools..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background py-3 pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted focus:border-accent"
-            />
+        <FadeIn delay={0.05}>
+          <div className="mx-auto mt-12 max-w-md">
+            <div className="relative">
+              <Search size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                placeholder="Search 48 tools..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-border bg-card py-3 pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted focus:border-accent"
+              />
+            </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Category pills */}
-        <div className="mt-6 flex flex-nowrap gap-2 overflow-x-auto pb-2 md:flex-wrap md:justify-center md:overflow-visible">
-          <button
-            type="button"
-            onClick={() => setActiveCategory("all")}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              activeCategory === "all"
-                ? "bg-accent text-accent-foreground"
-                : "border border-border hover:bg-background-alt"
-            }`}
-          >
-            All ({tools.length})
-          </button>
-          {categories.map((cat) => (
+        <FadeIn delay={0.1}>
+          <div className="mt-6 flex flex-nowrap gap-2 overflow-x-auto pb-2 md:flex-wrap md:justify-center md:overflow-visible">
             <button
-              key={cat.id}
               type="button"
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => setActiveCategory("all")}
               className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                activeCategory === cat.id
+                activeCategory === "all"
                   ? "bg-accent text-accent-foreground"
-                  : "border border-border hover:bg-background-alt"
+                  : "border border-border hover:border-border/80"
               }`}
             >
-              {cat.name} ({getCategoryCount(cat.id)})
+              All Tools
             </button>
-          ))}
-        </div>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActiveCategory(cat.id)}
+                className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  activeCategory === cat.id
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-border hover:border-border/80"
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        </FadeIn>
 
         {/* Result count */}
         <p className="mt-6 text-center text-sm text-muted">
@@ -453,26 +604,115 @@ export function BentoGrid() {
 
         {/* Tool grid */}
         {filtered.length > 0 ? (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            {filtered.map((tool) => {
-              const cat = categoryMap.get(tool.category);
-              const Icon = tool.icon;
-              return (
-                <div
-                  key={tool.name}
-                  className="tool-card flex flex-col items-center rounded-xl border border-border bg-background-alt px-4 py-6 text-center transition-all hover:shadow-md"
-                  style={
-                    {
-                      "--cat-color": cat?.color,
-                    } as React.CSSProperties
-                  }
-                >
-                  <Icon size={30} style={{ color: cat?.color }} className="mb-3 shrink-0" />
-                  <span className="font-bold text-sm">{tool.name}</span>
-                  <p className="mt-1.5 text-xs leading-relaxed text-muted">{tool.description}</p>
-                </div>
-              );
-            })}
+          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((tool, i) => {
+                const cat = categoryMap.get(tool.category);
+                const Icon = tool.icon;
+                const is2x2 = isFeatured2x2(tool.name);
+                const is2x1 = isFeatured2x1(tool.name);
+
+                if (is2x2) {
+                  return (
+                    <m.div
+                      key={tool.name}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: i * 0.02 }}
+                      className="tool-card col-span-2 row-span-2 flex flex-col rounded-xl border border-border bg-card/80 p-5 backdrop-blur-sm transition-[border-color] duration-300 max-md:col-span-2"
+                      style={{ "--cat-color": cat?.color } as React.CSSProperties}
+                    >
+                      <div className="mb-3 flex items-center gap-3">
+                        <div
+                          className="flex h-9 w-9 items-center justify-center rounded-lg"
+                          style={{
+                            backgroundColor: `${cat?.color}33`,
+                            color: cat?.color,
+                          }}
+                        >
+                          <Icon size={18} />
+                        </div>
+                        <div>
+                          <h3 className="font-[family-name:var(--font-display)] text-sm font-bold">
+                            {tool.name}
+                          </h3>
+                          <p className="text-xs text-muted">{tool.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        {tool.name === "Remove Background" ? (
+                          <BeforeAfterRemoveBg />
+                        ) : (
+                          <BeforeAfterUpscale />
+                        )}
+                      </div>
+                    </m.div>
+                  );
+                }
+
+                if (is2x1) {
+                  return (
+                    <m.div
+                      key={tool.name}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: i * 0.02 }}
+                      className="tool-card col-span-2 flex items-center gap-4 rounded-xl border border-border bg-card/80 p-5 backdrop-blur-sm transition-[border-color] duration-300 max-md:col-span-2"
+                      style={{ "--cat-color": cat?.color } as React.CSSProperties}
+                    >
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
+                        style={{
+                          backgroundColor: `${cat?.color}33`,
+                          color: cat?.color,
+                        }}
+                      >
+                        <Icon size={22} />
+                      </div>
+                      <div>
+                        <h3 className="font-[family-name:var(--font-display)] text-sm font-bold">
+                          {tool.name}
+                        </h3>
+                        <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                          {tool.description}
+                        </p>
+                      </div>
+                    </m.div>
+                  );
+                }
+
+                return (
+                  <m.div
+                    key={tool.name}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3, delay: i * 0.02 }}
+                    className="tool-card flex flex-col rounded-xl border border-border bg-card/80 p-4 backdrop-blur-sm transition-[border-color] duration-300"
+                    style={{ "--cat-color": cat?.color } as React.CSSProperties}
+                  >
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-lg"
+                      style={{
+                        backgroundColor: `${cat?.color}33`,
+                        color: cat?.color,
+                      }}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    <h3 className="mt-3 font-[family-name:var(--font-display)] text-sm font-bold leading-tight">
+                      {tool.name}
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-muted">{tool.description}</p>
+                  </m.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         ) : (
           <p className="mt-16 text-center text-muted">No tools found. Try a different search.</p>

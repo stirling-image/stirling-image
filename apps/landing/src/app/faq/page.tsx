@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
@@ -31,7 +32,7 @@ const faqs = [
   {
     question: "What AI features are included?",
     answer:
-      "SnapOtter includes 14 local AI models for background removal, upscaling, OCR, face detection, colorization, noise removal, photo restoration, and more. All models run on your hardware.",
+      "SnapOtter includes 15 local AI models for background removal, upscaling, OCR, face detection, colorization, noise removal, photo restoration, and more. All models run on your hardware.",
   },
   {
     question: "Does SnapOtter collect any analytics?",
@@ -59,14 +60,33 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
         type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between py-5 text-left"
+        aria-expanded={open}
       >
-        <span className="text-base font-medium">{question}</span>
+        <span className="font-[family-name:var(--font-display)] text-base font-medium">
+          {question}
+        </span>
         <ChevronDown
           size={18}
           className={`shrink-0 text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
         />
       </button>
-      {open && <p className="pb-5 text-sm leading-relaxed text-muted">{answer}</p>}
+      <AnimatePresence initial={false}>
+        {open && (
+          <m.div
+            role="region"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <p className="pb-5 text-sm leading-relaxed text-muted font-[family-name:var(--font-body)]">
+              {answer}
+            </p>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -75,15 +95,15 @@ export default function FaqPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-16">
+      <main className="bg-background pt-16 text-foreground">
         <section className="px-6 py-24 md:py-32">
           <div className="mx-auto max-w-3xl">
             <FadeIn>
               <div className="text-center">
-                <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight md:text-5xl">
                   Frequently Asked Questions
                 </h1>
-                <p className="mt-6 text-lg text-muted">
+                <p className="mt-6 text-lg text-muted font-[family-name:var(--font-body)]">
                   Everything you need to know about SnapOtter.
                 </p>
               </div>

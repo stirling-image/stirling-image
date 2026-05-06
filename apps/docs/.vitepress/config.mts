@@ -6,15 +6,18 @@ export default defineConfig({
   description:
     "Documentation for SnapOtter - A Self Hosted Image Manipulator. 48 tools, local AI, pipelines, REST API.",
   base: "/",
-  appearance: { initialValue: "light" },
+  appearance: "dark",
   srcDir: ".",
   outDir: "./.vitepress/dist",
   ignoreDeadLinks: [/localhost/],
 
   head: [
-    ["meta", { name: "theme-color", content: "#3b82f6" }],
+    ["meta", { name: "theme-color", content: "#f59e0b" }],
     ["link", { rel: "icon", type: "image/png", href: "/favicon.png" }],
     ["link", { rel: "llms-txt", href: "/llms.txt" }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap' }],
   ],
 
   vite: {

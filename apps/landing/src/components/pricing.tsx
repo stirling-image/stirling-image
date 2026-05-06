@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
+import Link from "next/link";
 
-import { FadeIn } from "./fade-in";
+import { FadeIn } from "@/components/fade-in";
 
 const freePlan = {
   name: "Open Source",
@@ -25,7 +26,6 @@ const freePlan = {
   ],
   cta: "Get Started Free",
   href: "https://github.com/snapotter-hq/snapotter",
-  external: true,
 };
 
 const enterprisePlan = {
@@ -46,18 +46,19 @@ const enterprisePlan = {
     "Security review and compliance documentation",
     "OEM and white-label options",
   ],
-  cta: "Contact Sales",
+  cta: "Contact Us",
   href: "/contact",
-  external: false,
 };
 
 export function Pricing() {
   return (
-    <section id="pricing" className="bg-background-alt px-6 py-24 md:py-36">
+    <section id="pricing" className="px-6 py-24 md:py-36">
       <div className="mx-auto max-w-5xl">
         <FadeIn>
-          <p className="text-center text-sm font-medium text-accent">Pricing</p>
-          <h2 className="mt-2 font-[family-name:var(--font-nunito)] text-center text-3xl font-bold tracking-tight md:text-4xl">
+          <p className="text-center text-sm font-medium tracking-wide uppercase text-accent">
+            Pricing
+          </p>
+          <h2 className="mt-3 font-[family-name:var(--font-display)] text-center text-3xl font-bold tracking-tight md:text-4xl">
             Free for everyone. Enterprise when you need it.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted">
@@ -67,13 +68,22 @@ export function Pricing() {
         </FadeIn>
 
         <div className="mt-16 grid gap-8 md:grid-cols-2">
-          <FadeIn>
-            <div className="flex h-full flex-col rounded-2xl border border-border bg-background p-8">
+          {/* Free / Open Source tier */}
+          <FadeIn delay={0}>
+            <div className="relative flex h-full flex-col rounded-2xl border border-accent bg-card p-8 shadow-[0_0_20px_#f59e0b30]">
+              <div className="absolute -top-3 left-8">
+                <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
+                  Most Popular
+                </span>
+              </div>
+
               <p className="text-sm font-medium text-accent">{freePlan.subtitle}</p>
-              <h3 className="mt-1 font-[family-name:var(--font-nunito)] text-2xl font-bold">
+              <h3 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold">
                 {freePlan.name}
               </h3>
-              <p className="mt-4 text-4xl font-bold">{freePlan.price}</p>
+              <p className="mt-4 font-[family-name:var(--font-display)] text-4xl font-bold">
+                {freePlan.price}
+              </p>
 
               <ul className="mt-8 flex-1 space-y-3">
                 {freePlan.features.map((feature) => (
@@ -88,20 +98,23 @@ export function Pricing() {
                 href={freePlan.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-8 block rounded-xl border-2 border-accent px-4 py-3 text-center text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="mt-8 block rounded-xl bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-4 py-3 text-center text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
               >
                 {freePlan.cta} &rarr;
               </a>
             </div>
           </FadeIn>
 
+          {/* Enterprise tier */}
           <FadeIn delay={0.1}>
-            <div className="flex h-full flex-col rounded-2xl border border-border bg-background p-8">
+            <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-8">
               <p className="text-sm font-medium text-accent">{enterprisePlan.subtitle}</p>
-              <h3 className="mt-1 font-[family-name:var(--font-nunito)] text-2xl font-bold">
+              <h3 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold">
                 {enterprisePlan.name}
               </h3>
-              <p className="mt-4 text-4xl font-bold">{enterprisePlan.price}</p>
+              <p className="mt-4 font-[family-name:var(--font-display)] text-4xl font-bold">
+                {enterprisePlan.price}
+              </p>
 
               <ul className="mt-8 flex-1 space-y-3">
                 {enterprisePlan.features.map((feature) => (
@@ -112,12 +125,12 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <a
+              <Link
                 href={enterprisePlan.href}
-                className="mt-8 block rounded-xl bg-accent px-4 py-3 text-center text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+                className="mt-8 block rounded-xl border border-border px-4 py-3 text-center text-sm font-semibold transition-colors hover:border-[#44403c] hover:bg-background"
               >
                 {enterprisePlan.cta} &rarr;
-              </a>
+              </Link>
             </div>
           </FadeIn>
         </div>

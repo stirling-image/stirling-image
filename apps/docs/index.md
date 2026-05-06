@@ -3,29 +3,35 @@ layout: home
 
 hero:
   name: "SnapOtter"
-  text: "A Self Hosted Image Manipulator"
-  tagline: 48 tools. Local AI. No cloud. Your images never leave your home.
+  text: "Self-Hosted Image Processing Platform"
+  tagline: "48 tools. 15 AI models. 100% offline. Open source."
   actions:
     - theme: brand
-      text: Get started
+      text: Get Started
       link: /guide/getting-started
     - theme: alt
-      text: API reference
+      text: API Reference
       link: /api/rest
 
 features:
-  - title: 48 Image Tools
-    details: Resize, crop, compress, convert, watermark, color adjust, vectorize, create GIFs, build collages, generate passport photos, find duplicates, and more.
-  - title: Local AI
-    details: 15 AI-powered tools - remove backgrounds, upscale, enhance images, restore and colorize old photos, erase objects, blur faces, enhance faces, extract text (OCR), fix fake transparency. All on your hardware, no internet required.
-  - title: Pipelines
-    details: Chain tools into reusable workflows with unlimited steps. Batch process unlimited images at once with a single request.
-  - title: REST API
-    details: Every tool available via API with API key auth. Interactive docs at /api/docs, plus /llms.txt and /llms-full.txt for AI agents.
-  - title: File Library
-    details: Persistent file storage with full version history. Every processing step is tracked so you can trace the full tool chain from original to final output.
-  - title: Teams & Access Control
-    details: Multi-user support with admin/user roles, team grouping, per-resource permissions, and audit logging for all sensitive actions.
+  - icon: "🔧"
+    title: "48 Image Tools"
+    details: "Resize, crop, compress, watermark, convert, and more. Everything you need for image processing in one place."
+  - icon: "🤖"
+    title: "15 Local AI Models"
+    details: "Background removal, upscaling, face enhancement, colorization, OCR, and more. All running on your hardware."
+  - icon: "🔗"
+    title: "Pipeline Automation"
+    details: "Chain tools into reusable workflows. Process thousands of images with a single click."
+  - icon: "📡"
+    title: "REST API"
+    details: "Full REST API with OpenAPI documentation. Integrate image processing into your applications."
+  - icon: "📁"
+    title: "File Library"
+    details: "Organized file management with versions, metadata, and batch operations."
+  - icon: "👥"
+    title: "Teams & Access Control"
+    details: "Multi-user support with roles, permissions, API keys, and audit logging."
 ---
 
 <div class="quick-start-banner">

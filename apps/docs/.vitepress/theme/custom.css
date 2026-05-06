@@ -1,4 +1,52 @@
-/* Move the docker command banner between hero and features */
+/* ===== VitePress variable overrides ===== */
+:root {
+  --vp-c-brand-1: #d97706;
+  --vp-c-brand-2: #f59e0b;
+  --vp-c-brand-3: #fbbf24;
+  --vp-c-bg: #fafaf9;
+  --vp-c-bg-soft: #f5f5f4;
+  --vp-c-bg-alt: #ffffff;
+  --vp-c-text-1: #0c0a09;
+  --vp-c-text-2: #78716c;
+  --vp-c-text-3: #a8a29e;
+  --vp-c-divider: #e7e5e4;
+  --vp-font-family-base: 'Instrument Sans', sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --vp-c-brand-1: #f59e0b;
+  --vp-c-brand-2: #fbbf24;
+  --vp-c-brand-3: #fde68a;
+  --vp-c-bg: #0c0a09;
+  --vp-c-bg-soft: #1c1917;
+  --vp-c-bg-alt: #1c1917;
+  --vp-c-text-1: #fafaf9;
+  --vp-c-text-2: #a8a29e;
+  --vp-c-text-3: #78716c;
+  --vp-c-divider: #292524;
+}
+
+/* ===== Heading font override ===== */
+h1, h2, h3, h4 { font-family: 'Bricolage Grotesque', sans-serif; }
+.VPHero .name { font-family: 'Bricolage Grotesque', sans-serif; }
+
+/* ===== Code block styling ===== */
+.dark .vp-code-group .tabs,
+.dark div[class*="language-"] {
+  --vp-code-block-bg: #1c1917;
+}
+
+/* ===== Sidebar refinement ===== */
+.VPSidebar .VPSidebarItem.is-active > .item .link > .text {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+.VPSidebar .VPSidebarItem .item .link:hover .text {
+  color: var(--vp-c-brand-2);
+}
+
+/* ===== Move the docker command banner between hero and features ===== */
 .VPHome {
   display: flex;
   flex-direction: column;
@@ -16,7 +64,7 @@
   order: 2;
 }
 
-/* Quick start command banner on homepage */
+/* ===== Quick start command banner on homepage ===== */
 .quick-start-banner {
   max-width: 960px;
   margin: 0 auto 48px;
@@ -29,17 +77,12 @@
   border-radius: 10px;
 }
 
-/* Hide the three-dots extra menu - its contents are now in the navbar directly */
+/* ===== Hide the three-dots extra menu ===== */
 .VPNavBarExtra {
   display: none !important;
 }
 
-/* Also hide the default appearance toggle since we render our own */
-.VPNavBarAppearance {
-  display: none !important;
-}
-
-/* Right side of navbar: toggle + GitHub button */
+/* ===== Right side of navbar: GitHub button ===== */
 .nav-bar-right {
   display: flex;
   align-items: center;
@@ -47,7 +90,7 @@
   margin-left: 16px;
 }
 
-/* GitHub button group */
+/* ===== GitHub button group ===== */
 .github-btn-wrapper {
   display: flex;
   align-items: stretch;

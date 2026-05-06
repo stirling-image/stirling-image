@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, FileText, Loader2, Monitor, Shield } from "lucide-react";
+import { CheckCircle, FileText, Loader2, Mail, Monitor, Shield } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -26,7 +26,13 @@ const benefits = [
   },
 ];
 
-const subjects = ["Book a Demo", "Enterprise Licensing", "Deployment Help", "General Inquiry"];
+const subjects = [
+  "Book a Demo",
+  "Deployment Support",
+  "Enterprise Licensing",
+  "General Inquiry",
+  "Bug Report",
+];
 
 const FORMSPREE_URL = "https://formspree.io/f/mykllwek";
 
@@ -70,8 +76,10 @@ export default function ContactPage() {
             {/* Left column */}
             <FadeIn>
               <div>
-                <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Get in touch</h1>
-                <p className="mt-6 text-lg leading-relaxed text-muted">
+                <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight md:text-5xl">
+                  Get in touch
+                </h1>
+                <p className="mt-6 text-lg leading-relaxed text-muted font-[family-name:var(--font-body)]">
                   Whether you need a demo, have questions about deployment, or want to discuss
                   enterprise licensing, we are here to help.
                 </p>
@@ -80,14 +88,16 @@ export default function ContactPage() {
                   {benefits.map((item) => (
                     <div
                       key={item.title}
-                      className="flex gap-4 rounded-xl border border-border p-5"
+                      className="flex gap-4 rounded-xl border border-border bg-card/50 p-5 backdrop-blur-sm"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                        <item.icon size={20} className="text-accent" />
+                        <item.icon size={20} className="text-accent" aria-hidden="true" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <p className="mt-1 text-sm leading-relaxed text-muted">
+                        <h3 className="font-[family-name:var(--font-display)] font-semibold">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-sm leading-relaxed text-muted font-[family-name:var(--font-body)]">
                           {item.description}
                         </p>
                       </div>
@@ -95,25 +105,36 @@ export default function ContactPage() {
                   ))}
                 </div>
 
-                <p className="mt-10 text-sm text-muted">
-                  Open source under AGPL-3.0. Commercial licenses available.
-                </p>
+                <div className="mt-10 flex items-center gap-2 text-sm text-muted">
+                  <Mail size={16} aria-hidden="true" />
+                  <span className="font-[family-name:var(--font-body)]">
+                    Or email us directly at{" "}
+                    <a
+                      href="mailto:contact@snapotter.com"
+                      className="text-accent underline underline-offset-4 hover:text-accent-hover"
+                    >
+                      contact@snapotter.com
+                    </a>
+                  </span>
+                </div>
               </div>
             </FadeIn>
 
             {/* Right column */}
             <FadeIn delay={0.1}>
               {submitted ? (
-                <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-border bg-background-alt p-12 text-center">
+                <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-border bg-card/80 p-12 text-center backdrop-blur-sm">
                   <CheckCircle size={48} className="text-emerald-500" />
-                  <h2 className="mt-6 text-2xl font-bold">Message sent!</h2>
-                  <p className="mt-3 text-muted">
+                  <h2 className="mt-6 font-[family-name:var(--font-display)] text-2xl font-bold">
+                    Message sent!
+                  </h2>
+                  <p className="mt-3 text-muted font-[family-name:var(--font-body)]">
                     Thanks for reaching out. We will get back to you within 24 hours.
                   </p>
                   <button
                     type="button"
                     onClick={() => setSubmitted(false)}
-                    className="mt-8 rounded-lg border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:bg-background"
+                    className="mt-8 rounded-lg border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:bg-card"
                   >
                     Send another message
                   </button>
@@ -121,7 +142,7 @@ export default function ContactPage() {
               ) : (
                 <form
                   onSubmit={handleSubmit}
-                  className="rounded-2xl border border-border bg-background-alt p-8"
+                  className="rounded-2xl border border-border bg-card/80 p-8 backdrop-blur-sm"
                 >
                   <div className="space-y-5">
                     <div>
@@ -165,11 +186,12 @@ export default function ContactPage() {
 
                     <div>
                       <label htmlFor="subject" className="mb-1.5 block text-sm font-medium">
-                        Subject
+                        Subject <span className="text-accent">*</span>
                       </label>
                       <select
                         id="subject"
                         name="subject"
+                        required
                         defaultValue={subjects[0]}
                         className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent"
                       >
@@ -195,7 +217,7 @@ export default function ContactPage() {
                     </div>
 
                     {error && (
-                      <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+                      <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
                         {error}
                       </p>
                     )}
@@ -215,16 +237,6 @@ export default function ContactPage() {
                       )}
                     </button>
                   </div>
-
-                  <p className="mt-5 text-center text-sm text-muted">
-                    Or email us directly at{" "}
-                    <a
-                      href="mailto:contact@snapotter.com"
-                      className="text-accent underline underline-offset-4 hover:text-accent-hover"
-                    >
-                      contact@snapotter.com
-                    </a>
-                  </p>
                 </form>
               )}
             </FadeIn>
