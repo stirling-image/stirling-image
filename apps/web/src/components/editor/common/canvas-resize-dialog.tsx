@@ -30,9 +30,9 @@ export function CanvasResizeDialog({ open, onClose }: { open: boolean; onClose: 
   const [fill, setFill] = useState("#ffffff");
 
   const handleApply = useCallback(() => {
-    resizeCanvas(width, height, anchor, fill);
+    resizeCanvas(width, height, anchor);
     onClose();
-  }, [width, height, anchor, fill, resizeCanvas, onClose]);
+  }, [width, height, anchor, resizeCanvas, onClose]);
 
   if (!open) return null;
 

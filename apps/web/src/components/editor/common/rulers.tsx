@@ -34,7 +34,7 @@ export function HorizontalRuler() {
   const zoom = useEditorStore((s) => s.zoom);
   const panOffset = useEditorStore((s) => s.panOffset);
   const canvasSize = useEditorStore((s) => s.canvasSize);
-  const showRulers = useEditorStore((s) => s.showRulers);
+  const showRulers = useEditorStore((s) => s.rulersVisible);
   const addGuide = useEditorStore((s) => s.addGuide);
 
   const draw = useCallback(() => {
@@ -146,7 +146,7 @@ export function VerticalRuler() {
   const zoom = useEditorStore((s) => s.zoom);
   const panOffset = useEditorStore((s) => s.panOffset);
   const canvasSize = useEditorStore((s) => s.canvasSize);
-  const showRulers = useEditorStore((s) => s.showRulers);
+  const showRulers = useEditorStore((s) => s.rulersVisible);
   const addGuide = useEditorStore((s) => s.addGuide);
 
   const draw = useCallback(() => {

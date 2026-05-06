@@ -1,8 +1,8 @@
 import type Konva from "konva";
 import { useCallback, useEffect, useRef } from "react";
 import { Transformer } from "react-konva";
+import type { SmartGuide } from "@/components/editor/common/smart-guides";
 import { useEditorStore } from "@/stores/editor-store";
-import type { SmartGuide } from "@/types/editor";
 
 // ---------------------------------------------------------------------------
 // Smart guide calculation
@@ -258,7 +258,7 @@ export function useMoveTool(): MoveToolApi {
   const setSelectedObjects = useEditorStore((s) => s.setSelectedObjects);
   const updateObject = useEditorStore((s) => s.updateObject);
   const canvasSize = useEditorStore((s) => s.canvasSize);
-  const snapToGuides = useEditorStore((s) => s.snapToGuides);
+  const snapToGuides = useEditorStore((s) => s.snappingEnabled);
 
   // Attach transformer to selected nodes
   useEffect(() => {
@@ -379,9 +379,10 @@ export function useMoveTool(): MoveToolApi {
       for (const id of selectedObjectIds) {
         const obj = useEditorStore.getState().objects.find((o) => o.id === id);
         if (!obj) continue;
+        const attrs = obj.attrs as unknown as Record<string, unknown>;
         updateObject(id, {
-          x: ((obj.attrs.x as number) ?? 0) + dx,
-          y: ((obj.attrs.y as number) ?? 0) + dy,
+          x: ((attrs.x as number) ?? 0) + dx,
+          y: ((attrs.y as number) ?? 0) + dy,
         });
       }
     },

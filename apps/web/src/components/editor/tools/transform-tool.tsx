@@ -56,12 +56,13 @@ export function useTransformTool(): TransformToolApi {
     if (!isTransforming || selectedObjectIds.length === 0) return;
     const obj = objects.find((o) => o.id === selectedObjectIds[0]);
     if (!obj) return;
+    const a = obj.attrs as unknown as Record<string, unknown>;
     const v: TransformValues = {
-      x: (obj.attrs.x as number) ?? 0,
-      y: (obj.attrs.y as number) ?? 0,
-      width: (obj.attrs.width as number) ?? 0,
-      height: (obj.attrs.height as number) ?? 0,
-      rotation: (obj.attrs.rotation as number) ?? 0,
+      x: (a.x as number) ?? 0,
+      y: (a.y as number) ?? 0,
+      width: (a.width as number) ?? 0,
+      height: (a.height as number) ?? 0,
+      rotation: (a.rotation as number) ?? 0,
     };
     setValuesState(v);
   }, [isTransforming, selectedObjectIds, objects]);
@@ -86,12 +87,13 @@ export function useTransformTool(): TransformToolApi {
     // Store pre-transform state for cancel
     const obj = objects.find((o) => o.id === selectedObjectIds[0]);
     if (obj) {
+      const a = obj.attrs as unknown as Record<string, unknown>;
       preTransformRef.current = {
-        x: (obj.attrs.x as number) ?? 0,
-        y: (obj.attrs.y as number) ?? 0,
-        width: (obj.attrs.width as number) ?? 0,
-        height: (obj.attrs.height as number) ?? 0,
-        rotation: (obj.attrs.rotation as number) ?? 0,
+        x: (a.x as number) ?? 0,
+        y: (a.y as number) ?? 0,
+        width: (a.width as number) ?? 0,
+        height: (a.height as number) ?? 0,
+        rotation: (a.rotation as number) ?? 0,
       };
     }
   }, [selectedObjectIds, objects]);
@@ -157,8 +159,9 @@ export function useTransformTool(): TransformToolApi {
     for (const id of selectedObjectIds) {
       const obj = objects.find((o) => o.id === id);
       if (!obj) continue;
-      const currentScale = (obj.attrs.scaleX as number) ?? 1;
-      updateObject(id, { scaleX: -currentScale });
+      const a = obj.attrs as unknown as Record<string, unknown>;
+      const currentScale = (a.scaleX as number) ?? 1;
+      updateObject(id, { scaleX: -currentScale } as Record<string, unknown>);
     }
   }, [selectedObjectIds, objects, updateObject]);
 
@@ -166,8 +169,9 @@ export function useTransformTool(): TransformToolApi {
     for (const id of selectedObjectIds) {
       const obj = objects.find((o) => o.id === id);
       if (!obj) continue;
-      const currentScale = (obj.attrs.scaleY as number) ?? 1;
-      updateObject(id, { scaleY: -currentScale });
+      const a = obj.attrs as unknown as Record<string, unknown>;
+      const currentScale = (a.scaleY as number) ?? 1;
+      updateObject(id, { scaleY: -currentScale } as Record<string, unknown>);
     }
   }, [selectedObjectIds, objects, updateObject]);
 

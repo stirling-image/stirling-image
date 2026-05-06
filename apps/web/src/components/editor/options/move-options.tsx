@@ -65,7 +65,12 @@ export function MoveOptions() {
       | "distribute-h"
       | "distribute-v",
   ) => {
-    alignObjects(direction, selectedObjectIds, objects, updateObject);
+    alignObjects(
+      direction,
+      selectedObjectIds,
+      objects.map((o) => ({ id: o.id, attrs: o.attrs as unknown as Record<string, unknown> })),
+      updateObject,
+    );
   };
 
   return (

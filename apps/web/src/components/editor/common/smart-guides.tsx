@@ -1,6 +1,10 @@
 import { Group, Line } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
-import type { SmartGuide } from "@/types/editor";
+export interface SmartGuide {
+  orientation: "horizontal" | "vertical";
+  position: number;
+  type: "edge" | "center" | "canvas";
+}
 
 // ---------------------------------------------------------------------------
 // Smart guide calculation utilities (exported for testing)
@@ -156,7 +160,7 @@ export function snapToGuides(
 // SmartGuidesOverlay -- renders temporary guide lines during drag
 // ---------------------------------------------------------------------------
 
-const GUIDE_COLORS = {
+const GUIDE_COLORS: Record<SmartGuide["type"], string> = {
   edge: "#f43f5e",
   center: "#8b5cf6",
   canvas: "#22c55e",

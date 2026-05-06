@@ -2,7 +2,8 @@ import { Lock, Unlock, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
-import type { ResampleMethod } from "@/types/editor";
+
+type ResampleMethod = "nearest" | "bilinear" | "bicubic" | "lanczos";
 
 // ---------------------------------------------------------------------------
 // ImageResizeDialog -- modal with W/H, aspect lock, resampling method

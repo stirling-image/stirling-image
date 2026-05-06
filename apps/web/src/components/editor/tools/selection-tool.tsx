@@ -2,7 +2,10 @@ import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Ellipse, Group, Line, Rect } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
-import type { SelectionMode, SelectionState, SelectionType } from "@/types/editor";
+import type { SelectionState } from "@/types/editor";
+
+type SelectionMode = "new" | "add" | "subtract";
+type SelectionType = "rect" | "ellipse" | "lasso";
 
 // ---------------------------------------------------------------------------
 // Marching ants animation
@@ -237,8 +240,9 @@ export function useSelectionTool(): SelectionToolApi {
   const [currentPoints, setCurrentPoints] = useState<number[]>([]);
   const startRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const [selectionMode] = useState<SelectionMode>("new");
+
   const setSelection = useEditorStore((s) => s.setSelection);
-  const selectionMode = useEditorStore((s) => s.selectionMode);
   const canvasSize = useEditorStore((s) => s.canvasSize);
   const existingSelection = useEditorStore((s) => s.selection);
 

@@ -73,7 +73,8 @@ export function ContextMenu({
   const cutObjects = useEditorStore((s) => s.cutObjects);
   const pasteObjects = useEditorStore((s) => s.pasteObjects);
   const removeObjects = useEditorStore((s) => s.removeObjects);
-  const duplicateObjects = useEditorStore((s) => s.duplicateObjects);
+  const copyObjectsFn = useEditorStore((s) => s.copyObjects);
+  const pasteObjectsFn = useEditorStore((s) => s.pasteObjects);
   const bringToFront = useEditorStore((s) => s.bringToFront);
   const bringForward = useEditorStore((s) => s.bringForward);
   const sendBackward = useEditorStore((s) => s.sendBackward);
@@ -106,7 +107,7 @@ export function ContextMenu({
       icon: Scissors,
       shortcut: "Ctrl+X",
       action: () => {
-        cutObjects(selectedObjectIds);
+        cutObjects();
         onClose();
       },
     },
@@ -115,7 +116,7 @@ export function ContextMenu({
       icon: Copy,
       shortcut: "Ctrl+C",
       action: () => {
-        copyObjects(selectedObjectIds);
+        copyObjects();
         onClose();
       },
     },
@@ -127,14 +128,15 @@ export function ContextMenu({
         pasteObjects();
         onClose();
       },
-      disabled: clipboard.length === 0,
+      disabled: !clipboard || clipboard.length === 0,
     },
     {
       label: "Duplicate",
       icon: CopyPlus,
       shortcut: "Ctrl+D",
       action: () => {
-        duplicateObjects(selectedObjectIds);
+        copyObjectsFn();
+        pasteObjectsFn();
         onClose();
       },
       dividerAfter: true,
@@ -192,7 +194,7 @@ export function ContextMenu({
         pasteObjects();
         onClose();
       },
-      disabled: clipboard.length === 0,
+      disabled: !clipboard || clipboard.length === 0,
     },
     {
       label: "Select All",

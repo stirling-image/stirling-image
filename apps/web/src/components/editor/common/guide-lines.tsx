@@ -12,7 +12,7 @@ const GUIDE_WIDTH = 1;
 
 export function GuideLines() {
   const guides = useEditorStore((s) => s.guides);
-  const showGuides = useEditorStore((s) => s.showGuides);
+  const showGuides = useEditorStore((s) => s.guidesVisible);
   const canvasSize = useEditorStore((s) => s.canvasSize);
   const updateGuide = useEditorStore((s) => s.updateGuide);
   const removeGuide = useEditorStore((s) => s.removeGuide);

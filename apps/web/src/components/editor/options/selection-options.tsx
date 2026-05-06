@@ -1,8 +1,11 @@
 import { Circle, Minus, PenTool, Plus, Square, Wand2 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
-import type { SelectionMode, SelectionType, ToolType } from "@/types/editor";
+import type { ToolType } from "@/types/editor";
+
+type SelectionMode = "new" | "add" | "subtract";
+type SelectionType = "rect" | "ellipse" | "lasso";
 
 // ---------------------------------------------------------------------------
 // SelectionOptions -- selection type toggle, mode buttons, feather input
@@ -42,8 +45,7 @@ function ToggleButton({
 export function SelectionOptions() {
   const activeTool = useEditorStore((s) => s.activeTool);
   const setTool = useEditorStore((s) => s.setTool);
-  const selectionMode = useEditorStore((s) => s.selectionMode);
-  const setSelectionMode = useEditorStore((s) => s.setSelectionMode);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>("new");
 
   const selectionType: SelectionType =
     activeTool === "marquee-ellipse"
@@ -64,12 +66,9 @@ export function SelectionOptions() {
     [setTool],
   );
 
-  const handleModeChange = useCallback(
-    (mode: SelectionMode) => {
-      setSelectionMode(mode);
-    },
-    [setSelectionMode],
-  );
+  const handleModeChange = useCallback((mode: SelectionMode) => {
+    setSelectionMode(mode);
+  }, []);
 
   const isMarquee = activeTool === "marquee-rect" || activeTool === "marquee-ellipse";
   const isLasso = activeTool === "lasso-free" || activeTool === "lasso-poly";
