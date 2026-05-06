@@ -257,7 +257,7 @@ Intelligently resizes images by removing or adding low-energy seams, preserving 
 
 Max input edge before auto-downscaling: **1200 px**.
 
-## Transparency Fixer
+## PNG Transparency Fixer
 
 **Function:** `fixTransparency`  
 **Tool route:** `transparency-fixer`  

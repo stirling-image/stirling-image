@@ -239,7 +239,7 @@ const tools: { name: string; description: string; category: string; icon: Lucide
     icon: Scaling,
   },
   {
-    name: "Transparency Fixer",
+    name: "PNG Transparency Fixer",
     description: "Fix fake transparent PNGs with AI matting",
     category: "ai",
     icon: Droplets,

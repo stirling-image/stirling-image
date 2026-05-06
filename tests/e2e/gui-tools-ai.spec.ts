@@ -835,10 +835,10 @@ test.describe("GUI AI Tools", () => {
   // ========================================================================
   // TRANSPARENCY FIXER
   // ========================================================================
-  test.describe("Transparency Fixer", () => {
+  test.describe("PNG Transparency Fixer", () => {
     test("renders tool page with dropzone", async ({ loggedInPage: page }) => {
       await page.goto("/transparency-fixer");
-      await expect(page.getByText("Transparency Fixer").first()).toBeVisible();
+      await expect(page.getByText("PNG Transparency Fixer").first()).toBeVisible();
       await expect(page.getByText("Upload from computer")).toBeVisible();
     });
 

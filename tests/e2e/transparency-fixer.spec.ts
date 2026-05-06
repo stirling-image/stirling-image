@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect, isAiSidecarRunning, test } from "./helpers";
 
 // ---------------------------------------------------------------------------
-// Transparency Fixer tool - e2e tests.
+// PNG Transparency Fixer tool - e2e tests.
 // Covers UI rendering, advanced settings, processing flow, and result display.
 // ---------------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ async function fixTransparencyAndWait(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("transparency-fixer-submit")).toBeVisible({ timeout: 10_000 });
 }
 
-test.describe("Transparency Fixer tool", () => {
+test.describe("PNG Transparency Fixer tool", () => {
   async function skipIfFeatureNotInstalled(page: import("@playwright/test").Page) {
     await page.goto("/transparency-fixer");
     try {
@@ -48,7 +48,7 @@ test.describe("Transparency Fixer tool", () => {
     await skipIfFeatureNotInstalled(page);
 
     // Tool title shown in the settings panel header
-    await expect(page.getByText("Transparency Fixer")).toBeVisible();
+    await expect(page.getByText("PNG Transparency Fixer")).toBeVisible();
 
     // Description text from the settings component
     await expect(page.getByText("Upload a PNG with a fake transparent background")).toBeVisible();

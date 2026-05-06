@@ -89,7 +89,7 @@ async function postWithRawSettings(fileBuffer: Buffer, filename: string, rawSett
 // ═══════════════════════════════════════════════════════════════════════════
 // Happy path
 // ═══════════════════════════════════════════════════════════════════════════
-describe("Transparency Fixer - Happy path", () => {
+describe("PNG Transparency Fixer - Happy path", () => {
   it("processes fake-transparency PNG with default settings", async () => {
     const res = await postTransparencyFixer(FAKE_TRANSPARENCY, "test-fake-transparency.png", {});
     expect([200, 202, 501]).toContain(res.statusCode);
@@ -115,7 +115,7 @@ describe("Transparency Fixer - Happy path", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Advanced settings
 // ═══════════════════════════════════════════════════════════════════════════
-describe("Transparency Fixer - Advanced settings", () => {
+describe("PNG Transparency Fixer - Advanced settings", () => {
   it("accepts defringe at 0", async () => {
     const res = await postTransparencyFixer(PNG, "test.png", { defringe: 0 });
     expect([200, 202, 501]).toContain(res.statusCode);
@@ -140,7 +140,7 @@ describe("Transparency Fixer - Advanced settings", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Input format coverage
 // ═══════════════════════════════════════════════════════════════════════════
-describe("Transparency Fixer - Input format coverage", () => {
+describe("PNG Transparency Fixer - Input format coverage", () => {
   it("accepts JPEG input", async () => {
     const res = await postTransparencyFixer(JPG, "photo.jpg", {});
     expect([200, 202, 501]).toContain(res.statusCode);
@@ -170,7 +170,7 @@ describe("Transparency Fixer - Input format coverage", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Error handling
 // ═══════════════════════════════════════════════════════════════════════════
-describe("Transparency Fixer - Error handling", () => {
+describe("PNG Transparency Fixer - Error handling", () => {
   it("rejects requests without a file", async () => {
     const { body, contentType } = createMultipartPayload([
       { name: "settings", content: JSON.stringify({}) },
@@ -237,7 +237,7 @@ describe("Transparency Fixer - Error handling", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Edge cases
 // ═══════════════════════════════════════════════════════════════════════════
-describe("Transparency Fixer - Edge cases", () => {
+describe("PNG Transparency Fixer - Edge cases", () => {
   it("handles 1x1 pixel image", async () => {
     const res = await postTransparencyFixer(TINY, "tiny.png", {});
     expect([200, 202, 422, 501]).toContain(res.statusCode);

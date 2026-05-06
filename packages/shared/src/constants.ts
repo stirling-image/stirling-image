@@ -243,7 +243,7 @@ export const TOOLS: Tool[] = [
   },
   {
     id: "transparency-fixer",
-    name: "Transparency Fixer",
+    name: "PNG Transparency Fixer",
     description: "Fix fake transparent PNGs in one click",
     category: "ai",
     icon: "Wand2",

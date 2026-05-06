@@ -125,7 +125,7 @@ export const en = {
         "Create government-compliant passport, visa, and ID photos with auto face detection",
     },
     "transparency-fixer": {
-      name: "Transparency Fixer",
+      name: "PNG Transparency Fixer",
       description: "Fix fake transparent PNGs in one click",
     },
     "watermark-text": { name: "Text Watermark", description: "Add text watermark overlay" },
