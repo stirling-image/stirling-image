@@ -1,4 +1,12 @@
-import { FolderOpen, LayoutGrid, Menu, Settings as SettingsIcon, Workflow, X } from "lucide-react";
+import {
+  FolderOpen,
+  LayoutGrid,
+  Menu,
+  PenTool,
+  Settings as SettingsIcon,
+  Workflow,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMobile } from "@/hooks/use-mobile";
@@ -153,6 +161,7 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
         <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border flex items-center justify-around px-2 py-1.5">
           <MobileNavItem icon={LayoutGrid} label="Tools" href="/" />
           <MobileNavItem icon={Workflow} label="Automate" href="/automate" />
+          <MobileNavItem icon={PenTool} label="Editor" href="/editor" />
           <MobileNavItem icon={FolderOpen} label="Files" href="/files" />
           <button
             type="button"

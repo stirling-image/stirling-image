@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { FolderOpen, Grid3x3, HelpCircle, LayoutGrid, Settings, Workflow } from "lucide-react";
+import {
+  FolderOpen,
+  Grid3x3,
+  HelpCircle,
+  LayoutGrid,
+  PenTool,
+  Settings,
+  Workflow,
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { OtterLogo } from "../common/otter-logo";
@@ -14,6 +22,7 @@ const topItems: SidebarItem[] = [
   { icon: LayoutGrid, label: "Tools", href: "/" },
   { icon: Grid3x3, label: "Grid", href: "/fullscreen" },
   { icon: Workflow, label: "Automate", href: "/automate" },
+  { icon: PenTool, label: "Editor", href: "/editor" },
   { icon: FolderOpen, label: "Files", href: "/files" },
 ];
 

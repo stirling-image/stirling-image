@@ -28,6 +28,9 @@ const PrivacyPolicyPage = lazy(() =>
 const AnalyticsConsentPage = lazy(() =>
   import("./pages/analytics-consent-page").then((m) => ({ default: m.AnalyticsConsentPage })),
 );
+const EditorPage = lazy(() =>
+  import("./pages/editor-page").then((m) => ({ default: m.EditorPage })),
+);
 const ToolPage = lazy(() => import("./pages/tool-page").then((m) => ({ default: m.ToolPage })));
 
 class ErrorBoundary extends Component<
@@ -222,6 +225,7 @@ export function App() {
                 <Route path="/color-channels" element={<Navigate to="/adjust-colors" replace />} />
                 <Route path="/color-effects" element={<Navigate to="/adjust-colors" replace />} />
                 <Route path="/analytics-consent" element={<AnalyticsConsentPage />} />
+                <Route path="/editor" element={<EditorPage />} />
                 <Route path="/:toolId" element={<ToolPage />} />
                 <Route path="/" element={<HomePage />} />
               </Routes>
