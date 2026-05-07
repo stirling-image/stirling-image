@@ -81,6 +81,12 @@ export function useBrushTool() {
   }, []);
 
   const handleMouseUp = useCallback(() => {
+    if (strokeRef.current) {
+      useEditorStore.setState({
+        lastAction: "Brush Stroke",
+        _historyVersion: useEditorStore.getState()._historyVersion + 1,
+      });
+    }
     strokeRef.current = null;
   }, []);
 

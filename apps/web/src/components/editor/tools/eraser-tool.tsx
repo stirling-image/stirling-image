@@ -81,6 +81,12 @@ export function useEraserTool() {
   }, []);
 
   const handleMouseUp = useCallback(() => {
+    if (strokeRef.current) {
+      useEditorStore.setState({
+        lastAction: "Eraser Stroke",
+        _historyVersion: useEditorStore.getState()._historyVersion + 1,
+      });
+    }
     strokeRef.current = null;
   }, []);
 
