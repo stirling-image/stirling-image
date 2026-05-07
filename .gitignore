@@ -37,6 +37,7 @@ blob-report/
 
 # IDE / tool scratch
 CLAUDE.md
+CONTEXT.md
 .claude/
 .superpowers/
 docs/*
