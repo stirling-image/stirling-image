@@ -192,9 +192,12 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
 
       // Decode CLI-decoded formats (RAW, PSD, TGA, EXR, HDR) via external tools.
       // The decoded buffer is PNG, so update the filename extension to match.
+      // Pass the original file extension so RAW decoder can use the correct
+      // temp file suffix (e.g. .cr3, .nef) for format identification.
       if (needsCliDecode(validation.format)) {
         try {
-          fileBuffer = await decodeToSharpCompat(fileBuffer, validation.format);
+          const fileExt = filename.split(".").pop()?.toLowerCase();
+          fileBuffer = await decodeToSharpCompat(fileBuffer, validation.format, fileExt);
           const ext = filename.match(/\.[^.]+$/)?.[0];
           if (ext) filename = `${filename.slice(0, -ext.length)}.png`;
         } catch (err) {
@@ -314,6 +317,12 @@ export function createToolRoute<T>(app: FastifyInstance, config: ToolRouteConfig
           "image/bmp": ".bmp",
           "image/heic": ".heic",
           "image/heif": ".heif",
+          "image/jxl": ".jxl",
+          "image/x-icon": ".ico",
+          "image/vnd.adobe.photoshop": ".psd",
+          "image/x-exr": ".exr",
+          "image/vnd.radiance": ".hdr",
+          "image/x-targa": ".tga",
         };
         const expectedExt = CONTENT_TYPE_TO_EXT[result.contentType];
         if (expectedExt) {

@@ -38,6 +38,19 @@ const MAGIC_BYTES: MagicEntry[] = [
   { bytes: [0x4d, 0x4d, 0x00, 0x2a], offset: 0, format: "tiff" },
   { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4, format: "avif" }, // ftyp box; verified below
   { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4, format: "heif" }, // ftyp box; verified below
+  { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4, format: "cr3" }, // ftyp box; verified below
+  // Fujifilm RAF: "FUJIFILMCCD-RAW" at offset 0
+  {
+    bytes: [
+      0x46, 0x55, 0x4a, 0x49, 0x46, 0x49, 0x4c, 0x4d, 0x43, 0x43, 0x44, 0x2d, 0x52, 0x41, 0x57,
+    ],
+    offset: 0,
+    format: "raw",
+  },
+  // Sigma X3F: "FOVb" at offset 0
+  { bytes: [0x46, 0x4f, 0x56, 0x62], offset: 0, format: "raw" },
+  // Minolta MRW: "\x00MRM" at offset 0
+  { bytes: [0x00, 0x4d, 0x52, 0x4d], offset: 0, format: "raw" },
   // JXL ISOBMFF container
   { bytes: [0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20], offset: 0, format: "jxl" },
   // JXL raw codestream
@@ -64,7 +77,31 @@ export interface ValidationError {
 }
 
 /** Camera RAW extensions that share TIFF magic bytes. */
-const RAW_EXTENSIONS = new Set(["dng", "cr2", "nef", "arw", "orf", "rw2"]);
+const RAW_EXTENSIONS = new Set([
+  "dng",
+  "cr2",
+  "cr3",
+  "nef",
+  "nrw",
+  "arw",
+  "orf",
+  "rw2",
+  "raf",
+  "pef",
+  "3fr",
+  "iiq",
+  "srw",
+  "x3f",
+  "rwl",
+  "gpr",
+  "fff",
+  "mrw",
+  "mef",
+  "kdc",
+  "dcr",
+  "erf",
+  "ptx",
+]);
 
 /** Formats that Sharp cannot decode natively — skip dimension check. */
 const CLI_DECODED_FORMATS = new Set(["raw", "ico", "tga", "psd", "exr", "hdr", "bmp", "jxl"]);
@@ -218,6 +255,13 @@ function detectMagicBytes(buffer: Buffer): string | null {
         if (buffer.length < 12) continue;
         const brand = buffer.slice(8, 12).toString("ascii");
         if (!["heic", "heix", "mif1", "msf1", "hevc", "hevx"].includes(brand)) continue;
+      }
+      // For ftyp, verify CR3 brand at bytes 8-11.
+      if (entry.format === "cr3") {
+        if (buffer.length < 12) continue;
+        const brand = buffer.slice(8, 12).toString("ascii");
+        if (brand !== "crx ") continue;
+        return "raw"; // CR3 is a RAW format, routed through decodeRaw()
       }
       return entry.format;
     }
