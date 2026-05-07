@@ -1,12 +1,14 @@
 // apps/web/src/components/editor/editor-canvas.tsx
 
 import type Konva from "konva";
+import KonvaFilters from "konva";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Arrow,
   Ellipse,
   Group,
+  Image as KonvaImage,
   Layer,
   Line,
   Rect,
@@ -16,10 +18,10 @@ import {
   Star,
   Text,
 } from "react-konva";
+import useImage from "use-image";
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom";
-import { useEditorShortcuts } from "@/hooks/use-editor-shortcuts";
 import { useEditorStore } from "@/stores/editor-store";
-import type { CanvasObject } from "@/types/editor";
+import type { AdjustmentValues, CanvasObject, FilterConfig, ImageAttrs } from "@/types/editor";
 import { BrushCursorOverlay, useEditorCursor } from "./common/custom-cursor";
 import { LoadingOverlay } from "./common/loading-overlay";
 import { useBrushTool } from "./tools/brush-tool";
@@ -28,6 +30,11 @@ import { useFillTool } from "./tools/fill-tool";
 import { useGradientTool } from "./tools/gradient-tool";
 import { MoveToolTransformer, useMoveTool } from "./tools/move-tool";
 import { useShapeTool } from "./tools/shape-tool";
+
+// Module-level stage ref for export dialog access (Issue #6)
+export const editorStageRefHolder: { current: Konva.Stage | null } = {
+  current: null,
+};
 
 const CHECKERBOARD_SIZE = 20;
 const CHECKERBOARD_CSS = `
@@ -38,10 +45,170 @@ const CHECKERBOARD_CSS = `
 `;
 
 // ---------------------------------------------------------------------------
-// Canvas Object Renderer
+// Source Image Component (Issue #14)
 // ---------------------------------------------------------------------------
 
-function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
+function SourceImage({
+  url,
+  adjustments,
+  filters,
+}: {
+  url: string;
+  adjustments: AdjustmentValues;
+  filters: FilterConfig[];
+}) {
+  const [image] = useImage(url);
+  const imageRef = useRef<Konva.Image>(null);
+
+  // Issue #12: Apply adjustments/filters to the source image node
+  const hasActiveAdjustments = Object.values(adjustments).some((v) => v !== 0);
+  const hasActiveFilters = filters.some((f) => f.enabled);
+
+  useEffect(() => {
+    const node = imageRef.current;
+    if (!node || !image) return;
+
+    if (hasActiveAdjustments || hasActiveFilters) {
+      const konvaFilters: Array<((this: Konva.Node, imageData: ImageData) => void) | string> = [];
+
+      if (adjustments.brightness !== 0) {
+        konvaFilters.push(KonvaFilters.Filters.Brighten);
+        node.brightness(adjustments.brightness / 100);
+      }
+      if (adjustments.contrast !== 0) {
+        konvaFilters.push(KonvaFilters.Filters.Contrast);
+        node.contrast(adjustments.contrast);
+      }
+      if (adjustments.hue !== 0 || adjustments.saturation !== 0 || adjustments.luminance !== 0) {
+        konvaFilters.push(KonvaFilters.Filters.HSL);
+        node.hue(adjustments.hue);
+        node.saturation(adjustments.saturation / 100);
+        node.luminance(adjustments.luminance / 100);
+      }
+
+      // Apply enabled filters
+      for (const f of filters) {
+        if (!f.enabled) continue;
+        switch (f.type) {
+          case "blur":
+            konvaFilters.push(KonvaFilters.Filters.Blur);
+            node.blurRadius(f.params.radius ?? 0);
+            break;
+          case "grayscale":
+            konvaFilters.push(KonvaFilters.Filters.Grayscale);
+            break;
+          case "sepia":
+            konvaFilters.push(KonvaFilters.Filters.Sepia);
+            break;
+          case "invert":
+            konvaFilters.push(KonvaFilters.Filters.Invert);
+            break;
+          case "pixelate":
+            konvaFilters.push(KonvaFilters.Filters.Pixelate);
+            node.pixelSize(f.params.size ?? 1);
+            break;
+          case "emboss":
+            konvaFilters.push(KonvaFilters.Filters.Emboss);
+            node.embossStrength(f.params.strength ?? 0);
+            node.embossWhiteLevel(0.5);
+            node.embossBlend(true);
+            break;
+          case "posterize":
+            konvaFilters.push(KonvaFilters.Filters.Posterize);
+            node.levels(f.params.levels ?? 8);
+            break;
+          case "noise":
+            konvaFilters.push(KonvaFilters.Filters.Noise);
+            node.noise(f.params.amount ?? 0);
+            break;
+          case "solarize":
+            konvaFilters.push(KonvaFilters.Filters.Solarize);
+            break;
+          case "threshold":
+            konvaFilters.push(KonvaFilters.Filters.Threshold);
+            node.threshold((f.params.level ?? 0.5) * 255);
+            break;
+          case "kaleidoscope":
+            konvaFilters.push(KonvaFilters.Filters.Kaleidoscope);
+            node.kaleidoscopePower(f.params.power ?? 2);
+            node.kaleidoscopeAngle(f.params.angle ?? 0);
+            break;
+        }
+      }
+
+      node.cache();
+      node.filters(konvaFilters);
+      node.getLayer()?.batchDraw();
+    } else {
+      node.clearCache();
+      node.filters([]);
+      node.getLayer()?.batchDraw();
+    }
+  }, [image, adjustments, filters, hasActiveAdjustments, hasActiveFilters]);
+
+  if (!image) return null;
+
+  return <KonvaImage ref={imageRef} image={image} x={0} y={0} listening={false} />;
+}
+
+// ---------------------------------------------------------------------------
+// Image Object Component (Issue #4)
+// ---------------------------------------------------------------------------
+
+function ImageObject({
+  obj,
+  onClick,
+  onDragEnd,
+  onTransformEnd,
+  draggable,
+}: {
+  obj: CanvasObject & { type: "image" };
+  onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
+  draggable: boolean;
+}) {
+  const a = obj.attrs as ImageAttrs;
+  const [image] = useImage(a.src);
+  if (!image) return null;
+
+  return (
+    <KonvaImage
+      id={obj.id}
+      image={image}
+      x={a.x}
+      y={a.y}
+      width={a.width}
+      height={a.height}
+      rotation={a.rotation}
+      opacity={a.opacity}
+      draggable={draggable}
+      onClick={onClick}
+      onDragEnd={onDragEnd}
+      onTransformEnd={onTransformEnd}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Canvas Object Renderer (Issue #3: wire move tool handlers)
+// ---------------------------------------------------------------------------
+
+function CanvasObjectRenderer({
+  obj,
+  isMoveTool,
+  onSelect,
+  onDragEnd,
+  onTransformEnd,
+}: {
+  obj: CanvasObject;
+  isMoveTool: boolean;
+  onSelect?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
+}) {
+  const draggable = isMoveTool;
+
   switch (obj.type) {
     case "line": {
       const a = obj.attrs;
@@ -80,7 +247,10 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           cornerRadius={a.cornerRadius}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
@@ -98,7 +268,10 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           strokeWidth={a.strokeWidth}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
@@ -122,7 +295,10 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           height={a.height}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
@@ -139,7 +315,10 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           pointerWidth={a.pointerWidth}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
@@ -157,7 +336,10 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           strokeWidth={a.strokeWidth}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
@@ -176,13 +358,23 @@ function CanvasObjectRenderer({ obj }: { obj: CanvasObject }) {
           strokeWidth={a.strokeWidth}
           rotation={a.rotation}
           opacity={a.opacity}
-          draggable
+          draggable={draggable}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
         />
       );
     }
     case "image":
-      // Skip image objects for now (complex: requires Konva.Image with useImage)
-      return null;
+      return (
+        <ImageObject
+          obj={obj}
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onTransformEnd={onTransformEnd}
+          draggable={draggable}
+        />
+      );
     default:
       return null;
   }
@@ -248,14 +440,27 @@ export function EditorCanvas() {
   const layers = useEditorStore((s) => s.layers);
   const activeLayerId = useEditorStore((s) => s.activeLayerId);
   const activeTool = useEditorStore((s) => s.activeTool);
+  const adjustments = useEditorStore((s) => s.adjustments);
+  const filters = useEditorStore((s) => s.filters);
 
+  // Issue #10: Shortcuts moved to EditorPage, removed from here
   const cursor = useEditorCursor();
-  useEditorShortcuts();
 
   const { handlers, moveTool } = useActiveToolHandlers(stageRef);
 
   const [stageWidth, setStageWidth] = useState(800);
   const [stageHeight, setStageHeight] = useState(600);
+
+  // Issue #6: Keep module-level stage ref in sync
+  useEffect(() => {
+    editorStageRefHolder.current = stageRef.current;
+    return () => {
+      editorStageRefHolder.current = null;
+    };
+  });
+
+  // Issue #5: Track raw screen cursor position for brush overlay
+  const [screenCursor, setScreenCursor] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -290,6 +495,8 @@ export function EditorCanvas() {
     }
     return grouped;
   }, [objects, layers]);
+
+  const isMoveTool = activeTool === "move";
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -332,9 +539,19 @@ export function EditorCanvas() {
     [handlers],
   );
 
+  // Issue #5: Track screen-space cursor for brush overlay
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setScreenCursor({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }, []);
+
   const checkerboardSize = CHECKERBOARD_SIZE * zoom;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: canvas container tracks cursor for brush overlay
     <div
       ref={containerRef}
       className="relative flex-1 overflow-hidden"
@@ -344,6 +561,7 @@ export function EditorCanvas() {
         backgroundSize: sourceImageUrl ? `${checkerboardSize}px ${checkerboardSize}px` : undefined,
       }}
       data-testid="editor-canvas"
+      onMouseMove={handleContainerMouseMove}
     >
       <Stage
         ref={stageRef}
@@ -360,13 +578,25 @@ export function EditorCanvas() {
       >
         {/* Render objects grouped by layer */}
         <Layer>
+          {/* Issue #14: Render source image as background */}
+          {sourceImageUrl && (
+            <SourceImage url={sourceImageUrl} adjustments={adjustments} filters={filters} />
+          )}
+
           {layers.map((layer) => {
             const layerObjects = objectsByLayer.get(layer.id) ?? [];
             if (!layer.visible) return null;
             return (
               <Group key={layer.id} opacity={layer.opacity} listening={layer.id === activeLayerId}>
                 {layerObjects.map((obj) => (
-                  <CanvasObjectRenderer key={obj.id} obj={obj} />
+                  <CanvasObjectRenderer
+                    key={obj.id}
+                    obj={obj}
+                    isMoveTool={isMoveTool}
+                    onSelect={isMoveTool ? moveTool.onSelect : undefined}
+                    onDragEnd={isMoveTool ? moveTool.onDragEnd : undefined}
+                    onTransformEnd={isMoveTool ? moveTool.onTransformEnd : undefined}
+                  />
                 ))}
               </Group>
             );
@@ -391,7 +621,7 @@ export function EditorCanvas() {
           </Layer>
         )}
       </Stage>
-      <BrushCursorOverlay containerRef={containerRef} />
+      <BrushCursorOverlay containerRef={containerRef} screenCursor={screenCursor} />
       <LoadingOverlay />
     </div>
   );

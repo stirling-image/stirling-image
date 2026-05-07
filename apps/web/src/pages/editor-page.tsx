@@ -1,12 +1,14 @@
 // apps/web/src/pages/editor-page.tsx
 import { Monitor } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ExportDialog, saveEditorState } from "@/components/editor/common/export-dialog";
 import { WelcomeScreen } from "@/components/editor/common/welcome-screen";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorOptionsBar } from "@/components/editor/editor-options-bar";
 import { EditorRightPanel } from "@/components/editor/editor-right-panel";
 import { EditorStatusBar } from "@/components/editor/editor-status-bar";
 import { EditorToolbar } from "@/components/editor/editor-toolbar";
+import { useEditorShortcuts } from "@/hooks/use-editor-shortcuts";
 import { useMobile } from "@/hooks/use-mobile";
 import { useEditorStore } from "@/stores/editor-store";
 
@@ -15,6 +17,13 @@ export function EditorPage() {
   const sourceImageUrl = useEditorStore((s) => s.sourceImageUrl);
   const isDirty = useEditorStore((s) => s.isDirty);
   const loadImage = useEditorStore((s) => s.loadImage);
+  const [showExport, setShowExport] = useState(false);
+
+  // Issue #10: Shortcuts belong at page level, not canvas level
+  useEditorShortcuts({
+    onSave: () => saveEditorState(),
+    onExport: () => setShowExport(true),
+  });
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -87,6 +96,7 @@ export function EditorPage() {
         <EditorRightPanel />
       </div>
       <EditorStatusBar />
+      {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
     </div>
   );
 }

@@ -329,13 +329,15 @@ export const useEditorStore = create<EditorState>()(
         });
       },
 
+      // Issue #11: Don't increment _historyVersion here -- updateObject is called
+      // on every mousemove during brush strokes for live preview. History is only
+      // recorded when addObject finalizes the stroke.
       updateObject: (id, attrs) => {
         set({
           objects: get().objects.map((obj) =>
             obj.id === id ? ({ ...obj, attrs: { ...obj.attrs, ...attrs } } as CanvasObject) : obj,
           ),
           isDirty: true,
-          _historyVersion: get()._historyVersion + 1,
         });
       },
 
@@ -524,6 +526,7 @@ export const useEditorStore = create<EditorState>()(
       },
 
       // Adjustments
+      // Issue #7: Include _historyVersion increment for undo tracking
       setAdjustment: (key, value) => {
         const clamps: Record<string, [number, number]> = {
           brightness: [-100, 100],
@@ -541,14 +544,26 @@ export const useEditorStore = create<EditorState>()(
             ...get().adjustments,
             [key]: Math.max(min, Math.min(max, value)),
           },
+          isDirty: true,
+          lastAction: `Adjust ${key.charAt(0).toUpperCase() + key.slice(1)}`,
+          _historyVersion: get()._historyVersion + 1,
         });
       },
 
-      resetAdjustments: () => set({ adjustments: { ...DEFAULT_ADJUSTMENTS } }),
+      resetAdjustments: () =>
+        set({
+          adjustments: { ...DEFAULT_ADJUSTMENTS },
+          isDirty: true,
+          lastAction: "Reset Adjustments",
+          _historyVersion: get()._historyVersion + 1,
+        }),
 
       toggleFilter: (type) => {
         set({
           filters: get().filters.map((f) => (f.type === type ? { ...f, enabled: !f.enabled } : f)),
+          isDirty: true,
+          lastAction: `Toggle ${type.charAt(0).toUpperCase() + type.slice(1)} Filter`,
+          _historyVersion: get()._historyVersion + 1,
         });
       },
 
@@ -557,6 +572,9 @@ export const useEditorStore = create<EditorState>()(
           filters: get().filters.map((f) =>
             f.type === type ? { ...f, params: { ...f.params, [key]: value } } : f,
           ),
+          isDirty: true,
+          lastAction: `Set ${type} ${key}`,
+          _historyVersion: get()._historyVersion + 1,
         });
       },
 
@@ -697,6 +715,7 @@ export const useEditorStore = create<EditorState>()(
       toggleRightPanel: () => set({ rightPanelVisible: !get().rightPanelVisible }),
     }),
     {
+      // Issue #8: Include lastAction in partialize so history labels work
       partialize: (state) => ({
         layers: state.layers,
         objects: state.objects,
@@ -706,17 +725,19 @@ export const useEditorStore = create<EditorState>()(
         guides: state.guides,
         sourceImageUrl: state.sourceImageUrl,
         sourceImageSize: state.sourceImageSize,
+        lastAction: state.lastAction,
         _historyVersion: state._historyVersion,
       }),
       limit: MAX_HISTORY,
       equality: (a, b) =>
         (a as { _historyVersion: number })._historyVersion ===
         (b as { _historyVersion: number })._historyVersion,
+      // Issue #1: Forward all arguments from zundo's internal _handleSet
       handleSet: (handleSet) => {
         let timeout: ReturnType<typeof setTimeout>;
-        return (state) => {
+        return (...args: Parameters<typeof handleSet>) => {
           clearTimeout(timeout);
-          timeout = setTimeout(() => handleSet(state), 500);
+          timeout = setTimeout(() => handleSet(...args), 500);
         };
       },
     },

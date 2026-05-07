@@ -57,13 +57,13 @@ export function useEditorCursor(): string {
 
 interface BrushCursorOverlayProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
+  screenCursor: { x: number; y: number };
 }
 
-export function BrushCursorOverlay({ containerRef: _containerRef }: BrushCursorOverlayProps) {
+export function BrushCursorOverlay({ screenCursor }: BrushCursorOverlayProps) {
   const activeTool = useEditorStore((s) => s.activeTool);
   const brushSize = useEditorStore((s) => s.brushSize);
   const zoom = useEditorStore((s) => s.zoom);
-  const cursorPosition = useEditorStore((s) => s.cursorPosition);
 
   if (!BRUSH_CURSOR_TOOLS.has(activeTool)) return null;
 
@@ -74,8 +74,8 @@ export function BrushCursorOverlay({ containerRef: _containerRef }: BrushCursorO
     <div
       className="pointer-events-none absolute z-50"
       style={{
-        left: cursorPosition.x - displaySize / 2,
-        top: cursorPosition.y - displaySize / 2,
+        left: screenCursor.x - displaySize / 2,
+        top: screenCursor.y - displaySize / 2,
         width: displaySize,
         height: displaySize,
         borderRadius: "50%",

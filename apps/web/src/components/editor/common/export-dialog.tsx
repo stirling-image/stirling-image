@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { editorStageRefHolder } from "@/components/editor/editor-canvas";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type {
@@ -68,33 +69,25 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const aspectRatio = canvasSize.width / canvasSize.height;
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  // Issue #6: Use Konva stage ref for proper export instead of DOM query
   const generatePreview = useCallback(() => {
-    // Create a thumbnail canvas for preview
-    const canvas = document.createElement("canvas");
+    const stage = editorStageRefHolder.current;
+    if (!stage) return;
+
     const maxPreview = 200;
     const scale = Math.min(maxPreview / canvasSize.width, maxPreview / canvasSize.height);
-    canvas.width = Math.round(canvasSize.width * scale);
-    canvas.height = Math.round(canvasSize.height * scale);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    if (!settings.transparent || settings.format === "jpeg") {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // Try to draw from the Konva stage if available
-    const stageCanvas = document.querySelector(
-      "[data-testid='editor-canvas'] canvas",
-    ) as HTMLCanvasElement | null;
-    if (stageCanvas) {
-      ctx.drawImage(stageCanvas, 0, 0, canvas.width, canvas.height);
-    }
-
-    const url = canvas.toDataURL(getMimeType(settings.format), settings.quality / 100);
+    const url = stage.toDataURL({
+      pixelRatio: scale,
+      mimeType: getMimeType(settings.format),
+      quality: settings.quality / 100,
+      x: 0,
+      y: 0,
+      width: canvasSize.width,
+      height: canvasSize.height,
+    });
     setPreviewUrl(url);
-  }, [canvasSize, settings.format, settings.quality, settings.transparent]);
+  }, [canvasSize, settings.format, settings.quality]);
 
   // Generate preview thumbnail on format/transparency change
   useEffect(() => {
@@ -135,30 +128,26 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     [settings.lockAspect, aspectRatio],
   );
 
-  // Export as file download
+  // Issue #6: Export using Konva stage.toDataURL for correct output
   const handleExport = useCallback(() => {
-    const stageCanvas = document.querySelector(
-      "[data-testid='editor-canvas'] canvas",
-    ) as HTMLCanvasElement | null;
-    if (!stageCanvas) return;
+    const stage = editorStageRefHolder.current;
+    if (!stage) return;
 
-    // Create export canvas at the requested dimensions
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = settings.width;
-    exportCanvas.height = settings.height;
-    const ctx = exportCanvas.getContext("2d");
-    if (!ctx) return;
+    const pixelRatio = settings.width / canvasSize.width;
+    const dataUrl = stage.toDataURL({
+      pixelRatio,
+      mimeType: getMimeType(settings.format),
+      quality: settings.format === "png" ? undefined : settings.quality / 100,
+      x: 0,
+      y: 0,
+      width: canvasSize.width,
+      height: canvasSize.height,
+    });
 
-    if (!settings.transparent || settings.format === "jpeg") {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    }
-
-    ctx.drawImage(stageCanvas, 0, 0, settings.width, settings.height);
-
-    exportCanvas.toBlob(
-      (blob) => {
-        if (!blob) return;
+    // Convert data URL to blob for download
+    fetch(dataUrl)
+      .then((res) => res.blob())
+      .then((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -168,44 +157,34 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         markClean();
-      },
-      getMimeType(settings.format),
-      settings.format === "png" ? undefined : settings.quality / 100,
-    );
-  }, [settings, markClean]);
+      });
+  }, [settings, canvasSize, markClean]);
 
-  // Copy to clipboard
+  // Issue #6: Copy to clipboard using Konva stage
   const handleCopyToClipboard = useCallback(async () => {
-    const stageCanvas = document.querySelector(
-      "[data-testid='editor-canvas'] canvas",
-    ) as HTMLCanvasElement | null;
-    if (!stageCanvas) return;
+    const stage = editorStageRefHolder.current;
+    if (!stage) return;
 
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = settings.width;
-    exportCanvas.height = settings.height;
-    const ctx = exportCanvas.getContext("2d");
-    if (!ctx) return;
-
-    if (!settings.transparent || settings.format === "jpeg") {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    }
-
-    ctx.drawImage(stageCanvas, 0, 0, settings.width, settings.height);
+    const pixelRatio = settings.width / canvasSize.width;
+    const dataUrl = stage.toDataURL({
+      pixelRatio,
+      mimeType: "image/png",
+      x: 0,
+      y: 0,
+      width: canvasSize.width,
+      height: canvasSize.height,
+    });
 
     try {
-      const blob = await new Promise<Blob | null>((resolve) =>
-        exportCanvas.toBlob(resolve, "image/png"),
-      );
-      if (!blob) return;
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
     } catch {
       // Clipboard API may not be available in all contexts
     }
-  }, [settings]);
+  }, [settings, canvasSize]);
 
   // Project save (.snapotter file)
   const handleSaveProject = useCallback(() => {

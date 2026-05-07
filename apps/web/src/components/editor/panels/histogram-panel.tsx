@@ -116,6 +116,7 @@ interface HistogramPanelProps {
   imageData?: ImageData | null;
 }
 
+// Issue #2: When no imageData is provided, show a placeholder message
 export function HistogramPanel({ imageData }: HistogramPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stats, setStats] = useState<HistogramStats | null>(null);
@@ -176,6 +177,11 @@ export function HistogramPanel({ imageData }: HistogramPanelProps) {
         className="w-full rounded border border-border"
         style={{ imageRendering: "pixelated" }}
       />
+      {!imageData && !stats && (
+        <p className="text-[10px] text-muted-foreground text-center py-1">
+          No histogram data available
+        </p>
+      )}
       {stats && (
         <div className="grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
           <div>
