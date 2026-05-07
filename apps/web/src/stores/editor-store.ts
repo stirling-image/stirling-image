@@ -202,12 +202,25 @@ export const useEditorStore = create<EditorState>()(
       // ===== ACTIONS =====
 
       setTool: (tool) => {
-        const { activeTool } = get();
+        const { activeTool, canvasSize, cropState } = get();
+        const leavingCrop = activeTool === "crop" && tool !== "crop";
+        const enteringCrop = tool === "crop" && activeTool !== "crop";
         set({
           activeTool: tool,
           previousTool: activeTool,
           isCropping: tool === "crop",
-          ...(activeTool === "crop" && tool !== "crop" ? { cropState: null } : {}),
+          ...(leavingCrop ? { cropState: null } : {}),
+          ...(enteringCrop && !cropState
+            ? {
+                cropState: {
+                  x: canvasSize.width * 0.1,
+                  y: canvasSize.height * 0.1,
+                  width: canvasSize.width * 0.8,
+                  height: canvasSize.height * 0.8,
+                  aspectRatio: null,
+                },
+              }
+            : {}),
         });
       },
 

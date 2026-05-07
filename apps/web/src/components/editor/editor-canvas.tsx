@@ -26,12 +26,15 @@ import { ContextMenu, useContextMenu } from "./common/context-menu";
 import { BrushCursorOverlay, useEditorCursor } from "./common/custom-cursor";
 import { LoadingOverlay } from "./common/loading-overlay";
 import { useBrushTool } from "./tools/brush-tool";
+import { CropOverlay } from "./tools/crop-tool";
 import { useEraserTool } from "./tools/eraser-tool";
 import { useFillTool } from "./tools/fill-tool";
 import { useGradientTool } from "./tools/gradient-tool";
 import { MoveToolTransformer, useMoveTool } from "./tools/move-tool";
+import { SelectionOverlay, useSelectionTool } from "./tools/selection-tool";
 import { useShapeTool } from "./tools/shape-tool";
 import { useTextTool } from "./tools/text-tool";
+import { TransformToolTransformer, useTransformTool } from "./tools/transform-tool";
 
 // Module-level stage ref for export dialog access (Issue #6)
 export const editorStageRefHolder: { current: Konva.Stage | null } = {
@@ -413,6 +416,8 @@ function CanvasObjectRenderer({
 
 function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
   const activeTool = useEditorStore((s) => s.activeTool);
+  const zoom = useEditorStore((s) => s.zoom);
+  const panOffset = useEditorStore((s) => s.panOffset);
 
   const brushTool = useBrushTool();
   const eraserTool = useEraserTool();
@@ -421,6 +426,30 @@ function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
   const fillTool = useFillTool(stageRef);
   const gradientTool = useGradientTool();
   const moveTool = useMoveTool();
+  const selectionTool = useSelectionTool();
+  const transformTool = useTransformTool();
+
+  const selectionHandlers = useMemo(
+    () => ({
+      handleMouseDown: (e: Konva.KonvaEventObject<MouseEvent>) => {
+        const stage = e.target.getStage();
+        const pointer = stage?.getPointerPosition();
+        if (!pointer) return;
+        const pos = { x: (pointer.x - panOffset.x) / zoom, y: (pointer.y - panOffset.y) / zoom };
+        selectionTool.onMouseDown(pos, stage ?? undefined);
+      },
+      handleMouseMove: (e: Konva.KonvaEventObject<MouseEvent>) => {
+        const pointer = e.target.getStage()?.getPointerPosition();
+        if (!pointer) return;
+        const pos = { x: (pointer.x - panOffset.x) / zoom, y: (pointer.y - panOffset.y) / zoom };
+        selectionTool.onMouseMove(pos);
+      },
+      handleMouseUp: () => {
+        selectionTool.onMouseUp();
+      },
+    }),
+    [selectionTool, zoom, panOffset],
+  );
 
   const handlers = useMemo(() => {
     const toolMap: Record<
@@ -443,12 +472,26 @@ function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
       text: textTool,
       fill: fillTool,
       gradient: gradientTool,
+      "marquee-rect": selectionHandlers,
+      "marquee-ellipse": selectionHandlers,
+      "lasso-free": selectionHandlers,
+      "lasso-poly": selectionHandlers,
+      "magic-wand": selectionHandlers,
     };
 
     return toolMap[activeTool] ?? null;
-  }, [activeTool, brushTool, eraserTool, shapeTool, textTool, fillTool, gradientTool]);
+  }, [
+    activeTool,
+    brushTool,
+    eraserTool,
+    shapeTool,
+    textTool,
+    fillTool,
+    gradientTool,
+    selectionHandlers,
+  ]);
 
-  return { handlers, moveTool };
+  return { handlers, moveTool, selectionTool, transformTool };
 }
 
 // ---------------------------------------------------------------------------
@@ -463,6 +506,7 @@ export function EditorCanvas({
   onImageResize?: () => void;
 } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const selectionLayerRef = useRef<Konva.Layer>(null);
   const { stageRef, handleWheel, fitToScreen } = useCanvasZoom();
 
   const zoom = useEditorStore((s) => s.zoom);
@@ -484,7 +528,7 @@ export function EditorCanvas({
   const selectedObjectIds = useEditorStore((s) => s.selectedObjectIds);
   const contextMenu = useContextMenu();
 
-  const { handlers, moveTool } = useActiveToolHandlers(stageRef);
+  const { handlers, moveTool, selectionTool, transformTool } = useActiveToolHandlers(stageRef);
 
   const [stageWidth, setStageWidth] = useState(800);
   const [stageHeight, setStageHeight] = useState(600);
@@ -626,7 +670,7 @@ export function EditorCanvas({
         }}
       >
         {/* Render objects grouped by layer */}
-        <Layer>
+        <Layer ref={selectionLayerRef}>
           {/* Issue #14: Render source image as background */}
           {sourceImageUrl && (
             <SourceImage url={sourceImageUrl} adjustments={adjustments} filters={filters} />
@@ -657,7 +701,36 @@ export function EditorCanvas({
           {activeTool === "move" && (
             <MoveToolTransformer transformerRef={moveTool.transformerRef} />
           )}
+
+          {/* Transform tool transformer */}
+          {activeTool === "transform" && (
+            <TransformToolTransformer transformerRef={transformTool.transformerRef} />
+          )}
+
+          {/* Selection overlay (marching ants) */}
+          <SelectionOverlay layerRef={selectionLayerRef} />
+
+          {/* Active selection preview (drawn while dragging) */}
+          {selectionTool.isDrawing && selectionTool.currentPoints.length >= 4 && (
+            <Rect
+              x={Math.min(selectionTool.currentPoints[0], selectionTool.currentPoints[2])}
+              y={Math.min(selectionTool.currentPoints[1], selectionTool.currentPoints[3])}
+              width={Math.abs(selectionTool.currentPoints[2] - selectionTool.currentPoints[0])}
+              height={Math.abs(selectionTool.currentPoints[3] - selectionTool.currentPoints[1])}
+              stroke="#3b82f6"
+              strokeWidth={1}
+              dash={[4, 4]}
+              listening={false}
+            />
+          )}
         </Layer>
+
+        {/* Crop overlay layer */}
+        {activeTool === "crop" && (
+          <Layer>
+            <CropOverlay />
+          </Layer>
+        )}
 
         {/* Grid overlay layer (Feature 49) - non-interactive */}
         {(gridVisible || zoom >= 8) && (
