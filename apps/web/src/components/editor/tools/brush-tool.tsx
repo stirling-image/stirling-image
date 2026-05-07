@@ -82,10 +82,12 @@ export function useBrushTool() {
 
   const handleMouseUp = useCallback(() => {
     if (strokeRef.current) {
-      useEditorStore.setState({
-        lastAction: "Brush Stroke",
-        _historyVersion: useEditorStore.getState()._historyVersion + 1,
-      });
+      // Only update the label -- addObject() in handleMouseDown already
+      // incremented _historyVersion and recorded the pre-stroke snapshot.
+      // Bumping the version again would create a second history entry whose
+      // objects array still contains the line, so the first undo would
+      // restore the same objects reference and the canvas would not repaint.
+      useEditorStore.setState({ lastAction: "Brush Stroke" });
     }
     strokeRef.current = null;
   }, []);
