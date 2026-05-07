@@ -139,9 +139,10 @@
         "amd64": [
           "torch==2.7.0+cu126 torchvision==0.22.0+cu126 --index-url https://download.pytorch.org/whl/cu126",
           "lpips",
-          "realesrgan==0.3.0"
+          "realesrgan==0.3.0",
+          "mediapipe==0.10.21"
         ],
-        "arm64": ["lpips", "realesrgan==0.3.0"]
+        "arm64": ["lpips", "realesrgan==0.3.0", "mediapipe==0.10.18"]
       },
       "pipFlags": {
         "codeformer-pip==0.0.4": "--no-deps"
