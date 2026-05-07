@@ -12,6 +12,7 @@ import { MoveOptions } from "./options/move-options";
 import { PixelBrushOptions } from "./options/pixel-brush-options";
 import { SelectionOptions } from "./options/selection-options";
 import { ShapeOptions } from "./options/shape-options";
+import { TextOptions } from "./options/text-options";
 
 function getOptionsComponent(tool: ToolType): React.ComponentType | null {
   switch (tool) {
@@ -50,11 +51,12 @@ function getOptionsComponent(tool: ToolType): React.ComponentType | null {
     case "shape-polygon":
     case "shape-star":
       return ShapeOptions;
+    case "text":
+      return TextOptions;
+    case "transform":
+    case "eyedropper":
     case "hand":
     case "zoom":
-    case "eyedropper":
-    case "text":
-    case "transform":
       return null;
     default:
       return null;
