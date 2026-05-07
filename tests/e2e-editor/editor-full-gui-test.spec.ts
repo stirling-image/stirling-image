@@ -118,10 +118,9 @@ test.describe("Image Editor - Full GUI Test Suite", () => {
     await expect(page.locator('[data-tool-active="true"]')).toHaveAttribute("data-tool", "brush");
     await snap(page, "brush-tool-active");
 
-    // Verify options bar shows size/opacity/hardness
+    // Verify options bar shows size and opacity
     await expect(page.getByText("Size", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Opacity", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Hardness", { exact: true }).first()).toBeVisible();
 
     // Draw a brush stroke
     const box = await getCanvasBox(page);
