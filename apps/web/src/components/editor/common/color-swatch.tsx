@@ -35,7 +35,12 @@ export function ColorSwatch({
   label,
   ...dataProps
 }: ColorSwatchProps) {
-  const isTransparent = color === "transparent" || color.length === 9;
+  const isTransparent =
+    color.length === 9 ||
+    color.length === 5 ||
+    color.toLowerCase().includes("rgba") ||
+    color.toLowerCase().includes("hsla") ||
+    color === "transparent";
 
   return (
     <button

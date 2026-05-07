@@ -28,12 +28,13 @@ export function EditorStatusBar() {
           type="number"
           value={zoomPercent}
           onChange={(e) => {
-            const val = Number.parseInt(e.target.value, 10);
+            const val = Number.parseFloat(e.target.value);
             if (!Number.isNaN(val) && val > 0) setZoom(val / 100);
           }}
           className="w-14 bg-transparent text-right text-xs border-none outline-none"
-          min={1}
+          min={0.01}
           max={6400}
+          step={0.1}
         />
         <span>%</span>
       </div>

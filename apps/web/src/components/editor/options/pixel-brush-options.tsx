@@ -1,9 +1,7 @@
 // apps/web/src/components/editor/options/pixel-brush-options.tsx
 
-import { useCallback, useState } from "react";
 import { useEditorStore } from "@/stores/editor-store";
 import type { ToolType } from "@/types/editor";
-import { getPixelBrushStrength, setPixelBrushStrength } from "../tools/pixel-brush-tool";
 
 const PIXEL_BRUSH_TOOLS = new Set<ToolType>(["blur-brush", "sharpen-brush", "smudge"]);
 
@@ -12,12 +10,8 @@ export function PixelBrushOptions() {
   const setTool = useEditorStore((s) => s.setTool);
   const brushSize = useEditorStore((s) => s.brushSize);
   const setBrushSize = useEditorStore((s) => s.setBrushSize);
-  const [strength, setLocalStrength] = useState(getPixelBrushStrength);
-
-  const handleStrengthChange = useCallback((value: number) => {
-    setPixelBrushStrength(value);
-    setLocalStrength(value);
-  }, []);
+  const strength = useEditorStore((s) => s.pixelBrushStrength);
+  const setPixelBrushStrength = useEditorStore((s) => s.setPixelBrushStrength);
 
   if (!PIXEL_BRUSH_TOOLS.has(activeTool)) return null;
 
@@ -66,7 +60,7 @@ export function PixelBrushOptions() {
           min={1}
           max={100}
           value={strength}
-          onChange={(e) => handleStrengthChange(Number(e.target.value))}
+          onChange={(e) => setPixelBrushStrength(Number(e.target.value))}
           className="w-20 h-1 accent-primary"
         />
         <input
@@ -74,7 +68,7 @@ export function PixelBrushOptions() {
           min={1}
           max={100}
           value={strength}
-          onChange={(e) => handleStrengthChange(Number(e.target.value))}
+          onChange={(e) => setPixelBrushStrength(Number(e.target.value))}
           className="w-12 h-6 text-xs text-center bg-muted border border-border rounded px-1"
         />
         <span className="text-[10px]">%</span>

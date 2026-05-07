@@ -74,11 +74,13 @@ function hslToHex(h: number, s: number, l: number): string {
     gn = x;
     bn = c;
   } else if (h < 300) {
-    rn = c;
-    bn = x;
-  } else {
     rn = x;
+    gn = 0;
     bn = c;
+  } else {
+    rn = c;
+    gn = 0;
+    bn = x;
   }
 
   const r = Math.round((rn + m) * 255);
@@ -305,10 +307,11 @@ export function ColorPanel() {
   const [pickerTarget, setPickerTarget] = useState<ColorTarget | null>(null);
   const [hexInput, setHexInput] = useState(foregroundColor);
 
-  // Keep hex input in sync with store
+  // Keep hex input in sync with the active color based on pickerTarget
   useEffect(() => {
-    setHexInput(foregroundColor);
-  }, [foregroundColor]);
+    const color = pickerTarget === "bg" ? backgroundColor : foregroundColor;
+    setHexInput(color);
+  }, [foregroundColor, backgroundColor, pickerTarget]);
 
   const activeColor = pickerTarget === "bg" ? backgroundColor : foregroundColor;
   const setActiveColor = pickerTarget === "bg" ? setBackgroundColor : setForegroundColor;
@@ -333,16 +336,17 @@ export function ColorPanel() {
       setHexInput(v);
       if (!v.startsWith("#")) v = `#${v}`;
       if (isValidHex(v)) {
-        setForegroundColor(v.toLowerCase());
+        setActiveColor(v.toLowerCase());
       }
     },
-    [setForegroundColor],
+    [setActiveColor],
   );
 
   const handleHexInputBlur = useCallback(() => {
-    // Reset to current foreground if invalid
-    setHexInput(foregroundColor);
-  }, [foregroundColor]);
+    // Reset to current active color if invalid
+    const color = pickerTarget === "bg" ? backgroundColor : foregroundColor;
+    setHexInput(color);
+  }, [foregroundColor, backgroundColor, pickerTarget]);
 
   return (
     <div className="p-3" data-testid="color-panel">

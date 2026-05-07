@@ -34,6 +34,7 @@ export default defineConfig({
     exclude: [
       "tests/e2e/**",
       "tests/e2e-docs/**",
+      "tests/e2e-editor/**",
       "tests/e2e-landing/**",
       "tests/e2e-docker/**",
       "tests/e2e-analytics/**",

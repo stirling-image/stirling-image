@@ -17,6 +17,27 @@ import type { TextAttrs } from "@/types/editor";
 import { getAllFonts, isSystemFont, loadGoogleFont } from "../common/font-loader";
 
 // ---------------------------------------------------------------------------
+// Default attrs used when no text object is selected (next-text settings)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TEXT_ATTRS: TextAttrs = {
+  x: 0,
+  y: 0,
+  text: "",
+  fontFamily: "Arial",
+  fontSize: 24,
+  fontStyle: "normal",
+  fontVariant: "normal",
+  textDecoration: "",
+  align: "left",
+  fill: "#000000",
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  rotation: 0,
+  opacity: 1,
+};
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -213,14 +234,14 @@ export function TextOptions() {
   const selectedObjectIds = useEditorStore((s) => s.selectedObjectIds);
   const objects = useEditorStore((s) => s.objects);
 
-  // Derive current attrs from the selected text object
-  const attrs = useMemo(() => {
+  // Derive current attrs from the selected text object, fall back to defaults
+  const selectedAttrs = useMemo(() => {
     if (selectedObjectIds.length !== 1) return null;
     const obj = objects.find((o) => o.id === selectedObjectIds[0] && o.type === "text");
     return obj ? (obj.attrs as TextAttrs) : null;
   }, [selectedObjectIds, objects]);
 
-  if (!attrs) return null;
+  const attrs = selectedAttrs ?? DEFAULT_TEXT_ATTRS;
 
   const isBold = attrs.fontStyle.includes("bold");
   const isItalic = attrs.fontStyle.includes("italic");
@@ -252,7 +273,7 @@ export function TextOptions() {
     const had = current.textDecoration.includes("underline");
     const parts = current.textDecoration.split(" ").filter((p) => p !== "underline" && p !== "");
     if (!had) parts.push("underline");
-    updateSelected({ textDecoration: parts.join(" ") });
+    updateSelected({ textDecoration: parts.join(" ") || "none" });
   };
 
   const toggleStrikethrough = () => {
@@ -261,7 +282,7 @@ export function TextOptions() {
     const had = current.textDecoration.includes("line-through");
     const parts = current.textDecoration.split(" ").filter((p) => p !== "line-through" && p !== "");
     if (!had) parts.push("line-through");
-    updateSelected({ textDecoration: parts.join(" ") });
+    updateSelected({ textDecoration: parts.join(" ") || "none" });
   };
 
   const toggleTextMode = () => {

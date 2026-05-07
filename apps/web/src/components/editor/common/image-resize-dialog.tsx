@@ -58,9 +58,9 @@ export function ImageResizeDialog({ open, onClose }: { open: boolean; onClose: (
   );
 
   const handleApply = useCallback(() => {
-    resizeImage(width, height);
+    resizeImage(width, height, resample);
     onClose();
-  }, [width, height, resizeImage, onClose]);
+  }, [width, height, resample, resizeImage, onClose]);
 
   const pctWidth = canvasSize.width > 0 ? ((width / canvasSize.width) * 100).toFixed(1) : "100.0";
   const pctHeight =

@@ -6,36 +6,6 @@ import { generateId } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type { CanvasObject } from "@/types/editor";
 
-export type GradientType = "linear" | "radial";
-
-let gradientType: GradientType = "linear";
-let gradientOpacity = 1;
-let gradientReverse = false;
-
-export function setGradientType(type: GradientType) {
-  gradientType = type;
-}
-
-export function getGradientType(): GradientType {
-  return gradientType;
-}
-
-export function setGradientOpacity(value: number) {
-  gradientOpacity = Math.max(0, Math.min(1, value));
-}
-
-export function getGradientOpacity(): number {
-  return gradientOpacity;
-}
-
-export function setGradientReverse(value: boolean) {
-  gradientReverse = value;
-}
-
-export function getGradientReverse(): boolean {
-  return gradientReverse;
-}
-
 interface DragState {
   startX: number;
   startY: number;
@@ -68,8 +38,16 @@ export function useGradientTool() {
   const handleMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     if (!dragRef.current) return;
 
-    const { foregroundColor, backgroundColor, canvasSize, zoom, panOffset } =
-      useEditorStore.getState();
+    const {
+      foregroundColor,
+      backgroundColor,
+      gradientType,
+      gradientOpacity,
+      gradientReverse,
+      canvasSize,
+      zoom,
+      panOffset,
+    } = useEditorStore.getState();
 
     const stage = e.target.getStage();
     if (!stage) return;

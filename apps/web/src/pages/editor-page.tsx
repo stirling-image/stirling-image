@@ -1,7 +1,9 @@
 // apps/web/src/pages/editor-page.tsx
 import { Monitor } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { CanvasResizeDialog } from "@/components/editor/common/canvas-resize-dialog";
 import { ExportDialog, saveEditorState } from "@/components/editor/common/export-dialog";
+import { ImageResizeDialog } from "@/components/editor/common/image-resize-dialog";
 import { WelcomeScreen } from "@/components/editor/common/welcome-screen";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorOptionsBar } from "@/components/editor/editor-options-bar";
@@ -18,6 +20,8 @@ export function EditorPage() {
   const isDirty = useEditorStore((s) => s.isDirty);
   const loadImage = useEditorStore((s) => s.loadImage);
   const [showExport, setShowExport] = useState(false);
+  const [showCanvasResize, setShowCanvasResize] = useState(false);
+  const [showImageResize, setShowImageResize] = useState(false);
 
   // Issue #10: Shortcuts belong at page level, not canvas level
   useEditorShortcuts({
@@ -90,13 +94,18 @@ export function EditorPage() {
       <div className="flex flex-1 overflow-hidden">
         <EditorToolbar />
         <div className="relative flex-1 overflow-hidden bg-muted/30">
-          <EditorCanvas />
+          <EditorCanvas
+            onCanvasResize={() => setShowCanvasResize(true)}
+            onImageResize={() => setShowImageResize(true)}
+          />
           {!sourceImageUrl && <WelcomeScreen />}
         </div>
         <EditorRightPanel />
       </div>
       <EditorStatusBar />
       {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
+      <CanvasResizeDialog open={showCanvasResize} onClose={() => setShowCanvasResize(false)} />
+      <ImageResizeDialog open={showImageResize} onClose={() => setShowImageResize(false)} />
     </div>
   );
 }

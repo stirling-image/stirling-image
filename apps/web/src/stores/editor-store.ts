@@ -9,6 +9,7 @@ import type {
   EditorLayer,
   EditorState,
   FilterConfig,
+  SelectionMode,
   ToolType,
 } from "@/types/editor";
 
@@ -79,7 +80,14 @@ function createDefaultLayer(id: string, name: string): EditorLayer {
   };
 }
 
-let layerCounter = 1;
+function nextLayerNumber(layers: EditorLayer[]): number {
+  let max = 0;
+  for (const l of layers) {
+    const m = l.name.match(/^Layer (\d+)/);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max + 1;
+}
 
 export const useEditorStore = create<EditorState>()(
   temporal(
@@ -118,6 +126,8 @@ export const useEditorStore = create<EditorState>()(
 
       // --- Selection ---
       selection: null,
+      selectionMode: "new" as SelectionMode,
+      magicWandTolerance: 32,
 
       // --- Crop ---
       cropState: null,
@@ -143,12 +153,25 @@ export const useEditorStore = create<EditorState>()(
 
       // --- Clone stamp ---
       cloneSource: null,
+      cloneAligned: true,
 
       // --- Dodge/Burn/Sponge ---
       dodgeBurnRange: "midtones",
       dodgeBurnExposure: 50,
       spongeMode: "saturate",
       spongeFlow: 50,
+
+      // --- Fill tool ---
+      fillTolerance: 32,
+      fillContiguous: true,
+
+      // --- Gradient tool ---
+      gradientType: "linear",
+      gradientOpacity: 1,
+      gradientReverse: false,
+
+      // --- Pixel brush ---
+      pixelBrushStrength: 50,
 
       // --- UI ---
       rightPanelTab: "layers",
@@ -184,6 +207,7 @@ export const useEditorStore = create<EditorState>()(
           activeTool: tool,
           previousTool: activeTool,
           isCropping: tool === "crop",
+          ...(activeTool === "crop" && tool !== "crop" ? { cropState: null } : {}),
         });
       },
 
@@ -194,27 +218,78 @@ export const useEditorStore = create<EditorState>()(
       setPanOffset: (offset) => set({ panOffset: offset }),
 
       loadImage: (url, width, height) => {
+        const oldUrl = get().sourceImageUrl;
+        if (oldUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(oldUrl);
+        }
         set({
           sourceImageUrl: url,
           sourceImageSize: { width, height },
           canvasSize: { width, height },
           zoom: 1,
           panOffset: { x: 0, y: 0 },
+          objects: [],
+          selectedObjectIds: [],
+          selection: null,
+          cropState: null,
+          isCropping: false,
+          adjustments: { ...DEFAULT_ADJUSTMENTS },
+          filters: DEFAULT_FILTERS.map((f) => ({
+            ...f,
+            params: { ...f.params },
+          })),
+          clipboard: null,
+          editingTextId: null,
+          layers: [createDefaultLayer(DEFAULT_LAYER_ID, "Layer 1")],
+          activeLayerId: DEFAULT_LAYER_ID,
           lastAction: "Load Image",
           _historyVersion: get()._historyVersion + 1,
         });
       },
 
-      resizeCanvas: (width, height, _anchor) => {
+      resizeCanvas: (width, height, anchor, _fill) => {
+        const { canvasSize, objects } = get();
+        const dw = width - canvasSize.width;
+        const dh = height - canvasSize.height;
+        let offsetX = 0;
+        let offsetY = 0;
+        if (anchor === "center") {
+          offsetX = dw / 2;
+          offsetY = dh / 2;
+        } else {
+          if (anchor.includes("center")) {
+            offsetX = dw / 2;
+          } else if (anchor.includes("right")) {
+            offsetX = dw;
+          }
+          if (anchor.startsWith("center")) {
+            offsetY = dh / 2;
+          } else if (anchor.startsWith("bottom")) {
+            offsetY = dh;
+          }
+        }
         set({
           canvasSize: { width, height },
+          objects:
+            offsetX !== 0 || offsetY !== 0
+              ? objects.map((obj) => {
+                  const attrs = { ...obj.attrs };
+                  if ("x" in attrs) {
+                    (attrs as { x: number }).x += offsetX;
+                  }
+                  if ("y" in attrs) {
+                    (attrs as { y: number }).y += offsetY;
+                  }
+                  return { ...obj, attrs } as CanvasObject;
+                })
+              : objects,
           isDirty: true,
           lastAction: "Resize Canvas",
           _historyVersion: get()._historyVersion + 1,
         });
       },
 
-      resizeImage: (width, height) => {
+      resizeImage: (width, height, _resample) => {
         set({
           canvasSize: { width, height },
           sourceImageSize: { width, height },
@@ -233,21 +308,34 @@ export const useEditorStore = create<EditorState>()(
           sourceImageSize: newSize,
           objects: objects.map((obj) => {
             const attrs = { ...obj.attrs };
-            if ("x" in attrs && "y" in attrs) {
+            const hasPos = "x" in attrs && "y" in attrs;
+            const hasSize = "width" in attrs && "height" in attrs;
+            const a = attrs as unknown as Record<string, number>;
+            if (hasPos) {
               if (degrees === 90) {
-                const newX = canvasSize.height - (attrs as { y: number }).y;
-                const newY = (attrs as { x: number }).x;
-                (attrs as { x: number }).x = newX;
-                (attrs as { y: number }).y = newY;
+                const newX = canvasSize.height - a.y - (hasSize ? a.height : 0);
+                const newY = a.x;
+                a.x = newX;
+                a.y = newY;
               } else if (degrees === 270) {
-                const newX = (attrs as { y: number }).y;
-                const newY = canvasSize.width - (attrs as { x: number }).x;
-                (attrs as { x: number }).x = newX;
-                (attrs as { y: number }).y = newY;
+                const newX = a.y;
+                const newY = canvasSize.width - a.x - (hasSize ? a.width : 0);
+                a.x = newX;
+                a.y = newY;
               } else {
-                (attrs as { x: number }).x = canvasSize.width - (attrs as { x: number }).x;
-                (attrs as { y: number }).y = canvasSize.height - (attrs as { y: number }).y;
+                a.x = canvasSize.width - a.x - (hasSize ? a.width : 0);
+                a.y = canvasSize.height - a.y - (hasSize ? a.height : 0);
               }
+            }
+            if (hasSize && degrees !== 180) {
+              const oldW = a.width;
+              a.width = a.height;
+              a.height = oldW;
+            }
+            if ("radiusX" in attrs && "radiusY" in attrs && degrees !== 180) {
+              const oldRx = a.radiusX;
+              a.radiusX = a.radiusY;
+              a.radiusY = oldRx;
             }
             return { ...obj, attrs } as CanvasObject;
           }),
@@ -263,7 +351,9 @@ export const useEditorStore = create<EditorState>()(
           objects: objects.map((obj) => {
             const attrs = { ...obj.attrs };
             if ("x" in attrs) {
-              (attrs as { x: number }).x = canvasSize.width - (attrs as { x: number }).x;
+              const a = attrs as unknown as Record<string, number>;
+              const w = "width" in attrs ? a.width : 0;
+              a.x = canvasSize.width - a.x - w;
             }
             return { ...obj, attrs } as CanvasObject;
           }),
@@ -279,7 +369,9 @@ export const useEditorStore = create<EditorState>()(
           objects: objects.map((obj) => {
             const attrs = { ...obj.attrs };
             if ("y" in attrs) {
-              (attrs as { y: number }).y = canvasSize.height - (attrs as { y: number }).y;
+              const a = attrs as unknown as Record<string, number>;
+              const h = "height" in attrs ? a.height : 0;
+              a.y = canvasSize.height - a.y - h;
             }
             return { ...obj, attrs } as CanvasObject;
           }),
@@ -290,7 +382,50 @@ export const useEditorStore = create<EditorState>()(
       },
 
       trimCanvas: () => {
+        const { objects, canvasSize } = get();
+        if (objects.length === 0) return;
+        let minX = canvasSize.width;
+        let minY = canvasSize.height;
+        let maxX = 0;
+        let maxY = 0;
+        for (const obj of objects) {
+          const a = obj.attrs as unknown as Record<string, number>;
+          const x = "x" in obj.attrs ? a.x : 0;
+          const y = "y" in obj.attrs ? a.y : 0;
+          const w = "width" in obj.attrs ? a.width : "radiusX" in obj.attrs ? a.radiusX * 2 : 0;
+          const h = "height" in obj.attrs ? a.height : "radiusY" in obj.attrs ? a.radiusY * 2 : 0;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
+        }
+        minX = Math.max(0, Math.floor(minX));
+        minY = Math.max(0, Math.floor(minY));
+        maxX = Math.min(canvasSize.width, Math.ceil(maxX));
+        maxY = Math.min(canvasSize.height, Math.ceil(maxY));
+        const newWidth = maxX - minX;
+        const newHeight = maxY - minY;
+        if (newWidth <= 0 || newHeight <= 0) return;
+        if (
+          newWidth === canvasSize.width &&
+          newHeight === canvasSize.height &&
+          minX === 0 &&
+          minY === 0
+        )
+          return;
         set({
+          canvasSize: { width: newWidth, height: newHeight },
+          sourceImageSize: { width: newWidth, height: newHeight },
+          objects: objects.map((obj) => {
+            const attrs = { ...obj.attrs };
+            if ("x" in attrs) {
+              (attrs as unknown as Record<string, number>).x -= minX;
+            }
+            if ("y" in attrs) {
+              (attrs as unknown as Record<string, number>).y -= minY;
+            }
+            return { ...obj, attrs } as CanvasObject;
+          }),
           isDirty: true,
           lastAction: "Trim Canvas",
           _historyVersion: get()._historyVersion + 1,
@@ -307,7 +442,14 @@ export const useEditorStore = create<EditorState>()(
         set({ foregroundColor: color, recentColors: updated });
       },
 
-      setBackgroundColor: (color) => set({ backgroundColor: color }),
+      setBackgroundColor: (color) => {
+        const { recentColors } = get();
+        const updated = [color, ...recentColors.filter((c) => c !== color)].slice(
+          0,
+          MAX_RECENT_COLORS,
+        );
+        set({ backgroundColor: color, recentColors: updated });
+      },
 
       swapColors: () => {
         const { foregroundColor, backgroundColor } = get();
@@ -358,11 +500,17 @@ export const useEditorStore = create<EditorState>()(
         const { objects } = get();
         const obj = objects.find((o) => o.id === objectId);
         if (!obj) return;
-        const layerObjects = objects.filter((o) => o.layerId === obj.layerId);
-        const otherObjects = objects.filter((o) => o.layerId !== obj.layerId);
-        const reordered = [...layerObjects.filter((o) => o.id !== objectId), obj];
+        const newObjects = objects.filter((o) => o.id !== objectId);
+        let insertIdx = newObjects.length;
+        for (let i = newObjects.length - 1; i >= 0; i--) {
+          if (newObjects[i].layerId === obj.layerId) {
+            insertIdx = i + 1;
+            break;
+          }
+        }
+        newObjects.splice(insertIdx, 0, obj);
         set({
-          objects: [...otherObjects, ...reordered],
+          objects: newObjects,
           lastAction: "Bring to Front",
           _historyVersion: get()._historyVersion + 1,
         });
@@ -371,9 +519,18 @@ export const useEditorStore = create<EditorState>()(
       bringForward: (objectId) => {
         const { objects } = get();
         const idx = objects.findIndex((o) => o.id === objectId);
-        if (idx === -1 || idx === objects.length - 1) return;
+        if (idx === -1) return;
+        const obj = objects[idx];
+        let swapIdx = -1;
+        for (let i = idx + 1; i < objects.length; i++) {
+          if (objects[i].layerId === obj.layerId) {
+            swapIdx = i;
+            break;
+          }
+        }
+        if (swapIdx === -1) return;
         const newObjects = [...objects];
-        [newObjects[idx], newObjects[idx + 1]] = [newObjects[idx + 1], newObjects[idx]];
+        [newObjects[idx], newObjects[swapIdx]] = [newObjects[swapIdx], newObjects[idx]];
         set({
           objects: newObjects,
           lastAction: "Bring Forward",
@@ -384,9 +541,18 @@ export const useEditorStore = create<EditorState>()(
       sendBackward: (objectId) => {
         const { objects } = get();
         const idx = objects.findIndex((o) => o.id === objectId);
-        if (idx <= 0) return;
+        if (idx === -1) return;
+        const obj = objects[idx];
+        let swapIdx = -1;
+        for (let i = idx - 1; i >= 0; i--) {
+          if (objects[i].layerId === obj.layerId) {
+            swapIdx = i;
+            break;
+          }
+        }
+        if (swapIdx === -1) return;
         const newObjects = [...objects];
-        [newObjects[idx - 1], newObjects[idx]] = [newObjects[idx], newObjects[idx - 1]];
+        [newObjects[swapIdx], newObjects[idx]] = [newObjects[idx], newObjects[swapIdx]];
         set({
           objects: newObjects,
           lastAction: "Send Backward",
@@ -398,11 +564,17 @@ export const useEditorStore = create<EditorState>()(
         const { objects } = get();
         const obj = objects.find((o) => o.id === objectId);
         if (!obj) return;
-        const layerObjects = objects.filter((o) => o.layerId === obj.layerId);
-        const otherObjects = objects.filter((o) => o.layerId !== obj.layerId);
-        const reordered = [obj, ...layerObjects.filter((o) => o.id !== objectId)];
+        const newObjects = objects.filter((o) => o.id !== objectId);
+        let insertIdx = 0;
+        for (let i = 0; i < newObjects.length; i++) {
+          if (newObjects[i].layerId === obj.layerId) {
+            insertIdx = i;
+            break;
+          }
+        }
+        newObjects.splice(insertIdx, 0, obj);
         set({
-          objects: [...reordered, ...otherObjects],
+          objects: newObjects,
           lastAction: "Send to Back",
           _historyVersion: get()._historyVersion + 1,
         });
@@ -410,9 +582,8 @@ export const useEditorStore = create<EditorState>()(
 
       // Layers
       addLayer: () => {
-        layerCounter++;
         const id = generateId();
-        const name = `Layer ${layerCounter}`;
+        const name = `Layer ${nextLayerNumber(get().layers)}`;
         const newLayer = createDefaultLayer(id, name);
         const { layers, activeLayerId } = get();
         const activeIndex = layers.findIndex((l) => l.id === activeLayerId);
@@ -449,7 +620,6 @@ export const useEditorStore = create<EditorState>()(
         const source = layers.find((l) => l.id === id);
         if (!source) return;
         const newId = generateId();
-        layerCounter++;
         const copy: EditorLayer = {
           ...source,
           id: newId,
@@ -580,6 +750,8 @@ export const useEditorStore = create<EditorState>()(
 
       // Selection
       setSelection: (selection) => set({ selection }),
+      setSelectionMode: (mode) => set({ selectionMode: mode }),
+      setMagicWandTolerance: (v) => set({ magicWandTolerance: v }),
 
       invertSelection: () => {
         const { selection } = get();
@@ -601,6 +773,7 @@ export const useEditorStore = create<EditorState>()(
         if (!cropState) return;
         set({
           canvasSize: { width: cropState.width, height: cropState.height },
+          sourceImageSize: { width: cropState.width, height: cropState.height },
           objects: objects.map((obj) => {
             const attrs = { ...obj.attrs };
             if ("x" in attrs) {
@@ -709,6 +882,41 @@ export const useEditorStore = create<EditorState>()(
       markDirty: () => set({ isDirty: true }),
       markClean: () => set({ isDirty: false }),
       setLoadingState: (state) => set({ loadingState: state }),
+
+      // Text
+      setEditingTextId: (id) => set({ editingTextId: id }),
+
+      // Dodge/Burn/Sponge settings
+      setDodgeBurnRange: (range) => set({ dodgeBurnRange: range }),
+      setDodgeBurnExposure: (exposure) => set({ dodgeBurnExposure: exposure }),
+      setSpongeMode: (mode) => set({ spongeMode: mode }),
+      setSpongeFlow: (flow) => set({ spongeFlow: flow }),
+
+      // Shape settings
+      setShapeFill: (fill) => set({ shapeFill: fill }),
+      setShapeStroke: (stroke) => set({ shapeStroke: stroke }),
+      setShapeStrokeWidth: (width) => set({ shapeStrokeWidth: width }),
+      setShapeCornerRadius: (radius) => set({ shapeCornerRadius: radius }),
+      setShapePolygonSides: (sides) => set({ shapePolygonSides: sides }),
+      setShapeStarPoints: (points) => set({ shapeStarPoints: points }),
+
+      // Clone stamp
+      setCloneSource: (source) => set({ cloneSource: source }),
+      setCloneAligned: (aligned) => set({ cloneAligned: aligned }),
+
+      // Fill tool settings
+      setFillTolerance: (tolerance) =>
+        set({ fillTolerance: Math.max(0, Math.min(255, tolerance)) }),
+      setFillContiguous: (contiguous) => set({ fillContiguous: contiguous }),
+
+      // Gradient tool settings
+      setGradientType: (type) => set({ gradientType: type }),
+      setGradientOpacity: (opacity) => set({ gradientOpacity: Math.max(0, Math.min(1, opacity)) }),
+      setGradientReverse: (reverse) => set({ gradientReverse: reverse }),
+
+      // Pixel brush settings
+      setPixelBrushStrength: (strength) =>
+        set({ pixelBrushStrength: Math.max(1, Math.min(100, strength)) }),
 
       // Right panel
       setRightPanelTab: (tab) => set({ rightPanelTab: tab }),

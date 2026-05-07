@@ -196,8 +196,8 @@ export function NavigatorPanel() {
 
   const handleZoomSlider = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = Number.parseFloat(e.target.value);
-      setZoom(val);
+      const t = Number.parseFloat(e.target.value);
+      setZoom(MIN_ZOOM * (MAX_ZOOM / MIN_ZOOM) ** t);
     },
     [setZoom],
   );
@@ -252,10 +252,10 @@ export function NavigatorPanel() {
         </button>
         <input
           type="range"
-          min={MIN_ZOOM}
-          max={MAX_ZOOM}
-          step={0.01}
-          value={zoom}
+          min={0}
+          max={1}
+          step={0.001}
+          value={Math.log(zoom / MIN_ZOOM) / Math.log(MAX_ZOOM / MIN_ZOOM)}
           onChange={handleZoomSlider}
           className={cn(
             "flex-1 h-1 appearance-none rounded-full bg-muted",

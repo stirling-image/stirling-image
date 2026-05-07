@@ -41,21 +41,23 @@ export function NewDocumentDialog({ open, onClose }: NewDocumentDialogProps) {
   };
 
   const handleCreate = () => {
+    const validWidth = Math.max(1, Math.min(10000, width));
+    const validHeight = Math.max(1, Math.min(10000, height));
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = validWidth;
+    canvas.height = validHeight;
     const ctx = canvas.getContext("2d");
     if (ctx) {
       if (background === "White") {
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(0, 0, validWidth, validHeight);
       } else if (background === "Black") {
         ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(0, 0, validWidth, validHeight);
       }
     }
     const url = canvas.toDataURL("image/png");
-    loadImage(url, width, height);
+    loadImage(url, validWidth, validHeight);
     onClose();
   };
 

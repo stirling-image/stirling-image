@@ -8,16 +8,6 @@ import type { CanvasObject, ToolType } from "@/types/editor";
 
 const PIXEL_BRUSH_TOOLS = new Set<ToolType>(["blur-brush", "sharpen-brush", "smudge"]);
 
-let pixelBrushStrength = 50;
-
-export function setPixelBrushStrength(value: number) {
-  pixelBrushStrength = Math.max(1, Math.min(100, value));
-}
-
-export function getPixelBrushStrength(): number {
-  return pixelBrushStrength;
-}
-
 interface StrokeState {
   objectId: string;
   canvas: HTMLCanvasElement;
@@ -141,7 +131,7 @@ function applyPixelBrush(
   centerY: number,
   canvasSize: { width: number; height: number },
 ): void {
-  const { activeTool, brushSize } = useEditorStore.getState();
+  const { activeTool, brushSize, pixelBrushStrength } = useEditorStore.getState();
   const strength = pixelBrushStrength / 100;
   const halfSize = Math.floor(brushSize / 2);
 

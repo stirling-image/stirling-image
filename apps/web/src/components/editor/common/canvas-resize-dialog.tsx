@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type { AnchorPosition } from "@/types/editor";
@@ -29,10 +29,17 @@ export function CanvasResizeDialog({ open, onClose }: { open: boolean; onClose: 
   const [anchor, setAnchor] = useState<AnchorPosition>("center");
   const [fill, setFill] = useState("#ffffff");
 
+  useEffect(() => {
+    if (open) {
+      setWidth(canvasSize.width);
+      setHeight(canvasSize.height);
+    }
+  }, [open, canvasSize]);
+
   const handleApply = useCallback(() => {
-    resizeCanvas(width, height, anchor);
+    resizeCanvas(width, height, anchor, fill);
     onClose();
-  }, [width, height, anchor, resizeCanvas, onClose]);
+  }, [width, height, anchor, fill, resizeCanvas, onClose]);
 
   if (!open) return null;
 

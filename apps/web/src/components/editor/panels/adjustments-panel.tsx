@@ -12,8 +12,6 @@ import type { AdjustmentValues } from "@/types/editor";
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEBOUNCE_MS = 150;
-
 const ADJUSTMENT_SLIDERS: {
   key: keyof AdjustmentValues;
   label: string;
@@ -378,27 +376,12 @@ function AutoAdjustmentsSection() {
 function AdjustmentsSlidersSection() {
   const adjustments = useEditorStore((s) => s.adjustments);
   const setAdjustment = useEditorStore((s) => s.setAdjustment);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-
   const handleChange = useCallback(
     (key: keyof AdjustmentValues, value: number) => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      debounceRef.current = setTimeout(() => {
-        setAdjustment(key, value);
-      }, DEBOUNCE_MS);
-      // Immediately set for responsive UI
       setAdjustment(key, value);
     },
     [setAdjustment],
   );
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -778,6 +761,8 @@ function CurvesSection() {
         const pts = [...prev[channel]];
         pts[draggingIndex] = pos;
         pts.sort((a, b) => a.x - b.x);
+        const newIndex = pts.findIndex((p) => p.x === pos.x && p.y === pos.y);
+        if (newIndex !== -1) setDraggingIndex(newIndex);
         return { ...prev, [channel]: pts };
       });
     },
@@ -1058,15 +1043,24 @@ export function AdjustmentsPanel() {
   }, [adjustments, filters]);
 
   const handleResetAll = useCallback(() => {
-    resetAdjustments();
-    // Reset all filters by toggling off any enabled ones
     const store = useEditorStore.getState();
-    for (const f of store.filters) {
-      if (f.enabled) {
-        store.toggleFilter(f.type);
-      }
-    }
-  }, [resetAdjustments]);
+    useEditorStore.setState({
+      adjustments: {
+        brightness: 0,
+        contrast: 0,
+        hue: 0,
+        saturation: 0,
+        luminance: 0,
+        exposure: 0,
+        vibrance: 0,
+        warmth: 0,
+      },
+      filters: store.filters.map((f) => ({ ...f, enabled: false })),
+      isDirty: true,
+      lastAction: "Reset All",
+      _historyVersion: store._historyVersion + 1,
+    });
+  }, []);
 
   const handleApply = useCallback(() => {
     // Bake adjustments and filters into pixel data

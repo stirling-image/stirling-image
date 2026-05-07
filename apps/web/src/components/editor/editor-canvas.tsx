@@ -22,6 +22,7 @@ import useImage from "use-image";
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom";
 import { useEditorStore } from "@/stores/editor-store";
 import type { AdjustmentValues, CanvasObject, FilterConfig, ImageAttrs } from "@/types/editor";
+import { ContextMenu, useContextMenu } from "./common/context-menu";
 import { BrushCursorOverlay, useEditorCursor } from "./common/custom-cursor";
 import { LoadingOverlay } from "./common/loading-overlay";
 import { useBrushTool } from "./tools/brush-tool";
@@ -137,6 +138,7 @@ function SourceImage({
         }
       }
 
+      node.clearCache();
       node.cache();
       node.filters(konvaFilters);
       node.getLayer()?.batchDraw();
@@ -159,12 +161,16 @@ function SourceImage({
 function ImageObject({
   obj,
   onClick,
+  onDragStart,
+  onDragMove,
   onDragEnd,
   onTransformEnd,
   draggable,
 }: {
   obj: CanvasObject & { type: "image" };
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   draggable: boolean;
@@ -185,6 +191,8 @@ function ImageObject({
       opacity={a.opacity}
       draggable={draggable}
       onClick={onClick}
+      onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
       onTransformEnd={onTransformEnd}
     />
@@ -199,12 +207,16 @@ function CanvasObjectRenderer({
   obj,
   isMoveTool,
   onSelect,
+  onDragStart,
+  onDragMove,
   onDragEnd,
   onTransformEnd,
 }: {
   obj: CanvasObject;
   isMoveTool: boolean;
   onSelect?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
 }) {
@@ -250,6 +262,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -271,6 +285,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -298,6 +314,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -318,6 +336,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -339,6 +359,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -361,6 +383,8 @@ function CanvasObjectRenderer({
           opacity={a.opacity}
           draggable={draggable}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
         />
@@ -371,6 +395,8 @@ function CanvasObjectRenderer({
         <ImageObject
           obj={obj}
           onClick={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
           onDragEnd={onDragEnd}
           onTransformEnd={onTransformEnd}
           draggable={draggable}
@@ -429,7 +455,13 @@ function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
 // Main Canvas Component
 // ---------------------------------------------------------------------------
 
-export function EditorCanvas() {
+export function EditorCanvas({
+  onCanvasResize,
+  onImageResize,
+}: {
+  onCanvasResize?: () => void;
+  onImageResize?: () => void;
+} = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { stageRef, handleWheel, fitToScreen } = useCanvasZoom();
 
@@ -443,24 +475,27 @@ export function EditorCanvas() {
   const layers = useEditorStore((s) => s.layers);
   const activeLayerId = useEditorStore((s) => s.activeLayerId);
   const activeTool = useEditorStore((s) => s.activeTool);
+  const setPanOffset = useEditorStore((s) => s.setPanOffset);
   const adjustments = useEditorStore((s) => s.adjustments);
   const filters = useEditorStore((s) => s.filters);
 
   // Issue #10: Shortcuts moved to EditorPage, removed from here
   const cursor = useEditorCursor();
+  const selectedObjectIds = useEditorStore((s) => s.selectedObjectIds);
+  const contextMenu = useContextMenu();
 
   const { handlers, moveTool } = useActiveToolHandlers(stageRef);
 
   const [stageWidth, setStageWidth] = useState(800);
   const [stageHeight, setStageHeight] = useState(600);
 
-  // Issue #6: Keep module-level stage ref in sync
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only sync of stable ref
   useEffect(() => {
     editorStageRefHolder.current = stageRef.current;
     return () => {
       editorStageRefHolder.current = null;
     };
-  });
+  }, []);
 
   // Issue #5: Track raw screen cursor position for brush overlay
   const [screenCursor, setScreenCursor] = useState({ x: 0, y: 0 });
@@ -562,9 +597,11 @@ export function EditorCanvas() {
         cursor,
         background: sourceImageUrl ? CHECKERBOARD_CSS : undefined,
         backgroundSize: sourceImageUrl ? `${checkerboardSize}px ${checkerboardSize}px` : undefined,
+        backgroundPosition: sourceImageUrl ? `${panOffset.x}px ${panOffset.y}px` : undefined,
       }}
       data-testid="editor-canvas"
       onMouseMove={handleContainerMouseMove}
+      onContextMenu={(e) => contextMenu.handleContextMenu(e, selectedObjectIds.length > 0)}
     >
       <Stage
         ref={stageRef}
@@ -574,10 +611,19 @@ export function EditorCanvas() {
         scaleY={zoom}
         x={panOffset.x}
         y={panOffset.y}
+        draggable={activeTool === "hand"}
         onWheel={handleWheel}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
+        onDragEnd={(e) => {
+          if (activeTool === "hand") {
+            const stage = e.target.getStage();
+            if (stage) {
+              setPanOffset({ x: stage.x(), y: stage.y() });
+            }
+          }
+        }}
       >
         {/* Render objects grouped by layer */}
         <Layer>
@@ -597,6 +643,8 @@ export function EditorCanvas() {
                     obj={obj}
                     isMoveTool={isMoveTool}
                     onSelect={isMoveTool ? moveTool.onSelect : undefined}
+                    onDragStart={isMoveTool ? moveTool.onDragStart : undefined}
+                    onDragMove={isMoveTool ? moveTool.onDragMove : undefined}
                     onDragEnd={isMoveTool ? moveTool.onDragEnd : undefined}
                     onTransformEnd={isMoveTool ? moveTool.onTransformEnd : undefined}
                   />
@@ -626,6 +674,15 @@ export function EditorCanvas() {
       </Stage>
       <BrushCursorOverlay containerRef={containerRef} screenCursor={screenCursor} />
       <LoadingOverlay />
+      {contextMenu.position && (
+        <ContextMenu
+          position={contextMenu.position}
+          menuType={contextMenu.menuType}
+          onClose={contextMenu.close}
+          onCanvasResize={onCanvasResize}
+          onImageResize={onImageResize}
+        />
+      )}
     </div>
   );
 }
@@ -645,7 +702,7 @@ function GridOverlay({
 }) {
   return (
     <Shape
-      sceneFunc={(ctx, shape) => {
+      sceneFunc={(ctx, _shape) => {
         ctx.beginPath();
 
         if (showGrid) {
@@ -677,8 +734,6 @@ function GridOverlay({
           }
           ctx.stroke();
         }
-
-        ctx.fillStrokeShape(shape);
       }}
     />
   );

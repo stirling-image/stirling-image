@@ -14,6 +14,10 @@ export function DodgeBurnOptions() {
   const dodgeBurnExposure = useEditorStore((s) => s.dodgeBurnExposure);
   const spongeMode = useEditorStore((s) => s.spongeMode);
   const spongeFlow = useEditorStore((s) => s.spongeFlow);
+  const setDodgeBurnRange = useEditorStore((s) => s.setDodgeBurnRange);
+  const setDodgeBurnExposure = useEditorStore((s) => s.setDodgeBurnExposure);
+  const setSpongeMode = useEditorStore((s) => s.setSpongeMode);
+  const setSpongeFlow = useEditorStore((s) => s.setSpongeFlow);
 
   if (!DODGE_BURN_TOOLS.has(activeTool)) return null;
 
@@ -63,9 +67,7 @@ export function DodgeBurnOptions() {
           <select
             value={dodgeBurnRange}
             onChange={(e) =>
-              useEditorStore.setState({
-                dodgeBurnRange: e.target.value as "shadows" | "midtones" | "highlights",
-              })
+              setDodgeBurnRange(e.target.value as "shadows" | "midtones" | "highlights")
             }
             className="h-6 text-xs bg-muted border border-border rounded px-1"
           >
@@ -85,11 +87,7 @@ export function DodgeBurnOptions() {
             min={1}
             max={100}
             value={dodgeBurnExposure}
-            onChange={(e) =>
-              useEditorStore.setState({
-                dodgeBurnExposure: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setDodgeBurnExposure(Number(e.target.value))}
             className="w-16 h-1 accent-primary"
           />
           <input
@@ -97,11 +95,7 @@ export function DodgeBurnOptions() {
             min={1}
             max={100}
             value={dodgeBurnExposure}
-            onChange={(e) =>
-              useEditorStore.setState({
-                dodgeBurnExposure: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setDodgeBurnExposure(Number(e.target.value))}
             className="w-12 h-6 text-xs text-center bg-muted border border-border rounded px-1"
           />
           <span className="text-[10px]">%</span>
@@ -114,11 +108,7 @@ export function DodgeBurnOptions() {
           Mode
           <select
             value={spongeMode}
-            onChange={(e) =>
-              useEditorStore.setState({
-                spongeMode: e.target.value as "saturate" | "desaturate",
-              })
-            }
+            onChange={(e) => setSpongeMode(e.target.value as "saturate" | "desaturate")}
             className="h-6 text-xs bg-muted border border-border rounded px-1"
           >
             <option value="saturate">Saturate</option>
@@ -136,11 +126,7 @@ export function DodgeBurnOptions() {
             min={1}
             max={100}
             value={spongeFlow}
-            onChange={(e) =>
-              useEditorStore.setState({
-                spongeFlow: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setSpongeFlow(Number(e.target.value))}
             className="w-16 h-1 accent-primary"
           />
           <input
@@ -148,11 +134,7 @@ export function DodgeBurnOptions() {
             min={1}
             max={100}
             value={spongeFlow}
-            onChange={(e) =>
-              useEditorStore.setState({
-                spongeFlow: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setSpongeFlow(Number(e.target.value))}
             className="w-12 h-6 text-xs text-center bg-muted border border-border rounded px-1"
           />
           <span className="text-[10px]">%</span>

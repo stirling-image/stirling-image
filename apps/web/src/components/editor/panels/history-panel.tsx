@@ -81,9 +81,6 @@ interface HistoryEntry {
 
 export function HistoryPanel() {
   const lastAction = useEditorStore((s) => s.lastAction);
-  const temporalStore = useEditorStore.temporal.getState();
-  const pastStates = temporalStore.pastStates;
-  const futureStates = temporalStore.futureStates;
 
   // Force re-render when history changes by subscribing to history version
   useEditorStore((s) => s._historyVersion);
@@ -154,10 +151,10 @@ export function HistoryPanel() {
         <button
           type="button"
           onClick={undo}
-          disabled={pastStates.length === 0}
+          disabled={useEditorStore.temporal.getState().pastStates.length === 0}
           className={cn(
             "p-1 rounded transition-colors",
-            pastStates.length > 0
+            useEditorStore.temporal.getState().pastStates.length > 0
               ? "text-muted-foreground hover:text-foreground hover:bg-muted"
               : "text-muted-foreground/30 cursor-not-allowed",
           )}
@@ -169,10 +166,10 @@ export function HistoryPanel() {
         <button
           type="button"
           onClick={redo}
-          disabled={futureStates.length === 0}
+          disabled={useEditorStore.temporal.getState().futureStates.length === 0}
           className={cn(
             "p-1 rounded transition-colors",
-            futureStates.length > 0
+            useEditorStore.temporal.getState().futureStates.length > 0
               ? "text-muted-foreground hover:text-foreground hover:bg-muted"
               : "text-muted-foreground/30 cursor-not-allowed",
           )}
@@ -181,7 +178,9 @@ export function HistoryPanel() {
         >
           <Redo2 size={14} />
         </button>
-        <span className="ml-auto text-[10px] text-muted-foreground">{pastStates.length} / 50</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          {useEditorStore.temporal.getState().pastStates.length} / 50
+        </span>
       </div>
 
       {/* History list */}

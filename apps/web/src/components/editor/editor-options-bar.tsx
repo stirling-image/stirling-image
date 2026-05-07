@@ -70,8 +70,11 @@ export function EditorOptionsBar() {
 
   return (
     <div className="flex items-center h-10 px-3 bg-card border-b border-border gap-3">
-      <span className="text-xs font-medium text-muted-foreground capitalize">
-        {activeTool.replace(/-/g, " ").replace(/^shape /, "")}
+      <span className="text-xs font-medium text-muted-foreground">
+        {activeTool
+          .replace(/-/g, " ")
+          .replace(/^shape /, "")
+          .replace(/\b\w/g, (c) => c.toUpperCase())}
       </span>
       <div className="h-4 w-px bg-border" />
       <div className="flex items-center gap-2 flex-1">

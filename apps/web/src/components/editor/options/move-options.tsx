@@ -50,8 +50,9 @@ export function MoveOptions() {
   const selectedObjectIds = useEditorStore((s) => s.selectedObjectIds);
   const objects = useEditorStore((s) => s.objects);
   const updateObject = useEditorStore((s) => s.updateObject);
+  const canvasSize = useEditorStore((s) => s.canvasSize);
 
-  const hasSelection = selectedObjectIds.length >= 2;
+  const hasSelection = selectedObjectIds.length >= 1;
   const hasThreeOrMore = selectedObjectIds.length >= 3;
 
   const handleAlign = (
@@ -70,6 +71,7 @@ export function MoveOptions() {
       selectedObjectIds,
       objects.map((o) => ({ id: o.id, attrs: o.attrs as unknown as Record<string, unknown> })),
       updateObject,
+      canvasSize,
     );
   };
 

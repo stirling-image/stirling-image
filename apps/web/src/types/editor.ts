@@ -1,5 +1,7 @@
 // apps/web/src/types/editor.ts
 
+export type SelectionMode = "new" | "add" | "subtract";
+
 export type ToolType =
   | "move"
   | "marquee-rect"
@@ -287,6 +289,8 @@ export interface EditorState {
 
   // Selection
   selection: SelectionState | null;
+  selectionMode: SelectionMode;
+  magicWandTolerance: number;
 
   // Crop
   cropState: CropState | null;
@@ -309,12 +313,25 @@ export interface EditorState {
 
   // Clone stamp
   cloneSource: CloneSource | null;
+  cloneAligned: boolean;
 
   // Dodge/Burn/Sponge
   dodgeBurnRange: "shadows" | "midtones" | "highlights";
   dodgeBurnExposure: number;
   spongeMode: "saturate" | "desaturate";
   spongeFlow: number;
+
+  // Fill tool
+  fillTolerance: number;
+  fillContiguous: boolean;
+
+  // Gradient tool
+  gradientType: "linear" | "radial";
+  gradientOpacity: number;
+  gradientReverse: boolean;
+
+  // Pixel brush
+  pixelBrushStrength: number;
 
   // UI
   rightPanelTab: "layers" | "adjustments" | "history";
@@ -352,8 +369,8 @@ export interface EditorState {
   setZoom: (zoom: number) => void;
   setPanOffset: (offset: { x: number; y: number }) => void;
   loadImage: (url: string, width: number, height: number) => void;
-  resizeCanvas: (width: number, height: number, anchor: AnchorPosition) => void;
-  resizeImage: (width: number, height: number) => void;
+  resizeCanvas: (width: number, height: number, anchor: AnchorPosition, fill?: string) => void;
+  resizeImage: (width: number, height: number, resample?: string) => void;
   rotateCanvas: (degrees: 90 | 180 | 270) => void;
   flipCanvasHorizontal: () => void;
   flipCanvasVertical: () => void;
@@ -393,6 +410,8 @@ export interface EditorState {
 
   // Selection
   setSelection: (selection: SelectionState | null) => void;
+  setSelectionMode: (mode: SelectionMode) => void;
+  setMagicWandTolerance: (v: number) => void;
   invertSelection: () => void;
 
   // Crop
@@ -423,6 +442,39 @@ export interface EditorState {
   markDirty: () => void;
   markClean: () => void;
   setLoadingState: (state: LoadingState | null) => void;
+
+  // Text
+  setEditingTextId: (id: string | null) => void;
+
+  // Dodge/Burn/Sponge settings
+  setDodgeBurnRange: (range: "shadows" | "midtones" | "highlights") => void;
+  setDodgeBurnExposure: (exposure: number) => void;
+  setSpongeMode: (mode: "saturate" | "desaturate") => void;
+  setSpongeFlow: (flow: number) => void;
+
+  // Shape settings
+  setShapeFill: (fill: string) => void;
+  setShapeStroke: (stroke: string) => void;
+  setShapeStrokeWidth: (width: number) => void;
+  setShapeCornerRadius: (radius: number) => void;
+  setShapePolygonSides: (sides: number) => void;
+  setShapeStarPoints: (points: number) => void;
+
+  // Clone stamp
+  setCloneSource: (source: CloneSource | null) => void;
+  setCloneAligned: (aligned: boolean) => void;
+
+  // Fill tool settings
+  setFillTolerance: (tolerance: number) => void;
+  setFillContiguous: (contiguous: boolean) => void;
+
+  // Gradient tool settings
+  setGradientType: (type: "linear" | "radial") => void;
+  setGradientOpacity: (opacity: number) => void;
+  setGradientReverse: (reverse: boolean) => void;
+
+  // Pixel brush settings
+  setPixelBrushStrength: (strength: number) => void;
 
   // Right panel
   setRightPanelTab: (tab: "layers" | "adjustments" | "history") => void;

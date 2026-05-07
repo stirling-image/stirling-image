@@ -52,6 +52,8 @@ interface UseEyedropperToolOptions {
 export function useEyedropperTool({ stageRef, sampleSize }: UseEyedropperToolOptions) {
   const setForegroundColor = useEditorStore((s) => s.setForegroundColor);
   const setBackgroundColor = useEditorStore((s) => s.setBackgroundColor);
+  const zoom = useEditorStore((s) => s.zoom);
+  const panOffset = useEditorStore((s) => s.panOffset);
   const [sampledColor, setSampledColor] = useState<string | null>(null);
   const canvasCache = useRef<HTMLCanvasElement | null>(null);
 
@@ -96,9 +98,9 @@ export function useEyedropperTool({ stageRef, sampleSize }: UseEyedropperToolOpt
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
 
-      // pointer coordinates are already in stage pixel space
-      const x = Math.round(pointer.x);
-      const y = Math.round(pointer.y);
+      // Transform pointer coordinates from screen space to canvas space
+      const x = Math.round((pointer.x - panOffset.x) / zoom);
+      const y = Math.round((pointer.y - panOffset.y) / zoom);
 
       // Bounds check
       if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) {
@@ -109,7 +111,7 @@ export function useEyedropperTool({ stageRef, sampleSize }: UseEyedropperToolOpt
       setSampledColor(color);
       return color;
     },
-    [getStageCanvas, sampleSize],
+    [getStageCanvas, sampleSize, zoom, panOffset],
   );
 
   /**

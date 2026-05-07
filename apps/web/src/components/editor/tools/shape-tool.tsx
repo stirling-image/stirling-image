@@ -6,6 +6,13 @@ import { generateId } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type { CanvasObject, ToolType } from "@/types/editor";
 
+interface PendingShape {
+  startX: number;
+  startY: number;
+  toolType: ToolType;
+  obj: CanvasObject;
+}
+
 interface DragState {
   startX: number;
   startY: number;
@@ -41,6 +48,9 @@ function constrainToDimension(
 
 export function useShapeTool() {
   const dragRef = useRef<DragState | null>(null);
+  const pendingRef = useRef<PendingShape | null>(null);
+
+  const MIN_DRAG_THRESHOLD = 2;
 
   const handleMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
@@ -183,11 +193,34 @@ export function useShapeTool() {
         return;
     }
 
-    useEditorStore.getState().addObject(obj);
-    dragRef.current = { startX: x, startY: y, objectId: id, toolType: activeTool };
+    // Don't add the object yet -- wait until the user drags past the threshold
+    pendingRef.current = { startX: x, startY: y, toolType: activeTool, obj };
   }, []);
 
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    // If we have a pending shape but haven't committed it yet, check threshold
+    if (pendingRef.current && !dragRef.current) {
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const { zoom, panOffset } = useEditorStore.getState();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const x = (pointer.x - panOffset.x) / zoom;
+      const y = (pointer.y - panOffset.y) / zoom;
+      const dx = x - pendingRef.current.startX;
+      const dy = y - pendingRef.current.startY;
+
+      if (Math.abs(dx) < MIN_DRAG_THRESHOLD && Math.abs(dy) < MIN_DRAG_THRESHOLD) return;
+
+      // Threshold exceeded -- add the object to the store and promote to active drag
+      const { obj, startX, startY, toolType } = pendingRef.current;
+      useEditorStore.getState().addObject(obj);
+      dragRef.current = { startX, startY, objectId: obj.id, toolType };
+      pendingRef.current = null;
+    }
+
     if (!dragRef.current) return;
 
     const stage = e.target.getStage();
@@ -280,6 +313,11 @@ export function useShapeTool() {
   }, []);
 
   const handleMouseUp = useCallback(() => {
+    // Click without drag -- pending shape was never added, just discard it
+    if (pendingRef.current) {
+      pendingRef.current = null;
+    }
+
     if (!dragRef.current) return;
 
     const { objectId } = dragRef.current;
@@ -287,7 +325,7 @@ export function useShapeTool() {
     const obj = objects.find((o) => o.id === objectId);
 
     if (obj) {
-      // Remove zero-size shapes
+      // Remove degenerate shapes that are still too small
       const attrs = obj.attrs;
       let isDegenerate = false;
       if ("width" in attrs && "height" in attrs) {

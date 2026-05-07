@@ -157,9 +157,10 @@ export function alignObjects(
   objectIds: string[],
   objects: { id: string; attrs: Record<string, unknown> }[],
   updateObject: (id: string, attrs: Record<string, unknown>) => void,
+  canvasSize?: { width: number; height: number },
 ): void {
   const selected = objects.filter((o) => objectIds.includes(o.id));
-  if (selected.length < 2 && !direction.startsWith("distribute")) return;
+  if (selected.length === 0) return;
   if (selected.length < 3 && direction.startsWith("distribute")) return;
 
   const bounds = selected.map((o) => ({
@@ -169,6 +170,34 @@ export function alignObjects(
     w: (o.attrs.width as number) ?? 0,
     h: (o.attrs.height as number) ?? 0,
   }));
+
+  // Single object: align relative to canvas bounds
+  if (selected.length === 1 && canvasSize) {
+    const b = bounds[0];
+    switch (direction) {
+      case "left":
+        updateObject(b.id, { x: 0 });
+        break;
+      case "center-h":
+        updateObject(b.id, { x: canvasSize.width / 2 - b.w / 2 });
+        break;
+      case "right":
+        updateObject(b.id, { x: canvasSize.width - b.w });
+        break;
+      case "top":
+        updateObject(b.id, { y: 0 });
+        break;
+      case "center-v":
+        updateObject(b.id, { y: canvasSize.height / 2 - b.h / 2 });
+        break;
+      case "bottom":
+        updateObject(b.id, { y: canvasSize.height - b.h });
+        break;
+    }
+    return;
+  }
+
+  if (selected.length < 2) return;
 
   switch (direction) {
     case "left": {

@@ -1168,8 +1168,8 @@ describe("Canvas Transforms", () => {
     act((s) => s.addObject(makeRect({ id: "r1", x: 100, y: 200 })));
     act((s) => s.rotateCanvas(90));
     const obj = state().objects[0];
-    // After 90 rotation: newX = canvasHeight - y = 600 - 200, newY = x = 100
-    expect(obj.type === "rect" && obj.attrs.x).toBe(400);
+    // After 90 rotation: newX = canvasHeight - y - height = 600 - 200 - 50, newY = x = 100
+    expect(obj.type === "rect" && obj.attrs.x).toBe(350);
     expect(obj.type === "rect" && obj.attrs.y).toBe(100);
   });
 
@@ -1178,8 +1178,9 @@ describe("Canvas Transforms", () => {
     act((s) => s.addObject(makeRect({ id: "r1", x: 100, y: 200 })));
     act((s) => s.flipCanvasHorizontal());
     const obj = state().objects[0];
-    expect(obj.type === "rect" && obj.attrs.x).toBe(700); // 800 - 100
-    expect(obj.type === "rect" && obj.attrs.y).toBe(200); // unchanged
+    // 800 - 100 - width(100) = 600
+    expect(obj.type === "rect" && obj.attrs.x).toBe(600);
+    expect(obj.type === "rect" && obj.attrs.y).toBe(200);
   });
 
   it("flipCanvasVertical flips object y positions", () => {
@@ -1187,13 +1188,27 @@ describe("Canvas Transforms", () => {
     act((s) => s.addObject(makeRect({ id: "r1", x: 100, y: 200 })));
     act((s) => s.flipCanvasVertical());
     const obj = state().objects[0];
-    expect(obj.type === "rect" && obj.attrs.x).toBe(100); // unchanged
-    expect(obj.type === "rect" && obj.attrs.y).toBe(400); // 600 - 200
+    expect(obj.type === "rect" && obj.attrs.x).toBe(100);
+    // 600 - 200 - height(50) = 350
+    expect(obj.type === "rect" && obj.attrs.y).toBe(350);
   });
 
-  it("trimCanvas marks dirty", () => {
+  it("trimCanvas trims to object bounds", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    act((s) => s.addObject(makeRect({ id: "r1", x: 100, y: 200 })));
     act((s) => s.trimCanvas());
     expect(state().isDirty).toBe(true);
+    expect(state().canvasSize).toEqual({ width: 100, height: 50 });
+    const obj = state().objects[0];
+    expect(obj.type === "rect" && obj.attrs.x).toBe(0);
+    expect(obj.type === "rect" && obj.attrs.y).toBe(0);
+  });
+
+  it("trimCanvas no-ops when no objects exist", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    act((s) => s.trimCanvas());
+    expect(state().isDirty).toBe(false);
+    expect(state().canvasSize).toEqual({ width: 800, height: 600 });
   });
 });
 

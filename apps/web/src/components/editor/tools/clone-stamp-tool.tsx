@@ -6,16 +6,6 @@ import { generateId } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type { CanvasObject } from "@/types/editor";
 
-let cloneAligned = true;
-
-export function setCloneAligned(value: boolean) {
-  cloneAligned = value;
-}
-
-export function getCloneAligned(): boolean {
-  return cloneAligned;
-}
-
 interface StampState {
   objectId: string;
   canvas: HTMLCanvasElement;
@@ -30,11 +20,20 @@ interface StampState {
 export function useCloneStampTool(stageRef: React.RefObject<Konva.Stage | null>) {
   const stampRef = useRef<StampState | null>(null);
   const initialOffsetRef = useRef<{ x: number; y: number } | null>(null);
+  const setCloneSource = useEditorStore((s) => s.setCloneSource);
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const { activeTool, cloneSource, brushSize, brushOpacity, canvasSize, zoom, panOffset } =
-        useEditorStore.getState();
+      const {
+        activeTool,
+        cloneSource,
+        cloneAligned,
+        brushSize,
+        brushOpacity,
+        canvasSize,
+        zoom,
+        panOffset,
+      } = useEditorStore.getState();
 
       if (activeTool !== "clone-stamp") return;
 
@@ -49,9 +48,7 @@ export function useCloneStampTool(stageRef: React.RefObject<Konva.Stage | null>)
 
       // Alt+click sets the clone source
       if (e.evt.altKey) {
-        useEditorStore.setState({
-          cloneSource: { x, y, aligned: cloneAligned },
-        });
+        setCloneSource({ x, y, aligned: cloneAligned });
         initialOffsetRef.current = null;
         return;
       }
@@ -127,7 +124,7 @@ export function useCloneStampTool(stageRef: React.RefObject<Konva.Stage | null>)
         offsetY,
       };
     },
-    [stageRef],
+    [stageRef, setCloneSource],
   );
 
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {

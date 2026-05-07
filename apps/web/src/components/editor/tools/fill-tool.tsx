@@ -6,26 +6,6 @@ import { generateId } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 import type { CanvasObject } from "@/types/editor";
 
-/** Tolerance for flood fill (0-255). Stored outside store for simplicity. */
-let fillTolerance = 32;
-let fillContiguous = true;
-
-export function setFillTolerance(value: number) {
-  fillTolerance = Math.max(0, Math.min(255, value));
-}
-
-export function getFillTolerance(): number {
-  return fillTolerance;
-}
-
-export function setFillContiguous(value: boolean) {
-  fillContiguous = value;
-}
-
-export function getFillContiguous(): boolean {
-  return fillContiguous;
-}
-
 function colorDistance(
   r1: number,
   g1: number,
@@ -157,8 +137,15 @@ function floodFill(
 export function useFillTool(stageRef: React.RefObject<Konva.Stage | null>) {
   const handleMouseDown = useCallback(
     (_e: Konva.KonvaEventObject<MouseEvent>) => {
-      const { activeTool, foregroundColor, canvasSize, zoom, panOffset } =
-        useEditorStore.getState();
+      const {
+        activeTool,
+        foregroundColor,
+        fillTolerance,
+        fillContiguous,
+        canvasSize,
+        zoom,
+        panOffset,
+      } = useEditorStore.getState();
 
       if (activeTool !== "fill") return;
 

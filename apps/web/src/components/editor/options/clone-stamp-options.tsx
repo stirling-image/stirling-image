@@ -1,8 +1,6 @@
 // apps/web/src/components/editor/options/clone-stamp-options.tsx
 
-import { useCallback, useState } from "react";
 import { useEditorStore } from "@/stores/editor-store";
-import { getCloneAligned, setCloneAligned } from "../tools/clone-stamp-tool";
 
 export function CloneStampOptions() {
   const activeTool = useEditorStore((s) => s.activeTool);
@@ -12,12 +10,8 @@ export function CloneStampOptions() {
   const setBrushSize = useEditorStore((s) => s.setBrushSize);
   const setBrushOpacity = useEditorStore((s) => s.setBrushOpacity);
   const setBrushHardness = useEditorStore((s) => s.setBrushHardness);
-  const [aligned, setLocalAligned] = useState(getCloneAligned);
-
-  const handleAlignedChange = useCallback((value: boolean) => {
-    setCloneAligned(value);
-    setLocalAligned(value);
-  }, []);
+  const cloneAligned = useEditorStore((s) => s.cloneAligned);
+  const setCloneAligned = useEditorStore((s) => s.setCloneAligned);
 
   if (activeTool !== "clone-stamp") return null;
 
@@ -92,8 +86,8 @@ export function CloneStampOptions() {
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
         <input
           type="checkbox"
-          checked={aligned}
-          onChange={(e) => handleAlignedChange(e.target.checked)}
+          checked={cloneAligned}
+          onChange={(e) => setCloneAligned(e.target.checked)}
           className="accent-primary"
         />
         Aligned

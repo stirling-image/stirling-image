@@ -26,6 +26,10 @@ export function useCanvasZoom() {
       if (tweenRef.current) {
         tweenRef.current.destroy();
       }
+      // Update store immediately so all tools get correct coordinates
+      setZoom(targetZoom);
+      setPanOffset(targetPos);
+
       tweenRef.current = new Konva.Tween({
         node: stage,
         scaleX: targetZoom,
@@ -35,8 +39,7 @@ export function useCanvasZoom() {
         duration: ZOOM_ANIMATION_DURATION,
         easing: Konva.Easings.EaseOut,
         onFinish: () => {
-          setZoom(targetZoom);
-          setPanOffset(targetPos);
+          tweenRef.current?.destroy();
           tweenRef.current = null;
         },
       });

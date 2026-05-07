@@ -188,7 +188,7 @@ export function CropOverlay() {
   };
 
   return (
-    <Group listening={false}>
+    <Group>
       {/* Darkened overlays: top, bottom, left, right */}
       <Rect x={0} y={0} width={cw} height={y} fill={overlayFill} listening={false} />
       <Rect

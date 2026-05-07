@@ -134,15 +134,40 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     if (!stage) return;
 
     const pixelRatio = settings.width / canvasSize.width;
-    const dataUrl = stage.toDataURL({
-      pixelRatio,
-      mimeType: getMimeType(settings.format),
-      quality: settings.format === "png" ? undefined : settings.quality / 100,
-      x: 0,
-      y: 0,
-      width: canvasSize.width,
-      height: canvasSize.height,
-    });
+    let dataUrl: string;
+
+    if (!settings.transparent || settings.format === "jpeg") {
+      // Create canvas with white background for non-transparent exports
+      const stageCanvas = stage.toCanvas({
+        pixelRatio,
+        x: 0,
+        y: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
+      });
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = stageCanvas.width;
+      exportCanvas.height = stageCanvas.height;
+      const ctx = exportCanvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      ctx.drawImage(stageCanvas, 0, 0);
+      dataUrl = exportCanvas.toDataURL(
+        `image/${settings.format === "jpeg" ? "jpeg" : "png"}`,
+        settings.format === "jpeg" ? settings.quality / 100 : undefined,
+      );
+    } else {
+      dataUrl = stage.toDataURL({
+        pixelRatio,
+        mimeType: getMimeType(settings.format),
+        quality: settings.format === "png" ? undefined : settings.quality / 100,
+        x: 0,
+        y: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
+      });
+    }
 
     // Convert data URL to blob for download
     fetch(dataUrl)
@@ -157,6 +182,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         markClean();
+      })
+      .catch((err) => {
+        console.error("Export failed:", err);
       });
   }, [settings, canvasSize, markClean]);
 
@@ -181,8 +209,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
-    } catch {
-      // Clipboard API may not be available in all contexts
+    } catch (err) {
+      console.error("Copy to clipboard failed:", err);
     }
   }, [settings, canvasSize]);
 

@@ -30,6 +30,12 @@ export function ShapeOptions() {
   const shapeCornerRadius = useEditorStore((s) => s.shapeCornerRadius);
   const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
   const shapeStarPoints = useEditorStore((s) => s.shapeStarPoints);
+  const setShapeFill = useEditorStore((s) => s.setShapeFill);
+  const setShapeStroke = useEditorStore((s) => s.setShapeStroke);
+  const setShapeStrokeWidth = useEditorStore((s) => s.setShapeStrokeWidth);
+  const setShapeCornerRadius = useEditorStore((s) => s.setShapeCornerRadius);
+  const setShapePolygonSides = useEditorStore((s) => s.setShapePolygonSides);
+  const setShapeStarPoints = useEditorStore((s) => s.setShapeStarPoints);
 
   if (!SHAPE_TOOLS.has(activeTool)) return null;
 
@@ -57,7 +63,7 @@ export function ShapeOptions() {
         <input
           type="color"
           value={shapeFill}
-          onChange={(e) => useEditorStore.setState({ shapeFill: e.target.value })}
+          onChange={(e) => setShapeFill(e.target.value)}
           className="w-6 h-6 border border-border rounded cursor-pointer"
         />
       </label>
@@ -68,7 +74,7 @@ export function ShapeOptions() {
         <input
           type="color"
           value={shapeStroke}
-          onChange={(e) => useEditorStore.setState({ shapeStroke: e.target.value })}
+          onChange={(e) => setShapeStroke(e.target.value)}
           className="w-6 h-6 border border-border rounded cursor-pointer"
         />
       </label>
@@ -81,11 +87,7 @@ export function ShapeOptions() {
           min={0}
           max={50}
           value={shapeStrokeWidth}
-          onChange={(e) =>
-            useEditorStore.setState({
-              shapeStrokeWidth: Number(e.target.value),
-            })
-          }
+          onChange={(e) => setShapeStrokeWidth(Number(e.target.value))}
           className="w-16 h-1 accent-primary"
         />
         <input
@@ -93,11 +95,7 @@ export function ShapeOptions() {
           min={0}
           max={50}
           value={shapeStrokeWidth}
-          onChange={(e) =>
-            useEditorStore.setState({
-              shapeStrokeWidth: Number(e.target.value),
-            })
-          }
+          onChange={(e) => setShapeStrokeWidth(Number(e.target.value))}
           className="w-10 h-6 text-xs text-center bg-muted border border-border rounded px-1"
         />
       </label>
@@ -111,11 +109,7 @@ export function ShapeOptions() {
             min={0}
             max={100}
             value={shapeCornerRadius}
-            onChange={(e) =>
-              useEditorStore.setState({
-                shapeCornerRadius: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setShapeCornerRadius(Number(e.target.value))}
             className="w-16 h-1 accent-primary"
           />
           <input
@@ -123,11 +117,7 @@ export function ShapeOptions() {
             min={0}
             max={100}
             value={shapeCornerRadius}
-            onChange={(e) =>
-              useEditorStore.setState({
-                shapeCornerRadius: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setShapeCornerRadius(Number(e.target.value))}
             className="w-10 h-6 text-xs text-center bg-muted border border-border rounded px-1"
           />
         </label>
@@ -142,11 +132,7 @@ export function ShapeOptions() {
             min={3}
             max={20}
             value={shapePolygonSides}
-            onChange={(e) =>
-              useEditorStore.setState({
-                shapePolygonSides: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setShapePolygonSides(Number(e.target.value))}
             className="w-12 h-6 text-xs text-center bg-muted border border-border rounded px-1"
           />
         </label>
@@ -161,11 +147,7 @@ export function ShapeOptions() {
             min={3}
             max={20}
             value={shapeStarPoints}
-            onChange={(e) =>
-              useEditorStore.setState({
-                shapeStarPoints: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setShapeStarPoints(Number(e.target.value))}
             className="w-12 h-6 text-xs text-center bg-muted border border-border rounded px-1"
           />
         </label>

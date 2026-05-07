@@ -14,6 +14,7 @@ import type { CanvasObject, TextAttrs } from "@/types/editor";
  */
 export function useTextTool() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const pendingRef = useRef<{
     objectId: string;
     x: number;
@@ -23,6 +24,8 @@ export function useTextTool() {
   // Clean up any lingering textarea on unmount
   useEffect(() => {
     return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
       textareaRef.current?.remove();
       textareaRef.current = null;
     };
@@ -34,6 +37,8 @@ export function useTextTool() {
     if (!textarea || !pending) return;
 
     const text = textarea.value.trim();
+    abortRef.current?.abort();
+    abortRef.current = null;
     textarea.remove();
     textareaRef.current = null;
     pendingRef.current = null;
@@ -114,7 +119,7 @@ export function useTextTool() {
       const containerRect = container.getBoundingClientRect();
 
       const textarea = document.createElement("textarea");
-      textarea.style.position = "absolute";
+      textarea.style.position = "fixed";
       textarea.style.left = `${pointer.x + containerRect.left}px`;
       textarea.style.top = `${pointer.y + containerRect.top}px`;
       textarea.style.fontSize = `${fontSize * zoom}px`;
@@ -138,6 +143,10 @@ export function useTextTool() {
       document.body.appendChild(textarea);
       textareaRef.current = textarea;
 
+      const ac = new AbortController();
+      abortRef.current = ac;
+      const { signal } = ac;
+
       // Auto-resize as user types
       const autoResize = () => {
         textarea.style.height = "auto";
@@ -146,24 +155,32 @@ export function useTextTool() {
         textarea.style.width = `${Math.max(60, textarea.scrollWidth + 4)}px`;
       };
 
-      textarea.addEventListener("input", autoResize);
+      textarea.addEventListener("input", autoResize, { signal });
 
-      textarea.addEventListener("blur", () => {
-        commitText();
-      });
+      textarea.addEventListener(
+        "blur",
+        () => {
+          commitText();
+        },
+        { signal },
+      );
 
-      textarea.addEventListener("keydown", (ke) => {
-        // Enter without Shift commits; Shift+Enter inserts newline
-        if (ke.key === "Enter" && !ke.shiftKey) {
-          ke.preventDefault();
-          textarea.blur();
-        }
-        if (ke.key === "Escape") {
-          ke.preventDefault();
-          textarea.value = "";
-          textarea.blur();
-        }
-      });
+      textarea.addEventListener(
+        "keydown",
+        (ke) => {
+          // Enter without Shift commits; Shift+Enter inserts newline
+          if (ke.key === "Enter" && !ke.shiftKey) {
+            ke.preventDefault();
+            textarea.blur();
+          }
+          if (ke.key === "Escape") {
+            ke.preventDefault();
+            textarea.value = "";
+            textarea.blur();
+          }
+        },
+        { signal },
+      );
 
       // Focus after a microtask so the click doesn't immediately blur
       requestAnimationFrame(() => textarea.focus());

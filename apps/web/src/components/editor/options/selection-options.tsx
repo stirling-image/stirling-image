@@ -1,10 +1,9 @@
 import { Circle, Minus, PenTool, Plus, Square, Wand2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
-import type { ToolType } from "@/types/editor";
+import type { SelectionMode, ToolType } from "@/types/editor";
 
-type SelectionMode = "new" | "add" | "subtract";
 type SelectionType = "rect" | "ellipse" | "lasso";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +44,10 @@ function ToggleButton({
 export function SelectionOptions() {
   const activeTool = useEditorStore((s) => s.activeTool);
   const setTool = useEditorStore((s) => s.setTool);
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>("new");
+  const selectionMode = useEditorStore((s) => s.selectionMode);
+  const setSelectionMode = useEditorStore((s) => s.setSelectionMode);
+  const magicWandTolerance = useEditorStore((s) => s.magicWandTolerance);
+  const setMagicWandTolerance = useEditorStore((s) => s.setMagicWandTolerance);
 
   const selectionType: SelectionType =
     activeTool === "marquee-ellipse"
@@ -66,9 +68,12 @@ export function SelectionOptions() {
     [setTool],
   );
 
-  const handleModeChange = useCallback((mode: SelectionMode) => {
-    setSelectionMode(mode);
-  }, []);
+  const handleModeChange = useCallback(
+    (mode: SelectionMode) => {
+      setSelectionMode(mode);
+    },
+    [setSelectionMode],
+  );
 
   const isMarquee = activeTool === "marquee-rect" || activeTool === "marquee-ellipse";
   const isLasso = activeTool === "lasso-free" || activeTool === "lasso-poly";
@@ -176,7 +181,8 @@ export function SelectionOptions() {
               type="number"
               min={0}
               max={255}
-              defaultValue={32}
+              value={magicWandTolerance}
+              onChange={(e) => setMagicWandTolerance(Number(e.target.value))}
               className={cn(
                 "h-6 w-14 rounded border border-border bg-card px-1.5 text-xs text-foreground",
                 "focus:border-primary focus:outline-none",

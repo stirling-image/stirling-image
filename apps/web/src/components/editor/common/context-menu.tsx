@@ -61,10 +61,14 @@ export function ContextMenu({
   position,
   menuType,
   onClose,
+  onCanvasResize,
+  onImageResize,
 }: {
   position: MenuPosition;
   menuType: "object" | "canvas";
   onClose: () => void;
+  onCanvasResize?: () => void;
+  onImageResize?: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -219,7 +223,7 @@ export function ContextMenu({
       label: "Canvas Size...",
       icon: Maximize,
       action: () => {
-        // Trigger canvas resize dialog (handled by parent)
+        onCanvasResize?.();
         onClose();
       },
     },
@@ -227,7 +231,7 @@ export function ContextMenu({
       label: "Image Size...",
       icon: ImageIcon,
       action: () => {
-        // Trigger image resize dialog (handled by parent)
+        onImageResize?.();
         onClose();
       },
     },
