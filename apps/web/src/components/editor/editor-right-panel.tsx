@@ -2,7 +2,11 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
+import { AdjustmentsPanel } from "./panels/adjustments-panel";
+import { ColorPanel } from "./panels/color-panel";
+import { HistoryPanel } from "./panels/history-panel";
 import { LayersPanel } from "./panels/layers-panel";
+import { NavigatorPanel } from "./panels/navigator-panel";
 
 const TABS = [
   { id: "layers" as const, label: "Layers" },
@@ -15,6 +19,7 @@ export function EditorRightPanel() {
   const activeTab = useEditorStore((s) => s.rightPanelTab);
   const setTab = useEditorStore((s) => s.setRightPanelTab);
   const togglePanel = useEditorStore((s) => s.toggleRightPanel);
+  const sourceImageUrl = useEditorStore((s) => s.sourceImageUrl);
 
   if (!visible) {
     return (
@@ -31,6 +36,10 @@ export function EditorRightPanel() {
 
   return (
     <div className="flex flex-col w-[280px] bg-card border-l border-border">
+      {/* Navigator always visible when image loaded */}
+      {sourceImageUrl && <NavigatorPanel />}
+
+      {/* Tabs */}
       <div className="flex items-center border-b border-border">
         {TABS.map((tab) => (
           <button
@@ -57,12 +66,18 @@ export function EditorRightPanel() {
           <ChevronRight size={14} />
         </button>
       </div>
+
+      {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-2">
         {activeTab === "layers" && <LayersPanel />}
-        {activeTab !== "layers" && <div id={`editor-panel-${activeTab}`} />}
+        {activeTab === "adjustments" && <AdjustmentsPanel />}
+        {activeTab === "history" && <HistoryPanel />}
       </div>
-      {/* Color panel always visible at bottom (Agent 5) */}
-      <div id="editor-color-panel" className="border-t border-border" />
+
+      {/* Color panel always visible at bottom */}
+      <div className="border-t border-border">
+        <ColorPanel />
+      </div>
     </div>
   );
 }
