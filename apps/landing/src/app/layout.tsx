@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description:
     "48 image processing tools with local AI. Runs 100% offline. No data leaves your network. Open source and free forever.",
   metadataBase: new URL("https://snapotter.com"),
+  other: {
+    "color-scheme": "light only",
+    "darkreader-lock": "true",
+  },
   openGraph: {
     title: "SnapOtter | Self-Hosted Image Processing",
     description:

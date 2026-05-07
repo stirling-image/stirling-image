@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  color-scheme: light only;
+}
+
 @theme {
   --color-accent: #f59e0b;
   --color-accent-hover: #d97706;
