@@ -21,6 +21,7 @@ import { useEditorShortcuts } from "@/hooks/use-editor-shortcuts";
 import { useEditorStore } from "@/stores/editor-store";
 import type { CanvasObject } from "@/types/editor";
 import { BrushCursorOverlay, useEditorCursor } from "./common/custom-cursor";
+import { LoadingOverlay } from "./common/loading-overlay";
 import { useBrushTool } from "./tools/brush-tool";
 import { useEraserTool } from "./tools/eraser-tool";
 import { useFillTool } from "./tools/fill-tool";
@@ -391,6 +392,7 @@ export function EditorCanvas() {
         )}
       </Stage>
       <BrushCursorOverlay containerRef={containerRef} />
+      <LoadingOverlay />
     </div>
   );
 }

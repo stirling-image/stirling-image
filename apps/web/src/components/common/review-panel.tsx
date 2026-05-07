@@ -1,7 +1,15 @@
 import { TOOLS } from "@snapotter/shared";
-import { ArrowRight, ChevronDown, ChevronRight, Download, FileImage, Undo2 } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FileImage,
+  PenTool,
+  Undo2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatFileSize, triggerDownload } from "@/lib/download";
 import { ICON_MAP } from "@/lib/icon-map";
 import { getSuggestedTools } from "@/lib/suggested-tools";
@@ -102,6 +110,15 @@ export function ReviewPanel({
               Download
             </button>
           </div>
+
+          {/* Open in Editor */}
+          <Link
+            to={`/editor?url=${encodeURIComponent(downloadUrl)}`}
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted text-xs font-medium"
+          >
+            <PenTool className="h-3.5 w-3.5" />
+            Open in Editor
+          </Link>
 
           {/* Suggested tools */}
           {suggestedTools.length > 0 && (

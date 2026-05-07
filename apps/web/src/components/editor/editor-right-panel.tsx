@@ -40,11 +40,13 @@ export function EditorRightPanel() {
       {sourceImageUrl && <NavigatorPanel />}
 
       {/* Tabs */}
-      <div className="flex items-center border-b border-border">
+      <div className="flex items-center border-b border-border" role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setTab(tab.id)}
             className={cn(
               "flex-1 py-2 text-xs font-medium text-center transition-colors",
