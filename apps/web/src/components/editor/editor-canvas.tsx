@@ -30,6 +30,7 @@ import { useFillTool } from "./tools/fill-tool";
 import { useGradientTool } from "./tools/gradient-tool";
 import { MoveToolTransformer, useMoveTool } from "./tools/move-tool";
 import { useShapeTool } from "./tools/shape-tool";
+import { useTextTool } from "./tools/text-tool";
 
 // Module-level stage ref for export dialog access (Issue #6)
 export const editorStageRefHolder: { current: Konva.Stage | null } = {
@@ -390,6 +391,7 @@ function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
   const brushTool = useBrushTool();
   const eraserTool = useEraserTool();
   const shapeTool = useShapeTool();
+  const textTool = useTextTool();
   const fillTool = useFillTool(stageRef);
   const gradientTool = useGradientTool();
   const moveTool = useMoveTool();
@@ -412,12 +414,13 @@ function useActiveToolHandlers(stageRef: React.RefObject<Konva.Stage | null>) {
       "shape-arrow": shapeTool,
       "shape-polygon": shapeTool,
       "shape-star": shapeTool,
+      text: textTool,
       fill: fillTool,
       gradient: gradientTool,
     };
 
     return toolMap[activeTool] ?? null;
-  }, [activeTool, brushTool, eraserTool, shapeTool, fillTool, gradientTool]);
+  }, [activeTool, brushTool, eraserTool, shapeTool, textTool, fillTool, gradientTool]);
 
   return { handlers, moveTool };
 }

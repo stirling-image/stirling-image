@@ -357,14 +357,23 @@ export function useEditorShortcuts(callbacks?: { onSave?: () => void; onExport?:
   );
 
   // Ctrl+Shift+S / Cmd+Shift+S - Export image
-  useHotkeys(
-    "mod+shift+s",
-    (e) => {
-      e.preventDefault();
-      callbacks?.onExport?.();
-    },
-    { preventDefault: true },
-  );
+  // Use a raw keydown listener at capture phase to reliably prevent the
+  // browser's "Save Page As" dialog, which fires before react-hotkeys-hook
+  // can intercept.
+  const onExportRef = useRef(callbacks?.onExport);
+  onExportRef.current = callbacks?.onExport;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        onExportRef.current?.();
+      }
+    };
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
+  }, []);
 
   // Ctrl+A / Cmd+A - Select all
   useHotkeys(

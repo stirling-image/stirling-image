@@ -732,14 +732,11 @@ export const useEditorStore = create<EditorState>()(
       equality: (a, b) =>
         (a as { _historyVersion: number })._historyVersion ===
         (b as { _historyVersion: number })._historyVersion,
-      // Issue #1: Forward all arguments from zundo's internal _handleSet
-      handleSet: (handleSet) => {
-        let timeout: ReturnType<typeof setTimeout>;
-        return (...args: Parameters<typeof handleSet>) => {
-          clearTimeout(timeout);
-          timeout = setTimeout(() => handleSet(...args), 500);
-        };
-      },
+      // Issue #1: Forward all arguments from zundo's internal _handleSet.
+      // No debounce -- the equality function (based on _historyVersion) already
+      // prevents intermediate states from being recorded.  Debouncing caused
+      // undo/redo to race with the delayed recording and silently discard the
+      // future-states stack.
     },
   ),
 );
