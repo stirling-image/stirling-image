@@ -1,20 +1,28 @@
 // apps/web/src/components/editor/editor-toolbar.tsx
+//
+// Toolbar layout, icons, and shortcuts follow the standard Photoshop
+// convention so users coming from other editors feel at home.
 import {
-  ArrowUpRight,
+  Blend,
+  BoxSelect,
   Crop,
+  Droplet,
+  Droplets,
   Eraser,
+  Fingerprint,
+  Flame,
   Hand,
+  Hexagon,
+  Lasso,
+  Maximize2,
   MousePointer2,
-  Move,
   PaintBucket,
   Paintbrush,
-  Pen,
   Pencil,
   Pipette,
-  ScanLine,
-  Square,
   Stamp,
   Sun,
+  Triangle,
   Type,
   Wand2,
   ZoomIn,
@@ -34,117 +42,63 @@ interface ToolGroup {
 
 const TOOL_GROUPS: ToolGroup[] = [
   {
-    // Group 1: Move + Free Transform
     tools: [
       { tool: "move", icon: MousePointer2, label: "Move", shortcut: "V" },
-      {
-        tool: "transform",
-        icon: Move,
-        label: "Free Transform",
-        shortcut: "Ctrl+T",
-      },
+      { tool: "transform", icon: Maximize2, label: "Free Transform", shortcut: "Ctrl+T" },
     ],
   },
   {
-    // Group 2: Selection tools
     tools: [
-      {
-        tool: "marquee-rect",
-        icon: Square,
-        label: "Marquee",
-        shortcut: "M",
-      },
-      { tool: "lasso-free", icon: Pen, label: "Lasso", shortcut: "L" },
-      {
-        tool: "magic-wand",
-        icon: Wand2,
-        label: "Magic Wand",
-        shortcut: "W",
-      },
+      { tool: "marquee-rect", icon: BoxSelect, label: "Marquee", shortcut: "M" },
+      { tool: "lasso-free", icon: Lasso, label: "Lasso", shortcut: "L" },
+      { tool: "magic-wand", icon: Wand2, label: "Magic Wand", shortcut: "W" },
     ],
   },
   {
-    // Group 3: Crop
-    tools: [{ tool: "crop", icon: Crop, label: "Crop", shortcut: "C" }],
-  },
-  {
-    // Group 4: Eyedropper
     tools: [
-      {
-        tool: "eyedropper",
-        icon: Pipette,
-        label: "Eyedropper",
-        shortcut: "I",
-      },
+      { tool: "crop", icon: Crop, label: "Crop", shortcut: "C" },
+      { tool: "eyedropper", icon: Pipette, label: "Eyedropper", shortcut: "I" },
     ],
   },
   {
-    // Group 5: Brush, Eraser, Pencil
     tools: [
       { tool: "brush", icon: Paintbrush, label: "Brush", shortcut: "B" },
-      { tool: "eraser", icon: Eraser, label: "Eraser", shortcut: "E" },
       { tool: "pencil", icon: Pencil, label: "Pencil", shortcut: "N" },
     ],
   },
   {
-    // Group 6: Clone Stamp
+    tools: [{ tool: "clone-stamp", icon: Stamp, label: "Clone Stamp", shortcut: "S" }],
+  },
+  {
+    tools: [{ tool: "eraser", icon: Eraser, label: "Eraser", shortcut: "E" }],
+  },
+  {
     tools: [
-      {
-        tool: "clone-stamp",
-        icon: Stamp,
-        label: "Clone Stamp",
-        shortcut: "S",
-      },
+      { tool: "fill", icon: PaintBucket, label: "Paint Bucket", shortcut: "G" },
+      { tool: "gradient", icon: Blend, label: "Gradient", shortcut: "Shift+G" },
     ],
   },
   {
-    // Group 7: Dodge, Burn, Sponge
+    tools: [
+      { tool: "blur-brush", icon: Droplet, label: "Blur", shortcut: "" },
+      { tool: "sharpen-brush", icon: Triangle, label: "Sharpen", shortcut: "" },
+      { tool: "smudge", icon: Fingerprint, label: "Smudge", shortcut: "" },
+    ],
+  },
+  {
     tools: [
       { tool: "dodge", icon: Sun, label: "Dodge", shortcut: "O" },
-      { tool: "burn", icon: Sun, label: "Burn", shortcut: "Shift+O" },
-      { tool: "sponge", icon: Sun, label: "Sponge", shortcut: "Shift+O" },
+      { tool: "burn", icon: Flame, label: "Burn", shortcut: "Shift+O" },
+      { tool: "sponge", icon: Droplets, label: "Sponge", shortcut: "Shift+O" },
     ],
   },
   {
-    // Group 8: Blur brush, Sharpen brush, Smudge
-    tools: [
-      { tool: "blur-brush", icon: ScanLine, label: "Blur Brush", shortcut: "" },
-      {
-        tool: "sharpen-brush",
-        icon: ScanLine,
-        label: "Sharpen Brush",
-        shortcut: "",
-      },
-      { tool: "smudge", icon: ScanLine, label: "Smudge", shortcut: "" },
-    ],
+    tools: [{ tool: "shape-rect", icon: Hexagon, label: "Shape", shortcut: "U" }],
   },
   {
-    // Group 9: Paint Bucket, Gradient
-    tools: [
-      {
-        tool: "fill",
-        icon: PaintBucket,
-        label: "Paint Bucket",
-        shortcut: "G",
-      },
-      {
-        tool: "gradient",
-        icon: ArrowUpRight,
-        label: "Gradient",
-        shortcut: "Shift+G",
-      },
-    ],
-  },
-  {
-    // Group 10: Shapes
-    tools: [{ tool: "shape-rect", icon: Square, label: "Shape", shortcut: "U" }],
-  },
-  {
-    // Group 11: Text
     tools: [{ tool: "text", icon: Type, label: "Text", shortcut: "T" }],
   },
   {
-    // Group 12: Hand, Zoom
     tools: [
       { tool: "hand", icon: Hand, label: "Hand", shortcut: "H" },
       { tool: "zoom", icon: ZoomIn, label: "Zoom", shortcut: "Z" },
