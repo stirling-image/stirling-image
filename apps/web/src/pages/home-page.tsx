@@ -13,6 +13,8 @@ import { useSettingsStore } from "@/stores/settings-store";
 // Tools shown prominently as "quick actions" at the top
 const QUICK_ACTION_IDS = ["resize", "compress", "convert", "remove-background"];
 
+let hasAppliedDefaultRedirect = false;
+
 export function HomePage() {
   const {
     setFiles,
@@ -37,7 +39,13 @@ export function HomePage() {
   }, [fetchSettings, fetchFeatures]);
 
   useEffect(() => {
-    if (settingsLoaded && defaultToolView === "fullscreen" && files.length === 0) {
+    if (
+      !hasAppliedDefaultRedirect &&
+      settingsLoaded &&
+      defaultToolView === "fullscreen" &&
+      files.length === 0
+    ) {
+      hasAppliedDefaultRedirect = true;
       navigate("/fullscreen", { replace: true });
     }
   }, [settingsLoaded, defaultToolView, files.length, navigate]);
