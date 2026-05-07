@@ -148,7 +148,7 @@ export function usePipelineProcessor() {
             const parsed = parseApiError(body, xhr.status);
             if (typeof parsed === "object" && parsed.type === "feature_not_installed") {
               setError(
-                `Feature "${parsed.featureName}" is not installed. Enable it in Settings → AI Features.`,
+                `The "${parsed.featureName}" feature is not installed. Enable it in Settings → AI Features.`,
               );
             } else {
               setError(parsed as string);
@@ -279,7 +279,7 @@ export function usePipelineProcessor() {
             } else {
               const parsed = parseApiError(body, response.status);
               if (typeof parsed === "object" && parsed.type === "feature_not_installed") {
-                errorMsg = `Feature "${parsed.featureName}" is not installed. Enable it in Settings → AI Features.`;
+                errorMsg = `The "${parsed.featureName}" feature is not installed. Enable it in Settings → AI Features.`;
               } else {
                 errorMsg = parsed as string;
               }

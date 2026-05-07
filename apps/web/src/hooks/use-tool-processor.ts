@@ -1,4 +1,4 @@
-import { PYTHON_SIDECAR_TOOLS } from "@snapotter/shared";
+import { PYTHON_SIDECAR_TOOLS, TOOLS } from "@snapotter/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatHeaders, parseApiError } from "@/lib/api";
 import { generateId } from "@/lib/utils";
@@ -47,6 +47,7 @@ export function useToolProcessor(toolId: string) {
 
   const isAiTool = AI_PYTHON_TOOLS.has(toolId);
   const isMediumTool = MEDIUM_TOOLS.has(toolId);
+  const toolName = TOOLS.find((t) => t.id === toolId)?.name ?? toolId;
   const processingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Clean up on unmount
@@ -280,7 +281,7 @@ export function useToolProcessor(toolId: string) {
             const parsed = parseApiError(body, xhr.status);
             if (typeof parsed === "object" && parsed.type === "feature_not_installed") {
               setError(
-                `Feature "${parsed.featureName}" is not installed. Enable it in Settings → AI Features.`,
+                `${toolName} requires the "${parsed.featureName}" feature. Enable it in Settings → AI Features.`,
               );
             } else {
               setError(parsed as string);
@@ -324,7 +325,7 @@ export function useToolProcessor(toolId: string) {
       });
       xhr.send(formData);
     },
-    [toolId, isAiTool, isMediumTool, setProcessing, setError],
+    [toolId, isAiTool, isMediumTool, setProcessing, setError, toolName],
   );
 
   const processAllFiles = useCallback(
@@ -407,7 +408,7 @@ export function useToolProcessor(toolId: string) {
             const body = JSON.parse(text);
             const parsed = parseApiError(body, response.status);
             if (typeof parsed === "object" && parsed.type === "feature_not_installed") {
-              errorMsg = `Feature "${parsed.featureName}" is not installed. Enable it in Settings → AI Features.`;
+              errorMsg = `${toolName} requires the "${parsed.featureName}" feature. Enable it in Settings → AI Features.`;
             } else {
               errorMsg = parsed as string;
             }
@@ -465,7 +466,7 @@ export function useToolProcessor(toolId: string) {
         setProgress(IDLE_PROGRESS);
       }
     },
-    [toolId, processFiles, setProcessing, setError],
+    [toolId, processFiles, setProcessing, setError, toolName],
   );
 
   return {

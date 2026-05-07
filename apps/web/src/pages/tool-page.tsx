@@ -292,7 +292,12 @@ export function ToolPage() {
   if (isAiTool && !toolInstalled && featureBundle) {
     return (
       <AppLayout>
-        <FeatureInstallPrompt bundle={featureBundle} isAdmin={isAdmin} toolName={tool?.name} />
+        <FeatureInstallPrompt
+          bundle={featureBundle}
+          isAdmin={isAdmin}
+          toolName={tool?.name}
+          toolDescription={tool?.description}
+        />
       </AppLayout>
     );
   }

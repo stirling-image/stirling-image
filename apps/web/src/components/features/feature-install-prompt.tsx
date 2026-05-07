@@ -47,9 +47,15 @@ interface FeatureInstallPromptProps {
   bundle: FeatureBundleState;
   isAdmin: boolean;
   toolName?: string;
+  toolDescription?: string;
 }
 
-export function FeatureInstallPrompt({ bundle, isAdmin, toolName }: FeatureInstallPromptProps) {
+export function FeatureInstallPrompt({
+  bundle,
+  isAdmin,
+  toolName,
+  toolDescription,
+}: FeatureInstallPromptProps) {
   const { installBundle, clearError, installing, errors, startTimes, queued } = useFeaturesStore();
   const progress = installing[bundle.id] ?? null;
   const error = errors[bundle.id] ?? null;
@@ -57,6 +63,7 @@ export function FeatureInstallPrompt({ bundle, isAdmin, toolName }: FeatureInsta
   const isQueued = queued.includes(bundle.id);
   const startTime = startTimes[bundle.id] ?? null;
   const displayName = toolName || bundle.name;
+  const displayDescription = toolDescription || bundle.description;
 
   const [messageIndex, setMessageIndex] = useState(() =>
     Math.floor(Math.random() * PROGRESS_MESSAGES.length),
@@ -103,7 +110,7 @@ export function FeatureInstallPrompt({ bundle, isAdmin, toolName }: FeatureInsta
       <Download className="h-16 w-16 text-muted-foreground" />
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-foreground">{displayName}</h2>
-        <p className="text-muted-foreground max-w-md">{bundle.description}</p>
+        <p className="text-muted-foreground max-w-md">{displayDescription}</p>
         <p className="text-sm text-muted-foreground">
           This feature requires an additional download (~{bundle.estimatedSize})
         </p>
