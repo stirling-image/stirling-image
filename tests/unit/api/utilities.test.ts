@@ -752,7 +752,6 @@ describe("loadEnv", () => {
       "WORKSPACE_PATH",
       "DEFAULT_THEME",
       "DEFAULT_LOCALE",
-      "APP_NAME",
     ];
     for (const key of keysToClean) {
       delete process.env[key];
@@ -794,7 +793,6 @@ describe("loadEnv", () => {
     expect(typeof env.WORKSPACE_PATH).toBe("string");
     expect(["light", "dark"]).toContain(env.DEFAULT_THEME);
     expect(typeof env.DEFAULT_LOCALE).toBe("string");
-    expect(typeof env.APP_NAME).toBe("string");
   });
 
   it("parses custom PORT as a number via coercion", async () => {
@@ -862,12 +860,10 @@ describe("loadEnv", () => {
   });
 
   it("accepts string values for string fields", async () => {
-    process.env.APP_NAME = "My Custom App";
     process.env.DB_PATH = "/var/data/mydb.sqlite";
     process.env.DEFAULT_LOCALE = "fr";
     const { loadEnv } = await import("../../../apps/api/src/lib/env.js");
     const env = loadEnv();
-    expect(env.APP_NAME).toBe("My Custom App");
     expect(env.DB_PATH).toBe("/var/data/mydb.sqlite");
     expect(env.DEFAULT_LOCALE).toBe("fr");
   });

@@ -1,8 +1,7 @@
 import { FolderOpen, LayoutGrid, Menu, Settings as SettingsIcon, Workflow, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMobile } from "@/hooks/use-mobile";
-import { apiGet } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useConnectionStore } from "@/stores/connection-store";
 import { Dropzone } from "../common/dropzone";
@@ -25,15 +24,8 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
   const [helpOpen, setHelpOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isMobile = useMobile();
-  const [customLogo, setCustomLogo] = useState(false);
   const connectionStatus = useConnectionStore((s) => s.status);
   const bannerVisible = connectionStatus !== "connected";
-
-  useEffect(() => {
-    apiGet<{ settings: Record<string, string> }>("/v1/settings")
-      .then((data) => setCustomLogo(data.settings.customLogo === "true"))
-      .catch(() => {});
-  }, []);
 
   return (
     <div
@@ -47,7 +39,6 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
         <Sidebar
           onSettingsClick={() => setSettingsOpen(true)}
           onHelpClick={() => setHelpOpen(true)}
-          customLogo={customLogo}
         />
       )}
 
@@ -61,20 +52,12 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
           />
           <div className="fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border shadow-xl animate-in slide-in-from-left">
             <div className="flex items-center justify-between p-3 border-b border-border">
-              {customLogo ? (
-                <img
-                  src="/api/v1/settings/logo"
-                  className="h-6 w-6 rounded object-contain"
-                  alt="Logo"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <OtterLogo className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-bold text-foreground">
-                    <span className="text-primary">SnapOtter</span>
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <OtterLogo className="h-5 w-5 text-primary" />
+                <span className="text-sm font-bold text-foreground">
+                  <span className="text-primary">SnapOtter</span>
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => setMobileSidebarOpen(false)}
@@ -114,20 +97,12 @@ export function AppLayout({ children, showToolPanel = true, onFiles }: AppLayout
           >
             <Menu className="h-5 w-5" />
           </button>
-          {customLogo ? (
-            <img
-              src="/api/v1/settings/logo"
-              className="h-6 w-6 rounded object-contain"
-              alt="Logo"
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <OtterLogo className="h-5 w-5 text-primary" />
-              <span className="text-sm font-bold text-foreground">
-                <span className="text-primary">SnapOtter</span>
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <OtterLogo className="h-5 w-5 text-primary" />
+            <span className="text-sm font-bold text-foreground">
+              <span className="text-primary">SnapOtter</span>
+            </span>
+          </div>
         </div>
       )}
 

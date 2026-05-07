@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { apiDelete, apiGet, apiPost, apiPut, clearToken, formatHeaders } from "@/lib/api";
+import { apiDelete, apiGet, apiPost, apiPut, clearToken } from "@/lib/api";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { useAnalyticsStore } from "@/stores/analytics-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -349,7 +349,6 @@ function SystemSection() {
       .catch(() => {
         // Fallback defaults if endpoint not ready
         setSettings({
-          appName: "SnapOtter",
           fileUploadLimitMb: "100",
           defaultTheme: "system",
           defaultLocale: "en",
@@ -381,37 +380,6 @@ function SystemSection() {
     }
   }, [settings]);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch("/api/v1/settings/logo", {
-        method: "POST",
-        headers: formatHeaders(),
-        body: formData,
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setSaveMsg(body?.error || "Failed to upload logo.");
-        return;
-      }
-      setSettings((prev) => ({ ...prev, customLogo: "true" }));
-    } catch {
-      setSaveMsg("Failed to upload logo.");
-    }
-  };
-
-  const handleLogoDelete = async () => {
-    try {
-      await apiDelete("/v1/settings/logo");
-      setSettings((prev) => ({ ...prev, customLogo: "false" }));
-    } catch {
-      setSaveMsg("Failed to delete logo.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -426,52 +394,6 @@ function SystemSection() {
         <h3 className="text-lg font-semibold text-foreground">System Settings</h3>
         <p className="text-sm text-muted-foreground mt-1">Server-side configuration and limits.</p>
       </div>
-
-      <SettingRow label="App Name" description="Display name for the application">
-        <input
-          type="text"
-          value={settings.appName || ""}
-          onChange={(e) => updateSetting("appName", e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground w-48"
-        />
-      </SettingRow>
-
-      <SettingRow
-        label="Custom Logo"
-        description="Upload a custom logo for the sidebar. PNG, SVG, or JPEG. Max 500KB."
-      >
-        <div className="flex items-center gap-3">
-          {settings.customLogo === "true" && (
-            <img
-              src="/api/v1/settings/logo"
-              className="w-10 h-10 rounded object-contain"
-              alt="Logo"
-            />
-          )}
-          <label
-            htmlFor="system-logo-upload"
-            className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm cursor-pointer hover:bg-muted transition-colors"
-          >
-            Upload
-            <input
-              id="system-logo-upload"
-              type="file"
-              accept="image/png,image/jpeg,image/svg+xml"
-              className="hidden"
-              onChange={handleLogoUpload}
-            />
-          </label>
-          {settings.customLogo === "true" && (
-            <button
-              type="button"
-              onClick={handleLogoDelete}
-              className="text-sm text-destructive hover:underline"
-            >
-              Remove
-            </button>
-          )}
-        </div>
-      </SettingRow>
 
       <SettingRow label="File Upload Limit (MB)" description="Maximum file size per upload">
         <input
@@ -1756,7 +1678,6 @@ const PERMISSION_GROUPS = [
   { label: "Settings", permissions: ["settings:read", "settings:write"] },
   { label: "Users", permissions: ["users:manage"] },
   { label: "Teams", permissions: ["teams:manage"] },
-  { label: "Branding", permissions: ["branding:manage"] },
   {
     label: "System",
     permissions: ["features:manage", "system:health", "audit:read"],

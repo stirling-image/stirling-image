@@ -174,7 +174,7 @@ base.describe("RBAC - User sees restricted tabs", () => {
     const settingsRes = await fetch(`${API}/api/v1/settings`, {
       method: "PUT",
       headers: authJson(bearerToken),
-      body: JSON.stringify({ appName: "hacked" }),
+      body: JSON.stringify({ testSetting: "hacked" }),
     });
     expect(settingsRes.status).toBe(403);
   });
@@ -280,7 +280,7 @@ base.describe("RBAC - Editor sees collaborative tabs", () => {
     const settingsRes = await fetch(`${API}/api/v1/settings`, {
       method: "PUT",
       headers: authJson(token as string),
-      body: JSON.stringify({ appName: "hacked" }),
+      body: JSON.stringify({ testSetting: "hacked" }),
     });
     expect(settingsRes.status).toBe(403);
   });

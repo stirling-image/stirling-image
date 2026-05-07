@@ -1452,7 +1452,7 @@ describe("Settings", () => {
         method: "PUT",
         url: "/api/v1/settings",
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { app_name: "<script>alert('xss')</script>" },
+        payload: { test_setting: "<script>alert('xss')</script>" },
       });
       expect(res.statusCode).toBe(400);
       const body = JSON.parse(res.body);
@@ -1500,7 +1500,7 @@ describe("Settings", () => {
         method: "PUT",
         url: "/api/v1/settings",
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { app_name: "My App (v2.0) - Production" },
+        payload: { test_setting: "My App (v2.0) - Production" },
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);

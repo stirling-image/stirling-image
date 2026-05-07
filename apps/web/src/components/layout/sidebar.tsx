@@ -29,8 +29,6 @@ interface SidebarProps {
   onNavClick?: () => void;
   /** When true, renders in expanded mode (for mobile overlay). */
   expanded?: boolean;
-  /** Whether a custom logo is set. */
-  customLogo?: boolean;
 }
 
 export function Sidebar({
@@ -38,7 +36,6 @@ export function Sidebar({
   onHelpClick,
   onNavClick,
   expanded = false,
-  customLogo = false,
 }: SidebarProps) {
   const location = useLocation();
 
@@ -103,11 +100,7 @@ export function Sidebar({
   return (
     <aside className="flex flex-col items-center w-16 bg-sidebar border-r border-border py-3 gap-1 shrink-0">
       <div className="mb-2 flex items-center justify-center">
-        {customLogo ? (
-          <img src="/api/v1/settings/logo" className="h-8 w-8 rounded object-contain" alt="Logo" />
-        ) : (
-          <OtterLogo className="h-7 w-7 text-primary" />
-        )}
+        <OtterLogo className="h-7 w-7 text-primary" />
       </div>
       <div className="border-t border-border w-10 mb-2" />
       <div className="flex flex-col gap-1 flex-1">

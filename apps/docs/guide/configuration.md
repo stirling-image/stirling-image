@@ -47,7 +47,6 @@ All configuration is done through environment variables. Every variable has a se
 | `MAX_PIPELINE_STEPS` | `0` (no limit) | Maximum number of steps in a pipeline. Set to 0 for no limit. |
 | `MAX_CANVAS_PIXELS` | `0` (no limit) | Maximum canvas size in pixels for output images. Set to 0 for no limit. |
 | `MAX_SVG_SIZE_MB` | `0` (unlimited) | Maximum SVG file size in megabytes. Set to 0 for unlimited. |
-| `MAX_LOGO_SIZE_KB` | `500` | Maximum custom branding logo size in kilobytes. |
 | `MAX_SPLIT_GRID` | `100` | Maximum grid dimension for the image split tool. |
 | `MAX_PDF_PAGES` | `0` (unlimited) | Maximum number of PDF pages for PDF-to-image conversion. Set to 0 for unlimited. |
 
@@ -62,7 +61,6 @@ All configuration is done through environment variables. Every variable has a se
 
 | Variable | Default | Description |
 |---|---|---|
-| `APP_NAME` | `SnapOtter` | Display name shown in the UI. |
 | `DEFAULT_THEME` | `light` | Default theme for new sessions. `light` or `dark`. |
 | `DEFAULT_LOCALE` | `en` | Default interface language. |
 

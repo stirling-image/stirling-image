@@ -17,7 +17,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "settings:write",
     "users:manage",
     "teams:manage",
-    "branding:manage",
     "features:manage",
     "system:health",
     "audit:read",

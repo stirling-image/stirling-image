@@ -55,7 +55,6 @@ describe("hasEffectivePermission", () => {
       expect(hasEffectivePermission(editor, "users:manage")).toBe(false);
       expect(hasEffectivePermission(editor, "settings:write")).toBe(false);
       expect(hasEffectivePermission(editor, "teams:manage")).toBe(false);
-      expect(hasEffectivePermission(editor, "branding:manage")).toBe(false);
       expect(hasEffectivePermission(editor, "features:manage")).toBe(false);
       expect(hasEffectivePermission(editor, "system:health")).toBe(false);
       expect(hasEffectivePermission(editor, "audit:read")).toBe(false);
@@ -185,8 +184,8 @@ describe("hasEffectivePermission", () => {
 
 describe("getPermissions", () => {
   describe("exact counts for built-in roles", () => {
-    it("admin has exactly 15 permissions", () => {
-      expect(getPermissions("admin")).toHaveLength(15);
+    it("admin has exactly 14 permissions", () => {
+      expect(getPermissions("admin")).toHaveLength(14);
     });
 
     it("editor has exactly 7 permissions", () => {

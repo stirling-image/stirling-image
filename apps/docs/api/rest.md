@@ -312,14 +312,6 @@ To auto-save a tool result to the library, include `fileId` in the settings payl
 | `PUT` | `/api/v1/teams/:id` | Admin (`teams:manage`) | Rename team |
 | `DELETE` | `/api/v1/teams/:id` | Admin (`teams:manage`) | Delete team (cannot delete default team or teams with members) |
 
-## Branding
-
-| Method | Path | Access | Description |
-|--------|------|--------|-------------|
-| `POST` | `/api/v1/settings/logo` | Admin | Upload custom logo (max 500 KB, converted to 128×128 PNG) |
-| `GET` | `/api/v1/settings/logo` | Public | Serve current logo |
-| `DELETE` | `/api/v1/settings/logo` | Admin | Remove custom logo |
-
 ## Settings
 
 Runtime key-value configuration (read by any authenticated user, write by admin only).
@@ -330,7 +322,7 @@ Runtime key-value configuration (read by any authenticated user, write by admin 
 | `PUT` | `/api/v1/settings` | Bulk update settings (JSON body with key-value pairs) |
 | `GET` | `/api/v1/settings/:key` | Get a specific setting by key |
 
-Known keys: `disabledTools` (JSON array of tool IDs), `enableExperimentalTools` (bool string), `loginAttemptLimit` (number), `customLogo` (managed via branding endpoint).
+Known keys: `disabledTools` (JSON array of tool IDs), `enableExperimentalTools` (bool string), `loginAttemptLimit` (number).
 
 ## Roles
 
@@ -343,7 +335,7 @@ Custom role management with granular permissions.
 | `PUT` | `/api/v1/roles/:id` | Admin (`users:manage`) | Update a custom role (cannot modify built-in roles) |
 | `DELETE` | `/api/v1/roles/:id` | Admin (`users:manage`) | Delete a custom role (cannot delete built-in roles; affected users revert to `user` role) |
 
-Available permissions: `tools:use`, `files:own`, `files:all`, `apikeys:own`, `apikeys:all`, `pipelines:own`, `pipelines:all`, `settings:read`, `settings:write`, `users:manage`, `teams:manage`, `branding:manage`, `features:manage`, `system:health`, `audit:read`.
+Available permissions: `tools:use`, `files:own`, `files:all`, `apikeys:own`, `apikeys:all`, `pipelines:own`, `pipelines:all`, `settings:read`, `settings:write`, `users:manage`, `teams:manage`, `features:manage`, `system:health`, `audit:read`.
 
 ## Audit Log
 

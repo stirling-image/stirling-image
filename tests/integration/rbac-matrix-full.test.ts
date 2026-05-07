@@ -243,15 +243,6 @@ const routes: RouteTest[] = [
     unauth: 401,
     label: "system:health",
   },
-  {
-    method: "DELETE",
-    url: "/api/v1/settings/logo",
-    admin: 200,
-    editor: 403,
-    user: 403,
-    unauth: 401,
-    label: "branding:manage (delete logo)",
-  },
 ];
 
 describe("RBAC route permission matrix (full)", () => {
@@ -320,7 +311,6 @@ describe("Cross-role isolation", () => {
     expect(body.user.permissions).not.toContain("settings:write");
     expect(body.user.permissions).not.toContain("users:manage");
     expect(body.user.permissions).not.toContain("teams:manage");
-    expect(body.user.permissions).not.toContain("branding:manage");
     expect(body.user.permissions).not.toContain("features:manage");
     expect(body.user.permissions).not.toContain("system:health");
     expect(body.user.permissions).not.toContain("audit:read");

@@ -39,8 +39,6 @@ tags:
     description: System-wide configuration (admin only for writes).
   - name: Teams
     description: Organize users into teams.
-  - name: Branding
-    description: Custom logo management.
   - name: Roles
     description: Custom role management with fine-grained permissions.
   - name: Audit
@@ -5764,96 +5762,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  # ─── Branding ─────────────────────────────────────────────────────────────
-
-  /api/v1/settings/logo:
-    get:
-      tags: [Branding]
-      summary: Get custom logo
-      security: []
-      responses:
-        "200":
-          description: Logo image
-          content:
-            image/*:
-              schema:
-                type: string
-                format: binary
-        "404":
-          description: No custom logo set
-    post:
-      tags: [Branding]
-      summary: Upload custom logo (admin)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [logo]
-              properties:
-                logo:
-                  type: string
-                  format: binary
-                  description: Logo image file
-      responses:
-        "200":
-          description: Logo uploaded
-        "400":
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          description: Authentication required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
-        "403":
-          description: Admin access required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ForbiddenError"
-    delete:
-      tags: [Branding]
-      summary: Remove custom logo
-      description: Requires branding:manage permission.
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Logo removed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-        "400":
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          description: Authentication required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
-        "403":
-          description: Admin access required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ForbiddenError"
-
   # ─── System (additional) ──────────────────────────────────────────────────
 
   /api/v1/config/auth:
@@ -6417,7 +6325,7 @@ paths:
                     Permission strings. Valid values: tools:use, files:own, files:all,
                     apikeys:own, apikeys:all, pipelines:own, pipelines:all,
                     settings:read, settings:write, users:manage, teams:manage,
-                    branding:manage, features:manage, system:health, audit:read
+                    features:manage, system:health, audit:read
       responses:
         "201":
           description: Role created

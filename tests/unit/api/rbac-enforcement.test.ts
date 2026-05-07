@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getPermissions, hasPermission } from "../../../apps/api/src/permissions.js";
 
 describe("role permissions", () => {
-  it("admin has all 15 permissions", () => {
+  it("admin has all 14 permissions", () => {
     const perms = getPermissions("admin");
     expect(perms).toContain("tools:use");
     expect(perms).toContain("files:all");
@@ -10,7 +10,7 @@ describe("role permissions", () => {
     expect(perms).toContain("features:manage");
     expect(perms).toContain("system:health");
     expect(perms).toContain("audit:read");
-    expect(perms.length).toBe(15);
+    expect(perms.length).toBe(14);
   });
 
   it("editor has collaborative but not admin permissions", () => {

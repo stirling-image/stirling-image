@@ -77,7 +77,7 @@ describe("API key permission scoping", () => {
       method: "PUT",
       url: "/api/v1/settings",
       headers: { authorization: `Bearer ${apiKey}` },
-      payload: { appName: "hacked" },
+      payload: { testSetting: "hacked" },
     });
     expect(writeRes.statusCode).toBe(403);
   });

@@ -122,15 +122,6 @@ test.describe("GUI Settings - General Tab", () => {
 });
 
 test.describe("GUI Settings - System Settings Tab", () => {
-  test("shows App Name input", async ({ loggedInPage: page }) => {
-    await openSettings(page);
-    await page.getByRole("button", { name: /system settings/i }).click();
-
-    await expect(page.getByText("App Name")).toBeVisible();
-    const appNameInput = page.locator("input[type='text']").first();
-    await expect(appNameInput).toBeVisible();
-  });
-
   test("shows File Upload Limit input", async ({ loggedInPage: page }) => {
     await openSettings(page);
     await page.getByRole("button", { name: /system settings/i }).click();
@@ -167,7 +158,7 @@ test.describe("GUI Settings - System Settings Tab", () => {
     await page.getByRole("button", { name: /system settings/i }).click();
 
     // Wait for section to load
-    await expect(page.getByText("App Name")).toBeVisible();
+    await expect(page.getByText("File Upload Limit (MB)")).toBeVisible();
 
     // Click save
     await page.getByRole("button", { name: /save settings/i }).click();
@@ -370,47 +361,5 @@ test.describe("GUI Settings - Product Analytics Tab (deep)", () => {
 
     // One of the two states must be true
     expect(toggleVisible || disabledVisible).toBe(true);
-  });
-});
-
-test.describe("GUI Settings - Save and Persistence", () => {
-  test("System Settings save persists after dialog close and reopen", async ({
-    loggedInPage: page,
-  }) => {
-    // Navigate to System Settings tab
-    await openSettings(page);
-    await page.getByRole("button", { name: /system settings/i }).click();
-    await expect(page.getByText("App Name")).toBeVisible({ timeout: 5_000 });
-
-    // Wait for the input to load
-    const appNameInput = page.locator("input[type='text']").first();
-    await expect(appNameInput).toBeVisible();
-    const originalName = await appNameInput.inputValue();
-    const testName = originalName === "SnapOtter" ? "TestApp" : "SnapOtter";
-
-    // Change the App Name
-    await appNameInput.fill(testName);
-
-    // Save
-    await page.getByRole("button", { name: /save settings/i }).click();
-    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
-
-    // Close the dialog
-    await page.keyboard.press("Escape");
-    await expect(page.locator("h2").filter({ hasText: "Settings" })).not.toBeVisible();
-
-    // Reopen the dialog and go to System Settings
-    await openSettings(page);
-    await page.getByRole("button", { name: /system settings/i }).click();
-    await expect(page.getByText("App Name")).toBeVisible();
-
-    // Verify the setting persisted
-    const persistedName = await page.locator("input[type='text']").first().inputValue();
-    expect(persistedName).toBe(testName);
-
-    // Restore original name
-    await page.locator("input[type='text']").first().fill(originalName);
-    await page.getByRole("button", { name: /save settings/i }).click();
-    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
   });
 });

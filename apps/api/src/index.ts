@@ -21,7 +21,6 @@ import { analyticsRoutes } from "./routes/analytics.js";
 import { apiKeyRoutes } from "./routes/api-keys.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
 import { registerBatchRoutes } from "./routes/batch.js";
-import { brandingRoutes } from "./routes/branding.js";
 import { docsRoutes } from "./routes/docs.js";
 import { registerFeatureRoutes } from "./routes/features.js";
 import { fileRoutes } from "./routes/files.js";
@@ -179,9 +178,6 @@ await analyticsRoutes(app);
 
 // Feature management routes (AI feature bundle install/uninstall)
 await registerFeatureRoutes(app);
-
-// Branding routes (logo upload/serve/delete)
-await brandingRoutes(app);
 
 // Teams routes
 await teamsRoutes(app);

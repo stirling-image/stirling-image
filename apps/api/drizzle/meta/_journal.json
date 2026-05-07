@@ -71,6 +71,13 @@
       "when": 1776855591000,
       "tag": "0009_analytics_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1778300000000,
+      "tag": "0010_remove_branding",
+      "breakpoints": true
     }
   ]
 }

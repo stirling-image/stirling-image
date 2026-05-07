@@ -19,7 +19,6 @@ const ALL_PERMISSIONS: Permission[] = [
   "settings:write",
   "users:manage",
   "teams:manage",
-  "branding:manage",
   "features:manage",
   "system:health",
   "audit:read",
