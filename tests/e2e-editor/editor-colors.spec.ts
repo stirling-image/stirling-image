@@ -89,8 +89,8 @@ test.describe("Editor Colors", () => {
     await page.waitForTimeout(300);
 
     const picker = page.locator("[data-testid='color-picker-popover']");
-    await expect(picker.getByText("HEX", { exact: true })).toBeVisible();
-    await expect(picker.getByText("RGB", { exact: true })).toBeVisible();
-    await expect(picker.getByText("HSL", { exact: true })).toBeVisible();
+    await expect(picker.getByText(/^hex$/i)).toBeVisible();
+    await expect(picker.getByText(/^rgb$/i)).toBeVisible();
+    await expect(picker.getByText(/^hsl$/i)).toBeVisible();
   });
 });

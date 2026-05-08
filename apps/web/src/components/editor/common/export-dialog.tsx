@@ -154,8 +154,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
       ctx.drawImage(stageCanvas, 0, 0);
       dataUrl = exportCanvas.toDataURL(
-        `image/${settings.format === "jpeg" ? "jpeg" : "png"}`,
-        settings.format === "jpeg" ? settings.quality / 100 : undefined,
+        getMimeType(settings.format),
+        settings.format === "png" ? undefined : settings.quality / 100,
       );
     } else {
       dataUrl = stage.toDataURL({
@@ -272,6 +272,10 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             sourceImageSize: data.sourceImageSize || null,
             foregroundColor: data.foregroundColor || "#000000",
             backgroundColor: data.backgroundColor || "#ffffff",
+            selection: null,
+            cropState: null,
+            selectedObjectIds: [],
+            clipboard: [],
             isDirty: false,
             lastAction: "Load Project",
             _historyVersion: store._historyVersion + 1,
@@ -569,13 +573,23 @@ export async function saveEditorState(): Promise<void> {
     // Convert blob URLs to data URLs so they survive localStorage round-trip
     const sourceImageUrl = s.sourceImageUrl ? await blobUrlToDataUrl(s.sourceImageUrl) : null;
 
+    // Also convert blob URLs inside image-type canvas objects
+    const objects = await Promise.all(
+      s.objects.map(async (obj) => {
+        if (obj.type === "image" && obj.attrs.src?.startsWith("blob:")) {
+          return { ...obj, attrs: { ...obj.attrs, src: await blobUrlToDataUrl(obj.attrs.src) } };
+        }
+        return obj;
+      }),
+    );
+
     const data: AutosaveData = {
       version: 1,
       timestamp: Date.now(),
       state: {
         canvasSize: s.canvasSize,
         layers: s.layers,
-        objects: s.objects,
+        objects,
         adjustments: s.adjustments,
         filters: s.filters,
         guides: s.guides,

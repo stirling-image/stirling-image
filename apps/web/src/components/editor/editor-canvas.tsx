@@ -354,15 +354,16 @@ function computeEffectProps(effects?: ObjectEffects): Record<string, unknown> {
     props.shadowEnabled = true;
   }
 
-  // Stroke effect (outer or center position -- Konva draws strokes centered by default)
+  // Stroke effect -- Konva draws strokes centered by default
   if (effects.stroke?.enabled) {
     const s = effects.stroke;
     props.stroke = s.color;
-    props.strokeWidth = s.position === "inside" ? s.width * 2 : s.width;
     props.strokeEnabled = true;
-    // For "inside" strokes, we double the width and clip via strokeScaleEnabled
-    if (s.position === "inside") {
+    if (s.position === "inside" || s.position === "outside") {
+      props.strokeWidth = s.width * 2;
       props.strokeScaleEnabled = false;
+    } else {
+      props.strokeWidth = s.width;
     }
   }
 
@@ -410,11 +411,11 @@ function CanvasObjectRenderer({
           globalCompositeOperation={
             a.globalCompositeOperation as "source-over" | "destination-out" | undefined
           }
-          shadowBlur={a.shadowBlur}
-          shadowColor={a.shadowColor}
-          shadowOffsetX={a.shadowOffsetX}
-          shadowOffsetY={a.shadowOffsetY}
           {...fx}
+          shadowBlur={a.shadowBlur ?? (fx.shadowBlur as number | undefined)}
+          shadowColor={a.shadowColor ?? (fx.shadowColor as string | undefined)}
+          shadowOffsetX={a.shadowOffsetX ?? (fx.shadowOffsetX as number | undefined)}
+          shadowOffsetY={a.shadowOffsetY ?? (fx.shadowOffsetY as number | undefined)}
         />
       );
     }

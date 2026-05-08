@@ -169,6 +169,16 @@ export function useEditorShortcuts(callbacks?: {
     { preventDefault: true },
   );
 
+  // N - Pencil tool
+  useHotkeys(
+    "n",
+    () => {
+      if (isInputFocused()) return;
+      useEditorStore.getState().setTool("pencil");
+    },
+    { preventDefault: true },
+  );
+
   // E - Eraser tool
   useHotkeys(
     "e",

@@ -1794,3 +1794,103 @@ describe("updateLayerThumbnail", () => {
     expect(state().layers[1].thumbnail).toBeNull();
   });
 });
+
+// ===========================================================================
+// rotation attribute updated during canvas transforms
+// ===========================================================================
+
+describe("canvas transforms update rotation attribute", () => {
+  it("rotateCanvas 90 adds 90 to existing rotation", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    act((s) => s.addObject(makeRect({ id: "r1", x: 100, y: 100 })));
+    const before = state().objects[0];
+    expect(before.type === "rect" && before.attrs.rotation).toBe(0);
+
+    act((s) => s.rotateCanvas(90));
+    const after = state().objects[0];
+    if (after.type === "rect") {
+      expect(after.attrs.rotation).toBe(90);
+    }
+  });
+
+  it("rotateCanvas 90 compounds with existing rotation", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    const rect: CanvasObject = {
+      id: "r2",
+      type: "rect",
+      layerId: state().activeLayerId,
+      attrs: {
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fill: "#ff0000",
+        stroke: "#000",
+        strokeWidth: 1,
+        rotation: 45,
+        opacity: 1,
+        cornerRadius: 0,
+      },
+    };
+    act((s) => s.addObject(rect));
+    act((s) => s.rotateCanvas(90));
+    const after = state().objects[0];
+    if (after.type === "rect") {
+      expect(after.attrs.rotation).toBe(135);
+    }
+  });
+
+  it("flipCanvasHorizontal negates rotation", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    const rect: CanvasObject = {
+      id: "r3",
+      type: "rect",
+      layerId: state().activeLayerId,
+      attrs: {
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fill: "#ff0000",
+        stroke: "#000",
+        strokeWidth: 1,
+        rotation: 30,
+        opacity: 1,
+        cornerRadius: 0,
+      },
+    };
+    act((s) => s.addObject(rect));
+    act((s) => s.flipCanvasHorizontal());
+    const after = state().objects[0];
+    if (after.type === "rect") {
+      expect(after.attrs.rotation).toBe(330); // (360 - 30) % 360
+    }
+  });
+
+  it("flipCanvasVertical negates rotation", () => {
+    act((s) => s.loadImage("blob:test", 800, 600));
+    const rect: CanvasObject = {
+      id: "r4",
+      type: "rect",
+      layerId: state().activeLayerId,
+      attrs: {
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fill: "#ff0000",
+        stroke: "#000",
+        strokeWidth: 1,
+        rotation: 60,
+        opacity: 1,
+        cornerRadius: 0,
+      },
+    };
+    act((s) => s.addObject(rect));
+    act((s) => s.flipCanvasVertical());
+    const after = state().objects[0];
+    if (after.type === "rect") {
+      expect(after.attrs.rotation).toBe(300); // (360 - 60) % 360
+    }
+  });
+});

@@ -3,19 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 
-type ResampleMethod = "nearest" | "bilinear" | "bicubic" | "lanczos";
-
-// ---------------------------------------------------------------------------
-// ImageResizeDialog -- modal with W/H, aspect lock, resampling method
-// ---------------------------------------------------------------------------
-
-const RESAMPLE_METHODS: { value: ResampleMethod; label: string }[] = [
-  { value: "nearest", label: "Nearest Neighbor (fast)" },
-  { value: "bilinear", label: "Bilinear" },
-  { value: "bicubic", label: "Bicubic (smooth)" },
-  { value: "lanczos", label: "Lanczos (sharp)" },
-];
-
 export function ImageResizeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const canvasSize = useEditorStore((s) => s.canvasSize);
   const resizeImage = useEditorStore((s) => s.resizeImage);
@@ -23,7 +10,6 @@ export function ImageResizeDialog({ open, onClose }: { open: boolean; onClose: (
   const [width, setWidth] = useState(canvasSize.width);
   const [height, setHeight] = useState(canvasSize.height);
   const [lockAspect, setLockAspect] = useState(true);
-  const [resample, setResample] = useState<ResampleMethod>("bicubic");
 
   const aspectRatio = canvasSize.width / canvasSize.height;
 
@@ -58,9 +44,9 @@ export function ImageResizeDialog({ open, onClose }: { open: boolean; onClose: (
   );
 
   const handleApply = useCallback(() => {
-    resizeImage(width, height, resample);
+    resizeImage(width, height);
     onClose();
-  }, [width, height, resample, resizeImage, onClose]);
+  }, [width, height, resizeImage, onClose]);
 
   const pctWidth = canvasSize.width > 0 ? ((width / canvasSize.width) * 100).toFixed(1) : "100.0";
   const pctHeight =
@@ -147,27 +133,10 @@ export function ImageResizeDialog({ open, onClose }: { open: boolean; onClose: (
             </div>
           </div>
 
-          {/* Resampling method */}
-          <div>
-            <label htmlFor="resample" className="mb-1 block text-xs text-muted-foreground">
-              Resampling:
-            </label>
-            <select
-              id="resample"
-              value={resample}
-              onChange={(e) => setResample(e.target.value as ResampleMethod)}
-              className={cn(
-                "h-8 w-full rounded border border-border bg-card px-2 text-sm text-foreground",
-                "focus:border-primary focus:outline-none",
-              )}
-            >
-              {RESAMPLE_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Info note */}
+          <p className="text-[10px] text-muted-foreground">
+            Scales all objects proportionally to the new dimensions.
+          </p>
         </div>
 
         {/* Footer */}

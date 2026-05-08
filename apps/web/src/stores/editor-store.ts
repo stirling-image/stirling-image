@@ -433,6 +433,9 @@ export const useEditorStore = create<EditorState & EditorStateExtensions>()(
                 a.radiusY = oldRx;
               }
             }
+            if ("rotation" in attrs) {
+              a.rotation = ((a.rotation || 0) + degrees) % 360;
+            }
             return { ...obj, attrs } as CanvasObject;
           }),
           isDirty: true,
@@ -458,6 +461,9 @@ export const useEditorStore = create<EditorState & EditorStateExtensions>()(
               const w = centerBased ? 0 : "width" in attrs ? a.width : 0;
               a.x = canvasSize.width - a.x - w;
             }
+            if ("rotation" in attrs) {
+              a.rotation = (360 - (a.rotation || 0)) % 360;
+            }
             return { ...obj, attrs } as CanvasObject;
           }),
           isDirty: true,
@@ -482,6 +488,9 @@ export const useEditorStore = create<EditorState & EditorStateExtensions>()(
               const centerBased = isCenterBased(obj);
               const h = centerBased ? 0 : "height" in attrs ? a.height : 0;
               a.y = canvasSize.height - a.y - h;
+            }
+            if ("rotation" in attrs) {
+              a.rotation = (360 - (a.rotation || 0)) % 360;
             }
             return { ...obj, attrs } as CanvasObject;
           }),
