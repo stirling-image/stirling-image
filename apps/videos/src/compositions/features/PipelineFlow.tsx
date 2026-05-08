@@ -3,17 +3,18 @@ import { evolvePath } from "@remotion/paths";
 import type React from "react";
 import {
   AbsoluteFill,
+  Img,
   interpolate,
   random,
   Sequence,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
 import { ClipReveal } from "@/components/ClipReveal";
 import { Counter } from "@/components/Counter";
 import { GrainOverlay } from "@/components/GrainOverlay";
-import { PhotoPlaceholder } from "@/components/PhotoPlaceholder";
 import { COLOR } from "@/lib/colors";
 import { FONT, TEXT } from "@/lib/fonts";
 import { EASE, SPRING } from "@/lib/motion";
@@ -113,10 +114,10 @@ const Station: React.FC<{
         border: `2px solid ${station.color}${glowing || pulseGlow ? "cc" : "66"}`,
         boxShadow:
           glowOpacity > 0
-            ? `0 0 20px ${station.color}${Math.round(glowOpacity * 255)
+            ? `0 4px 20px rgba(0,0,0,0.4), 0 0 20px ${station.color}${Math.round(glowOpacity * 255)
                 .toString(16)
                 .padStart(2, "0")}`
-            : "none",
+            : "0 4px 20px rgba(0,0,0,0.4)",
         transform: `scale(${scale})`,
         display: "flex",
         flexDirection: "column",
@@ -386,7 +387,17 @@ const SingleFlow: React.FC = () => {
           zIndex: frame >= 108 ? 0 : 5,
         }}
       >
-        <PhotoPlaceholder width={thumbSize} height={thumbSize} hue={30} />
+        <Img
+          src={staticFile("screenshots/sample-photo-landscape.jpg")}
+          style={{
+            width: thumbSize,
+            height: thumbSize,
+            objectFit: "cover",
+            borderRadius: 6,
+            border: "1.5px solid rgba(255,255,255,0.15)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          }}
+        />
         {/* Watermark stamp */}
         {stampOpacity > 0 && (
           <span
@@ -395,7 +406,7 @@ const SingleFlow: React.FC = () => {
               bottom: 2,
               right: 3,
               fontFamily: FONT.body,
-              fontSize: 5,
+              fontSize: 8,
               fontWeight: 700,
               color: `rgba(255,255,255,${stampOpacity})`,
               whiteSpace: "nowrap",
@@ -489,9 +500,10 @@ const BatchThumb: React.FC<{
 
   if (localFrame < 0) return null;
 
-  const hue = random(`thumb-hue-${index}`) * 360;
   const size = 24 + random(`thumb-size-${index}`) * 8;
   const yOffset = (random(`thumb-y-${index}`) - 0.5) * 30;
+  const objPosX = Math.round(random(`thumb-opx-${index}`) * 100);
+  const objPosY = Math.round(random(`thumb-opy-${index}`) * 100);
 
   // Fast traversal: cover pipeline in ~28 frames per thumb
   const thumbX = interpolate(localFrame, [0, 28], [THUMB_START_X, FOLDER_X + 10], {
@@ -517,7 +529,17 @@ const BatchThumb: React.FC<{
         zIndex: 4,
       }}
     >
-      <PhotoPlaceholder width={size} height={size} hue={hue} />
+      <Img
+        src={staticFile("screenshots/sample-photo-landscape.jpg")}
+        style={{
+          width: size,
+          height: size,
+          objectFit: "cover",
+          objectPosition: `${objPosX}% ${objPosY}%`,
+          borderRadius: 6,
+          border: "1px solid rgba(255,255,255,0.1)",
+        }}
+      />
     </div>
   );
 };
@@ -601,13 +623,10 @@ export const PipelineFlow: React.FC = () => {
       </Sequence>
 
       {/* Act 1 stations (visible throughout until Act 2 takes over) */}
-      {frame < 40 && (
-        <>
-          {STATIONS.map((s, i) => (
-            <Station key={s.id} station={s} index={i} glowing={false} pulseGlow={false} />
-          ))}
-        </>
-      )}
+      {frame < 40 &&
+        STATIONS.map((s, i) => (
+          <Station key={s.id} station={s} index={i} glowing={false} pulseGlow={false} />
+        ))}
 
       {/* Act 2: Single Image Flow (frame 40-170) */}
       <Sequence from={40} durationInFrames={130}>
@@ -640,13 +659,11 @@ export const PipelineFlow: React.FC = () => {
       </Sequence>
 
       {/* Act 3 stations when not covered by SingleFlow or BatchStream */}
-      {frame >= 170 && frame < 180 && (
-        <>
-          {STATIONS.map((s, i) => (
-            <Station key={s.id} station={s} index={i} glowing={false} pulseGlow={false} />
-          ))}
-        </>
-      )}
+      {frame >= 170 &&
+        frame < 180 &&
+        STATIONS.map((s, i) => (
+          <Station key={s.id} station={s} index={i} glowing={false} pulseGlow={false} />
+        ))}
 
       {/* Act 4: Result (frame 340-390) */}
       {frame >= 340 && (

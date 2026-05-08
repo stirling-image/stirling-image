@@ -1,8 +1,15 @@
 import type React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { ClipReveal } from "@/components/ClipReveal";
 import { GrainOverlay } from "@/components/GrainOverlay";
-import { PhotoPlaceholder } from "@/components/PhotoPlaceholder";
 import { ShieldIcon } from "@/components/ShieldIcon";
 import { TEXT } from "@/lib/fonts";
 import { EASE, SPRING } from "@/lib/motion";
@@ -12,9 +19,23 @@ import { EASE, SPRING } from "@/lib/motion";
 /* ------------------------------------------------------------------ */
 
 const PHOTOS = [
-  { hue: 210, w: 180, h: 135, fromX: -300, fromY: -250, delay: 0 },
-  { hue: 150, w: 160, h: 120, fromX: 320, fromY: 280, delay: 4 },
-  { hue: 280, w: 150, h: 115, fromX: 280, fromY: -260, delay: 8 },
+  {
+    src: "screenshots/sample-photo-portrait.jpg",
+    w: 180,
+    h: 135,
+    fromX: -300,
+    fromY: -250,
+    delay: 0,
+  },
+  {
+    src: "screenshots/sample-photo-landscape.jpg",
+    w: 160,
+    h: 120,
+    fromX: 320,
+    fromY: 280,
+    delay: 4,
+  },
+  { src: "screenshots/sample-photo-bw.jpg", w: 150, h: 115, fromX: 280, fromY: -260, delay: 8 },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -23,8 +44,8 @@ const PHOTOS = [
 
 const PadlockIcon: React.FC<{ opacity: number }> = ({ opacity }) => (
   <svg
-    width={24}
-    height={24}
+    width={36}
+    height={36}
     viewBox="0 0 24 24"
     style={{ opacity }}
     role="img"
@@ -190,13 +211,17 @@ export const PrivacyPromise: React.FC = () => {
           });
 
           return (
-            <PhotoPlaceholder
-              key={photo.hue}
-              width={photo.w}
-              height={photo.h}
-              hue={photo.hue}
+            <Img
+              key={photo.src}
+              src={staticFile(photo.src)}
               style={{
                 position: "absolute",
+                width: photo.w,
+                height: photo.h,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "2px solid rgba(255,255,255,0.2)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
                 left: `calc(50% + ${exitX}px - ${photo.w / 2}px)`,
                 top: `calc(50% + ${exitY}px - ${photo.h / 2}px)`,
                 transform: `scale(${entrySpring}) rotate(${rotation}deg)`,

@@ -40,11 +40,19 @@ export const ShieldIcon: React.FC<{
         strokeDasharray={strokeDasharray}
         strokeDashoffset={strokeDashoffset}
       />
+
+      <defs>
+        <linearGradient id="shield-fill-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
+        </linearGradient>
+      </defs>
       <path
         d={SHIELD_PATH}
         stroke="white"
-        strokeWidth={2.5}
-        fill={`rgba(255,255,255,${fillOpacity})`}
+        strokeWidth={3.5}
+        fill={fillOpacity > 0 ? "url(#shield-fill-grad)" : "none"}
+        fillOpacity={fillOpacity > 0 ? fillOpacity * 12 : 0}
         strokeDasharray={strokeDasharray}
         strokeDashoffset={strokeDashoffset}
         strokeLinecap="round"

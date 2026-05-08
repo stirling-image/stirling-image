@@ -1,11 +1,13 @@
 import type React from "react";
 import {
   AbsoluteFill,
+  Img,
   interpolate,
   interpolateColors,
   random,
   Sequence,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -133,19 +135,8 @@ const SegmentBackgroundRemoval: React.FC = () => {
     easing: EASE.smooth,
   });
 
-  // Geometric pattern background
-  const patternBg = `
-    linear-gradient(45deg, rgba(245,158,11,0.15) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(245,158,11,0.15) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(245,158,11,0.1) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(245,158,11,0.1) 75%)
-  `;
-
-  // Silhouette: a head-and-shoulders shape via gradient
-  const silhouetteGradient = `
-    radial-gradient(ellipse 90px 100px at 50% 30%, hsl(25, 65%, 65%) 0%, hsl(25, 65%, 65%) 70%, transparent 71%),
-    radial-gradient(ellipse 130px 200px at 50% 70%, hsl(30, 55%, 55%) 0%, hsl(30, 55%, 55%) 70%, transparent 71%)
-  `;
+  // Checkerboard background for transparency effect
+  const checkerBg = CHECKERBOARD_BG;
 
   // Scan line particle trail
   const particles = Array.from({ length: 5 }, (_, i) => {
@@ -187,28 +178,19 @@ const SegmentBackgroundRemoval: React.FC = () => {
           boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
         }}
       >
-        {/* "Before" layer: photo with geometric background */}
-        <div
+        {/* "Before" layer: real portrait photo */}
+        <Img
+          src={staticFile("screenshots/sample-photo-portrait.jpg")}
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: patternBg,
-            backgroundSize: "24px 24px",
-            backgroundColor: "hsl(30, 20%, 35%)",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
           }}
-        >
-          {/* Silhouette subject */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: silhouetteGradient,
-              backgroundRepeat: "no-repeat",
-            }}
-          />
-        </div>
+        />
 
-        {/* "After" layer: checkerboard + subject only */}
+        {/* "After" layer: checkerboard + portrait (revealed via clip) */}
         <div
           style={{
             position: "absolute",
@@ -222,16 +204,18 @@ const SegmentBackgroundRemoval: React.FC = () => {
             style={{
               position: "absolute",
               inset: 0,
-              background: CHECKERBOARD_BG,
+              background: checkerBg,
             }}
           />
-          {/* Subject only */}
-          <div
+          {/* Subject portrait on top of checkerboard */}
+          <Img
+            src={staticFile("screenshots/sample-photo-portrait.jpg")}
             style={{
               position: "absolute",
               inset: 0,
-              backgroundImage: silhouetteGradient,
-              backgroundRepeat: "no-repeat",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
             }}
           />
         </div>
@@ -246,7 +230,7 @@ const SegmentBackgroundRemoval: React.FC = () => {
               width: 2,
               height: "100%",
               background: COLOR.accent,
-              boxShadow: `0 0 20px 10px rgba(245,158,11,0.3)`,
+              boxShadow: "0 0 20px 10px rgba(245,158,11,0.3)",
               zIndex: 10,
             }}
           />
@@ -260,7 +244,7 @@ const SegmentBackgroundRemoval: React.FC = () => {
               key={`scan-p-${i}`}
               style={{
                 position: "absolute",
-                left: photoX + p.x - photoX,
+                left: p.x,
                 top: p.y,
                 width: 3,
                 height: 3,
@@ -358,26 +342,38 @@ const SegmentColorization: React.FC = () => {
           transform: `scale(${holdScale})`,
         }}
       >
-        {/* Grayscale layer (on top) */}
-        <div
+        {/* B&W layer (on top, real B&W photo) */}
+        <Img
+          src={staticFile("screenshots/sample-photo-bw.jpg")}
           style={{
             position: "absolute",
             inset: 0,
-            background: `linear-gradient(135deg, hsl(30, 60%, 65%) 0%, hsl(200, 50%, 55%) 50%, hsl(340, 55%, 60%) 100%)`,
-            filter: "grayscale(1)",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
           }}
         />
 
-        {/* Color layer (revealed underneath via clip) */}
+        {/* Color layer (revealed via clip, using portrait as color version) */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background: `linear-gradient(135deg, hsl(30, 72%, 65%) 0%, hsl(200, 60%, 55%) 50%, hsl(340, 66%, 60%) 100%)`,
-            filter: "saturate(1.2)",
             clipPath: `inset(0 ${100 - waveProgress}% 0 0)`,
           }}
-        />
+        >
+          <Img
+            src={staticFile("screenshots/sample-photo-portrait.jpg")}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "saturate(1.2)",
+            }}
+          />
+        </div>
 
         {/* Color particles */}
         {colorParticles.map(
@@ -411,11 +407,11 @@ const SegmentColorization: React.FC = () => {
 const PIXEL_GRID_SIZE = 8;
 const PIXEL_GAP = 0.5;
 
-/** Generate deterministic colors for the pixel grid */
+/** Generate deterministic colors for the pixel grid (blues and greens from landscape) */
 const pixelColors: string[] = Array.from({ length: PIXEL_GRID_SIZE * PIXEL_GRID_SIZE }, (_, i) => {
-  const hue = random(`pixel-hue-${i}`) * 60 + 15; // warm hues
-  const sat = 40 + random(`pixel-sat-${i}`) * 30;
-  const lit = 40 + random(`pixel-lit-${i}`) * 30;
+  const hue = random(`pixel-hue-${i}`) * 80 + 180; // blues and greens (180-260)
+  const sat = 35 + random(`pixel-sat-${i}`) * 35;
+  const lit = 35 + random(`pixel-lit-${i}`) * 30;
   return `hsl(${hue}, ${sat}%, ${lit}%)`;
 });
 
@@ -518,14 +514,17 @@ const SegmentSuperResolution: React.FC = () => {
           ))}
         </div>
 
-        {/* Smooth "resolved" version */}
+        {/* Smooth "resolved" version - actual landscape photo */}
         {showSmooth && (
-          <div
+          <Img
+            src={staticFile("screenshots/sample-photo-landscape.jpg")}
             style={{
               position: "absolute",
               inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
               borderRadius: 8,
-              background: `linear-gradient(135deg, hsl(25, 55%, 50%) 0%, hsl(40, 50%, 55%) 50%, hsl(30, 60%, 45%) 100%)`,
               opacity: smoothOpacity,
               border: "1.5px solid rgba(255,255,255,0.15)",
               boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
@@ -630,8 +629,8 @@ const SegmentRestoration: React.FC = () => {
   });
 
   // Color shift from sepia to warm
-  const bgFrom = interpolateColors(frame, [80, 95], ["hsl(35, 40%, 45%)", "hsl(30, 55%, 50%)"]);
-  const bgTo = interpolateColors(frame, [80, 95], ["hsl(40, 35%, 55%)", "hsl(45, 50%, 58%)"]);
+  const _bgFrom = interpolateColors(frame, [80, 95], ["hsl(35, 40%, 45%)", "hsl(30, 55%, 50%)"]);
+  const _bgTo = interpolateColors(frame, [80, 95], ["hsl(40, 35%, 55%)", "hsl(45, 50%, 58%)"]);
 
   return (
     <AbsoluteFill style={{ background: COLOR.dark }}>
@@ -653,15 +652,18 @@ const SegmentRestoration: React.FC = () => {
           borderRadius: 8,
           overflow: "hidden",
           boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-          filter: `sepia(${sepiaAmount}) contrast(${contrastAmount})`,
+          filter: `sepia(${sepiaAmount * 0.8}) contrast(${contrastAmount})`,
         }}
       >
-        {/* Base photo gradient */}
-        <div
+        {/* Base photo - real landscape */}
+        <Img
+          src={staticFile("screenshots/sample-photo-landscape.jpg")}
           style={{
             position: "absolute",
             inset: 0,
-            background: `linear-gradient(135deg, ${bgFrom} 0%, ${bgTo} 100%)`,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
           }}
         />
 

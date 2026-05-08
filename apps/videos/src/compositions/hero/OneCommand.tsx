@@ -1,13 +1,14 @@
 import type React from "react";
 import {
   AbsoluteFill,
+  Img,
   interpolate,
   interpolateColors,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { AppMockup } from "@/components/AppMockup";
 import { ClipReveal } from "@/components/ClipReveal";
 import { GrainOverlay } from "@/components/GrainOverlay";
 import { TerminalWindow } from "@/components/TerminalWindow";
@@ -189,7 +190,7 @@ export const OneCommand: React.FC = () => {
   /* ================================================================ */
 
   /* Amber glow behind browser */
-  const glowOpacity = interpolate(frame, [320, 340], [0, 0.05], {
+  const glowOpacity = interpolate(frame, [320, 340], [0, 0.12], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -304,16 +305,26 @@ export const OneCommand: React.FC = () => {
             )}
           </div>
 
-          {/* App mockup (appears during morph) */}
+          {/* Real app screenshot (appears during morph) */}
           {showAppMockup && (
             <div
               style={{
                 position: "absolute",
                 inset: 0,
                 opacity: appMockupOpacity,
+                overflow: "hidden",
+                borderRadius: "0 0 12px 12px",
               }}
             >
-              <AppMockup startFrame={260} />
+              <Img
+                src={staticFile("screenshots/app-full.png")}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "top center",
+                }}
+              />
             </div>
           )}
         </TerminalWindow>

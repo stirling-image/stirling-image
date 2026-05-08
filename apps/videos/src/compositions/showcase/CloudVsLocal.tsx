@@ -12,7 +12,6 @@ import {
 } from "remotion";
 import { ClipReveal } from "@/components/ClipReveal";
 import { GrainOverlay } from "@/components/GrainOverlay";
-import { PhotoPlaceholder } from "@/components/PhotoPlaceholder";
 import { ShieldIcon } from "@/components/ShieldIcon";
 import { COLOR } from "@/lib/colors";
 import { FONT, TEXT } from "@/lib/fonts";
@@ -35,9 +34,9 @@ const CLOUD_SVG_PATH = "M6 19a5 5 0 0 1-1-9.9A7 7 0 0 1 19.07 11 4.5 4.5 0 0 1 1
 const LOCK_SVG_PATH =
   "M5 11V7a5 5 0 0 1 10 0v4M3 11h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z";
 
-const SERVER_SVG_PATH = "M2 2h16v6H2zM2 10h16v6H2zM6 5h.01M6 13h.01";
+const _SERVER_SVG_PATH = "M2 2h16v6H2zM2 10h16v6H2zM6 5h.01M6 13h.01";
 
-const EYE_SVG_PATH =
+const _EYE_SVG_PATH =
   "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z";
 
 /* ------------------------------------------------------------------ */
@@ -487,7 +486,7 @@ export const CloudVsLocal: React.FC = () => {
   });
 
   /* Shield outline */
-  const shieldDrawProgress = interpolate(frame, [135, 160], [0, 1], {
+  const _shieldDrawProgress = interpolate(frame, [135, 160], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: EASE.enter,
@@ -559,14 +558,14 @@ export const CloudVsLocal: React.FC = () => {
     return { ...badge, scale: s };
   });
 
-  /* Left side red tint escalation */
-  const escalatedLeftTint = interpolate(frame, [160, 320], [0.03, 0.15], {
+  /* Left side red tint escalation (starts at 5%, escalates to 20% by Act 4) */
+  const escalatedLeftTint = interpolate(frame, [160, 320], [0.05, 0.2], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   /* Shake animation (frame 300-320) */
-  const shakeX = frame >= 300 && frame <= 320 ? Math.sin(frame * 2.5) * 2 : 0;
+  const shakeX = frame >= 300 && frame <= 320 ? Math.sin(frame * 2.5) * 5 : 0;
 
   /* Right: extra photos arrive calmly */
   const rightExtraPhotos = Array.from({ length: 4 }, (_, i) => {
@@ -593,13 +592,13 @@ export const CloudVsLocal: React.FC = () => {
   /* ================================================================ */
 
   /* Left: deeper red tint */
-  const peakLeftTint = interpolate(frame, [320, 360], [0.15, 0.18], {
+  const peakLeftTint = interpolate(frame, [320, 360], [0.2, 0.25], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   /* Left vibrate */
-  const vibrateX = frame >= 320 && frame < 420 ? Math.sin(frame * 3) * 1.5 : 0;
+  const vibrateX = frame >= 320 && frame < 420 ? Math.sin(frame * 3) * 3 : 0;
 
   /* Right glow */
   const rightGlowOpacity = interpolate(frame, [360, 400], [0, 0.12], {
@@ -736,12 +735,14 @@ export const CloudVsLocal: React.FC = () => {
 
         {/* Photo thumbnail (Act 2) */}
         {frame >= 40 && frame < 85 && (
-          <PhotoPlaceholder
-            width={48}
-            height={48}
-            hue={30}
+          <Img
+            src={staticFile("screenshots/sample-photo-portrait.jpg")}
             style={{
               position: "absolute",
+              width: 48,
+              height: 48,
+              objectFit: "cover",
+              borderRadius: 6,
               left: leftPhotoX - 24,
               top: leftPhotoY - 24,
               opacity: leftPhotoOpacity,
@@ -784,7 +785,7 @@ export const CloudVsLocal: React.FC = () => {
                 opacity: Math.min(scatterProgress * 2, 1),
               }}
             >
-              <ServerIcon size={24} />
+              <ServerIcon size={36} />
             </div>
           ))}
 
@@ -794,13 +795,15 @@ export const CloudVsLocal: React.FC = () => {
             const copyX = interpolate(scatterProgress, [0, 1], [400, server.x]);
             const copyY = interpolate(scatterProgress, [0, 1], [160, server.y - 30]);
             return (
-              <PhotoPlaceholder
+              <Img
                 key={`copy-${i}`}
-                width={28}
-                height={28}
-                hue={30 + i * 20}
+                src={staticFile("screenshots/sample-photo-portrait.jpg")}
                 style={{
                   position: "absolute",
+                  width: 28,
+                  height: 28,
+                  objectFit: "cover",
+                  borderRadius: 4,
                   left: copyX - 14,
                   top: copyY - 14,
                   opacity: scatterProgress,
@@ -865,13 +868,16 @@ export const CloudVsLocal: React.FC = () => {
             const py = interpolate(photo.progress, [0, 1], [750, 160]);
             if (photo.progress <= 0) return null;
             return (
-              <PhotoPlaceholder
+              <Img
                 key={`extra-${photo.index}`}
-                width={36}
-                height={36}
-                hue={photo.hue}
+                src={staticFile("screenshots/sample-photo-portrait.jpg")}
                 style={{
                   position: "absolute",
+                  width: 36,
+                  height: 36,
+                  objectFit: "cover",
+                  objectPosition: `${photo.index * 25}% center`,
+                  borderRadius: 6,
                   left: px - 18,
                   top: py - 18,
                   opacity: photo.progress,
@@ -893,7 +899,7 @@ export const CloudVsLocal: React.FC = () => {
                 opacity: Math.min(server.scale * 2, 1),
               }}
             >
-              <ServerIcon size={22} />
+              <ServerIcon size={36} />
             </div>
           ))}
 
@@ -1132,12 +1138,14 @@ export const CloudVsLocal: React.FC = () => {
 
         {/* First photo (Act 2) */}
         {frame >= 40 && frame < 80 && (
-          <PhotoPlaceholder
-            width={48}
-            height={48}
-            hue={140}
+          <Img
+            src={staticFile("screenshots/sample-photo-portrait.jpg")}
             style={{
               position: "absolute",
+              width: 48,
+              height: 48,
+              objectFit: "cover",
+              borderRadius: 6,
               left: rightPhotoX - DIVIDER_X - 24,
               top: rightPhotoY - 24,
               opacity: rightPhotoOpacity,
@@ -1250,7 +1258,16 @@ export const CloudVsLocal: React.FC = () => {
                 key={`rphoto-${photo.index}`}
                 style={{ position: "absolute", left: px, top: py }}
               >
-                <PhotoPlaceholder width={32} height={32} hue={photo.hue} />
+                <Img
+                  src={staticFile("screenshots/sample-photo-portrait.jpg")}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    objectFit: "cover",
+                    objectPosition: `${photo.index * 25}% center`,
+                    borderRadius: 6,
+                  }}
+                />
                 {photo.checkScale > 0.1 && (
                   <div style={{ position: "absolute", right: -8, bottom: -8 }}>
                     <Checkmark size={14} color={COLOR.safe} scale={photo.checkScale} />
