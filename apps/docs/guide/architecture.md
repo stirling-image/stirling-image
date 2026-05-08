@@ -43,7 +43,7 @@ Shared TypeScript types, constants (like `APP_VERSION` and tool definitions), an
 
 ### API (`apps/api`)
 
-A Fastify v5 server exposing 49 tool routes (33 standard image operations + 15 AI-powered) that handles:
+A Fastify v5 server exposing 50 tool routes (34 standard image operations + 15 AI-powered + editor) that handles:
 - File uploads, temporary workspace management, and persistent file storage
 - User file library with version chains (`user_files` table) -- each processed result links back to its source file and records which tool was applied, with auto-generated thumbnails for the Files page
 - Tool execution (routes each tool request to the image engine or AI bridge)

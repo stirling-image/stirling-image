@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "SnapOtter"
   text: "A Self Hosted Image Manipulator"
-  tagline: 49 tools. Local AI. No cloud. Your images never leave your home.
+  tagline: 50 tools. Local AI. No cloud. Your images never leave your home.
   actions:
     - theme: brand
       text: Get started
@@ -14,7 +14,7 @@ hero:
       link: /api/rest
 
 features:
-  - title: 49 Image Tools
+  - title: 50 Image Tools
     details: Resize, crop, compress, convert, watermark, color adjust, vectorize, create GIFs, build collages, generate passport photos, find duplicates, and more.
   - title: Local AI
     details: 15 AI-powered tools - remove backgrounds, upscale, enhance images, restore and colorize old photos, erase objects, blur faces, enhance faces, extract text (OCR), fix fake transparency. All on your hardware, no internet required.

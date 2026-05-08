@@ -194,6 +194,9 @@ const SplitCanvas = lazy(() =>
 const BorderSettings = lazy(() =>
   import("@/components/tools/border-settings").then((m) => ({ default: m.BorderSettings })),
 );
+const BeautifySettings = lazy(() =>
+  import("@/components/tools/beautify-settings").then((m) => ({ default: m.BeautifySettings })),
+);
 const SvgToRasterSettings = lazy(() =>
   import("@/components/tools/svg-to-raster-settings").then((m) => ({
     default: m.SvgToRasterSettings,
@@ -413,6 +416,10 @@ export const toolRegistry = new Map<string, ToolRegistryEntry>([
     { displayMode: "interactive-split", Settings: SplitSettings, ResultsPanel: SplitCanvas },
   ],
   ["border", { displayMode: "live-preview", livePreview: true, Settings: BorderSettings as never }],
+  [
+    "beautify",
+    { displayMode: "live-preview", livePreview: true, Settings: BeautifySettings as never },
+  ],
 
   // Format & Conversion
   ["svg-to-raster", { displayMode: "before-after", Settings: SvgToRasterSettings }],

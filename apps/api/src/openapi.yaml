@@ -3,7 +3,7 @@ info:
   title: SnapOtter API
   version: 1.15.9
   description: |
-    REST API for SnapOtter, a self-hosted image processing platform with 48 tools.
+    REST API for SnapOtter, a self-hosted image processing platform with 50 tools.
 
     ## Authentication
 
@@ -593,6 +593,77 @@ paths:
       responses:
         "200":
           description: Processed image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+
+  /api/v1/tools/beautify:
+    post:
+      tags: [Tools]
+      summary: Beautify screenshot
+      description: |
+        Add gradient backgrounds, device frames, shadows, watermarks, and social
+        media sizing to screenshots. Supports solid, linear-gradient, radial-gradient,
+        image, and transparent backgrounds. Includes macOS, Windows, browser, iPhone,
+        MacBook, and iPad device frames. Social media presets for Twitter, LinkedIn,
+        Instagram, Facebook, and Product Hunt.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Screenshot or image file to beautify
+                backgroundImage:
+                  type: string
+                  format: binary
+                  description: Optional image for image backgrounds (used when backgroundType is "image")
+                settings:
+                  type: string
+                  description: |
+                    JSON string with options:
+                    - `backgroundType` (string, default "linear-gradient") -- One of: solid, linear-gradient, radial-gradient, image, transparent
+                    - `backgroundColor` (hex string, default "#667eea") -- Background color (for solid backgrounds)
+                    - `gradientStops` (array, default [{color:"#667eea",position:0},{color:"#764ba2",position:100}]) -- Array of {color, position} objects for gradient backgrounds
+                    - `gradientAngle` (number 0-360, default 135) -- Gradient angle in degrees
+                    - `padding` (number 0-256, default 64) -- Space between screenshot and canvas edge in pixels
+                    - `borderRadius` (number 0-64, default 12) -- Corner rounding radius for the screenshot
+                    - `shadowPreset` (string, default "subtle") -- One of: none, subtle, medium, dramatic, custom
+                    - `shadowBlur` (number 0-100, default 20) -- Shadow blur radius (used with custom shadow preset)
+                    - `shadowOffsetX` (number -50 to 50, default 0) -- Shadow horizontal offset
+                    - `shadowOffsetY` (number -50 to 50, default 10) -- Shadow vertical offset
+                    - `shadowColor` (hex string, default "#000000") -- Shadow color
+                    - `shadowOpacity` (number 0-100, default 30) -- Shadow opacity percentage
+                    - `frame` (string, default "none") -- One of: none, macos-light, macos-dark, windows-light, windows-dark, browser-light, browser-dark, iphone, iphone-dark, macbook, macbook-dark, ipad, ipad-dark
+                    - `frameTitle` (string, optional) -- Title text shown in window title bars
+                    - `socialPreset` (string, default "none") -- One of: none, twitter, linkedin, instagram-square, instagram-story, facebook, producthunt
+                    - `watermarkText` (string, optional) -- Watermark text to overlay
+                    - `watermarkPosition` (string, default "bottom-right") -- One of: top-left, top-right, bottom-left, bottom-right, center
+                    - `watermarkOpacity` (number 0-100, default 50) -- Watermark opacity percentage
+                    - `outputFormat` (string, default "png") -- One of: png, jpeg, webp
+      responses:
+        "200":
+          description: Beautified image
           content:
             application/json:
               schema:

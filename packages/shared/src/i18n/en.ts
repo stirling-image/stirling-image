@@ -167,6 +167,11 @@ export const en = {
       name: "Border & Frame",
       description: "Add borders, padding, rounded corners, and shadows with one-click presets",
     },
+    beautify: {
+      name: "Beautify Screenshot",
+      description:
+        "Add gradient backgrounds, device frames, shadows, and social media sizing to screenshots",
+    },
     "svg-to-raster": {
       name: "SVG to Raster",
       description:
@@ -210,7 +215,7 @@ export const en = {
     regenerateKey: "Regenerate",
     copyKey: "Copy Key",
     aboutDescription:
-      "SnapOtter is a self-hosted, privacy-first image processing suite with 48 tools.",
+      "SnapOtter is a self-hosted, privacy-first image processing suite with 50 tools.",
     aboutLinks: "Links",
     github: "GitHub",
     documentation: "Documentation",

@@ -64,7 +64,7 @@ pnpm dev
 
 ## What You Can Do
 
-### Image Processing (49 Tools)
+### Image Processing (50 Tools)
 
 | Category | Tools |
 |----------|-------|

@@ -380,6 +380,14 @@ export const TOOLS: Tool[] = [
     icon: "Frame",
     route: "/border",
   },
+  {
+    id: "beautify",
+    name: "Beautify Screenshot",
+    description: "Add gradient backgrounds, device frames, shadows, and social media sizing",
+    category: "layout",
+    icon: "Sparkles",
+    route: "/beautify",
+  },
   // Format & Conversion
   {
     id: "svg-to-raster",
