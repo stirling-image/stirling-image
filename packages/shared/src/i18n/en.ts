@@ -132,6 +132,11 @@ export const en = {
     "watermark-image": { name: "Image Watermark", description: "Overlay a logo as watermark" },
     "text-overlay": { name: "Text Overlay", description: "Add styled text to images" },
     compose: { name: "Image Composition", description: "Layer images with position and opacity" },
+    "meme-generator": {
+      name: "Meme Generator",
+      description:
+        "Create memes with popular templates or your own images. Classic Impact-style text with customizable fonts, colors, and positioning.",
+    },
     info: { name: "Image Info", description: "View all metadata and image properties" },
     compare: { name: "Image Compare", description: "Side-by-side comparison of two images" },
     "find-duplicates": {

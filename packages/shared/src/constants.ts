@@ -282,6 +282,14 @@ export const TOOLS: Tool[] = [
     icon: "Layers",
     route: "/compose",
   },
+  {
+    id: "meme-generator",
+    name: "Meme Generator",
+    description: "Create memes with templates and custom text",
+    category: "watermark",
+    icon: "Laugh",
+    route: "/meme-generator",
+  },
   // Utilities
   {
     id: "info",
