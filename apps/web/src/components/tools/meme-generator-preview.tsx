@@ -53,7 +53,7 @@ function TextPreviewOverlay({
         const value = textValues.find((v) => v.id === box.id);
         const text = value?.text || box.defaultText || "";
         const displayText = allCaps ? text.toUpperCase() : text;
-        const autoSize = `clamp(10px, ${box.height * 0.45}cqi, 60px)`;
+        const autoSize = `clamp(10px, ${box.height * 0.35}vw, 60px)`;
         const appliedSize = fontSize > 0 ? `${fontSize}px` : autoSize;
 
         return (
@@ -347,8 +347,7 @@ function EditorPreview() {
       <div className="max-w-2xl w-full">
         <div
           data-testid="meme-editor-preview"
-          className="relative inline-block w-full rounded-lg overflow-hidden border border-border bg-muted/30"
-          style={{ containerType: "inline-size" }}
+          className="relative w-full rounded-lg overflow-hidden border border-border bg-muted/30"
         >
           <img src={imageSrc} alt="Template preview" className="w-full h-auto block" />
           <TextPreviewOverlay
