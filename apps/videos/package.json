@@ -1,0 +1,31 @@
+{
+  "name": "@snapotter/videos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx remotion studio",
+    "render": "node scripts/render-all.mjs",
+    "render:single": "npx remotion render"
+  },
+  "dependencies": {
+    "remotion": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/tailwind": "^4.0.0",
+    "@remotion/noise": "^4.0.0",
+    "@remotion/motion-blur": "^4.0.0",
+    "@remotion/paths": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "@remotion/shapes": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}
