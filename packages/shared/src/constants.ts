@@ -100,7 +100,7 @@ export const TOOLS: Tool[] = [
     name: "Favicon Generator",
     description: "Generate all favicon and app icon sizes",
     category: "optimization",
-    icon: "Globe",
+    icon: "AppWindow",
     route: "/favicon",
   },
   // Adjustments
@@ -182,7 +182,7 @@ export const TOOLS: Tool[] = [
     name: "Smart Crop",
     description: "Smart subject, face, or trim-based cropping",
     category: "ai",
-    icon: "Focus",
+    icon: "Crosshair",
     route: "/smart-crop",
   },
   {
@@ -214,7 +214,7 @@ export const TOOLS: Tool[] = [
     name: "Noise Removal",
     description: "AI-powered noise and grain removal",
     category: "ai",
-    icon: "Sparkles",
+    icon: "AudioLines",
     route: "/noise-removal",
   },
   {
@@ -222,7 +222,7 @@ export const TOOLS: Tool[] = [
     name: "Red Eye Removal",
     description: "AI-detect and fix red eye in flash photos",
     category: "ai",
-    icon: "Eye",
+    icon: "ScanEye",
     route: "/red-eye-removal",
   },
   {
@@ -254,7 +254,7 @@ export const TOOLS: Tool[] = [
     name: "PNG Transparency Fixer",
     description: "Fix fake transparent PNGs in one click",
     category: "ai",
-    icon: "Wand2",
+    icon: "ShieldCheck",
     route: "/transparency-fixer",
   },
   // Watermark & Overlay
@@ -328,7 +328,7 @@ export const TOOLS: Tool[] = [
     name: "Color Palette",
     description: "Extract dominant colors from image",
     category: "utilities",
-    icon: "Palette",
+    icon: "Droplets",
     route: "/color-palette",
   },
   {
@@ -393,7 +393,7 @@ export const TOOLS: Tool[] = [
     name: "Beautify Screenshot",
     description: "Add gradient backgrounds, device frames, shadows, and social media sizing",
     category: "layout",
-    icon: "Sparkles",
+    icon: "ImagePlus",
     route: "/beautify",
   },
   // Format & Conversion
@@ -427,7 +427,7 @@ export const TOOLS: Tool[] = [
     name: "PDF to Image",
     description: "Convert PDF pages to images",
     category: "format",
-    icon: "FileOutput",
+    icon: "BookImage",
     route: "/pdf-to-image",
   },
 ];
