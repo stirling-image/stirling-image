@@ -70,7 +70,7 @@ export function EditorRightPanel() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
         {activeTab === "layers" && <LayersPanel />}
         {activeTab === "adjustments" && <AdjustmentsPanel />}
         {activeTab === "history" && <HistoryPanel />}

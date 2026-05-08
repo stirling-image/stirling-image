@@ -261,7 +261,7 @@ export function LayersPanel() {
 
 function BlendModeSelect({ value, onChange }: { value: string; onChange: (mode: string) => void }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0">
       <label htmlFor="blend-mode-select" className="text-[10px] text-muted-foreground shrink-0">
         Blend
       </label>
@@ -269,7 +269,7 @@ function BlendModeSelect({ value, onChange }: { value: string; onChange: (mode: 
         id="blend-mode-select"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 h-7 text-xs bg-muted border border-border rounded px-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        className="flex-1 min-w-0 h-7 text-xs bg-muted border border-border rounded px-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         data-testid="blend-mode-select"
       >
         {BLEND_MODES.map((mode) => (
@@ -289,7 +289,7 @@ function BlendModeSelect({ value, onChange }: { value: string; onChange: (mode: 
 function OpacitySlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const percent = Math.round(value * 100);
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0">
       <label htmlFor="layer-opacity-slider" className="text-[10px] text-muted-foreground shrink-0">
         Opacity
       </label>
@@ -300,10 +300,10 @@ function OpacitySlider({ value, onChange }: { value: number; onChange: (v: numbe
         max={100}
         value={percent}
         onChange={(e) => onChange(Number(e.target.value) / 100)}
-        className="flex-1"
+        className="flex-1 min-w-0"
         data-testid="layer-opacity-slider"
       />
-      <span className="text-xs font-mono text-foreground tabular-nums w-8 text-right">
+      <span className="text-[10px] font-mono text-foreground tabular-nums shrink-0">
         {percent}%
       </span>
     </div>
@@ -990,7 +990,7 @@ function EffectSlider({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[10px] text-muted-foreground shrink-0 w-12">{label}</span>
       <input
         type="range"
@@ -998,9 +998,9 @@ function EffectSlider({
         max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="flex-1"
+        className="flex-1 min-w-0"
       />
-      <span className="text-[10px] font-mono text-foreground tabular-nums w-10 text-right">
+      <span className="text-[10px] font-mono text-foreground tabular-nums w-11 text-right shrink-0">
         {value}
         {suffix}
       </span>

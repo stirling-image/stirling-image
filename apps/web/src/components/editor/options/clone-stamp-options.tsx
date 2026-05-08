@@ -26,7 +26,7 @@ export function CloneStampOptions() {
           max={500}
           value={brushSize}
           onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"
@@ -47,7 +47,7 @@ export function CloneStampOptions() {
           max={100}
           value={Math.round(brushOpacity * 100)}
           onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"
@@ -69,7 +69,7 @@ export function CloneStampOptions() {
           max={100}
           value={Math.round(brushHardness * 100)}
           onChange={(e) => setBrushHardness(Number(e.target.value) / 100)}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"

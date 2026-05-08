@@ -84,15 +84,15 @@ export function EditorOptionsBar() {
   const foregroundColor = useEditorStore((s) => s.foregroundColor);
 
   return (
-    <div className="flex items-center h-10 px-3 bg-card border-b border-border gap-3">
-      <span className="text-xs font-medium text-muted-foreground">
+    <div className="flex items-center h-9 px-3 bg-card border-b border-border gap-3 shrink-0 overflow-hidden">
+      <span className="text-xs font-medium text-muted-foreground shrink-0">
         {activeTool
           .replace(/-/g, " ")
           .replace(/^shape /, "")
           .replace(/\b\w/g, (c) => c.toUpperCase())}
       </span>
-      <div className="h-4 w-px bg-border" />
-      <div className="flex items-center gap-2 flex-1">
+      <div className="h-4 w-px bg-border shrink-0" />
+      <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
         {OptionsComponent && <OptionsComponent />}
         {activeTool === "eyedropper" && (
           <EyedropperOptions

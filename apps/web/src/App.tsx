@@ -228,14 +228,7 @@ export function App() {
                 <Route path="/color-channels" element={<Navigate to="/adjust-colors" replace />} />
                 <Route path="/color-effects" element={<Navigate to="/adjust-colors" replace />} />
                 <Route path="/analytics-consent" element={<AnalyticsConsentPage />} />
-                <Route
-                  path="/editor"
-                  element={
-                    <AppLayout showToolPanel={false}>
-                      <EditorPage />
-                    </AppLayout>
-                  }
-                />
+                <Route path="/editor" element={<EditorPage />} />
                 <Route path="/:toolId" element={<ToolPage />} />
                 <Route path="/" element={<HomePage />} />
               </Routes>

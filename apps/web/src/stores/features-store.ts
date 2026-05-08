@@ -184,6 +184,36 @@ export const useFeaturesStore = create<FeaturesState>((set, get) => {
     },
 
     installBundle: async (bundleId: string) => {
+      const activeIds = Object.keys(get().installing);
+      if (activeIds.length > 0 && !activeIds.includes(bundleId)) {
+        const alreadyQueued = get().queued.includes(bundleId);
+        if (!alreadyQueued) {
+          set({ queued: [...get().queued, bundleId] });
+        }
+        const errors = { ...get().errors };
+        delete errors[bundleId];
+        set({ errors });
+
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            const current = get().installing;
+            if (Object.keys(current).length === 0 || Object.keys(current).includes(bundleId)) {
+              resolve();
+            } else {
+              setTimeout(check, 500);
+            }
+          };
+          check();
+        });
+
+        set({ queued: get().queued.filter((id) => id !== bundleId) });
+        const currentBundle = get().bundles.find((b) => b.id === bundleId);
+        if (currentBundle?.status === "installed") {
+          resolveCompletion(bundleId);
+          return;
+        }
+      }
+
       const errors = { ...get().errors };
       delete errors[bundleId];
       set({

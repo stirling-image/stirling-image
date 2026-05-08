@@ -31,7 +31,7 @@ export function SliderRow({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="flex-1 h-1 accent-primary cursor-pointer"
+        className="flex-1 cursor-pointer"
       />
       <input
         type="number"

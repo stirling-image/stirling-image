@@ -48,7 +48,7 @@ export function DodgeBurnOptions() {
           max={500}
           value={brushSize}
           onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-16 h-1 accent-primary"
+          className="w-16"
         />
         <input
           type="number"
@@ -88,7 +88,7 @@ export function DodgeBurnOptions() {
             max={100}
             value={dodgeBurnExposure}
             onChange={(e) => setDodgeBurnExposure(Number(e.target.value))}
-            className="w-16 h-1 accent-primary"
+            className="w-16"
           />
           <input
             type="number"
@@ -127,7 +127,7 @@ export function DodgeBurnOptions() {
             max={100}
             value={spongeFlow}
             onChange={(e) => setSpongeFlow(Number(e.target.value))}
-            className="w-16 h-1 accent-primary"
+            className="w-16"
           />
           <input
             type="number"

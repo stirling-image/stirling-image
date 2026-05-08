@@ -151,7 +151,7 @@ export function EditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       <EditorMenuBar
         onNewDocument={() => setShowNewDocument(true)}
         onOpenImage={handleOpenImage}

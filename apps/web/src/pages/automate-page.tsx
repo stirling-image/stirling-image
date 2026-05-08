@@ -630,14 +630,16 @@ export function AutomatePage() {
                     <button
                       type="button"
                       onClick={() => handleExportPipeline(p)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all shrink-0"
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all shrink-0"
+                      title="Export pipeline"
                     >
                       <Download className="h-3 w-3" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeletePipeline(p.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                      title="Delete pipeline"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -652,17 +654,28 @@ export function AutomatePage() {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1">
+              <div className="space-y-1">
                 {savedPipelines.slice(0, 3).map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleLoadPipeline(p)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors truncate max-w-[110px]"
-                  >
-                    <Play className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{p.name}</span>
-                  </button>
+                  <div key={p.id} className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLoadPipeline(p)}
+                      className="flex-1 text-left text-xs text-foreground hover:text-primary truncate py-1 px-2 rounded hover:bg-muted"
+                    >
+                      {p.name}
+                      <span className="text-muted-foreground ml-1">
+                        ({p.steps.length} step{p.steps.length !== 1 ? "s" : ""})
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportPipeline(p)}
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all shrink-0"
+                      title="Export pipeline"
+                    >
+                      <Download className="h-3 w-3" />
+                    </button>
+                  </div>
                 ))}
                 {savedPipelines.length > 3 && (
                   <button

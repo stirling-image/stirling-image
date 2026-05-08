@@ -39,7 +39,7 @@ export function GradientOptions() {
           max={100}
           value={opacityPercent}
           onChange={(e) => setGradientOpacity(Number(e.target.value) / 100)}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"

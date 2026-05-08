@@ -765,6 +765,7 @@ const PUBLIC_PATHS = [
   "/api/v1/jobs/",
   "/api/docs",
   "/api/v1/openapi.yaml",
+  "/api/v1/meme-templates/",
 ];
 
 function isPublicRoute(url: string): boolean {

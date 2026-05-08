@@ -88,7 +88,7 @@ export function ShapeOptions() {
           max={50}
           value={shapeStrokeWidth}
           onChange={(e) => setShapeStrokeWidth(Number(e.target.value))}
-          className="w-16 h-1 accent-primary"
+          className="w-16"
         />
         <input
           type="number"
@@ -110,7 +110,7 @@ export function ShapeOptions() {
             max={100}
             value={shapeCornerRadius}
             onChange={(e) => setShapeCornerRadius(Number(e.target.value))}
-            className="w-16 h-1 accent-primary"
+            className="w-16"
           />
           <input
             type="number"

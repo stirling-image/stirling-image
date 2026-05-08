@@ -2,7 +2,6 @@
 
 import { Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 
 const THUMBNAIL_MAX_HEIGHT = 80;
@@ -257,11 +256,7 @@ export function NavigatorPanel() {
           step={0.001}
           value={Math.log(zoom / MIN_ZOOM) / Math.log(MAX_ZOOM / MIN_ZOOM)}
           onChange={handleZoomSlider}
-          className={cn(
-            "flex-1 h-1 appearance-none rounded-full bg-muted",
-            "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5",
-            "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:cursor-pointer",
-          )}
+          className="flex-1"
         />
         <button
           type="button"

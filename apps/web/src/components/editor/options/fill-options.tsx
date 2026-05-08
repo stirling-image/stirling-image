@@ -22,7 +22,7 @@ export function FillOptions() {
           max={255}
           value={tolerance}
           onChange={(e) => setFillTolerance(Number(e.target.value))}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"

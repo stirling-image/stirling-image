@@ -40,7 +40,7 @@ export function PixelBrushOptions() {
           max={500}
           value={brushSize}
           onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"
@@ -61,7 +61,7 @@ export function PixelBrushOptions() {
           max={100}
           value={strength}
           onChange={(e) => setPixelBrushStrength(Number(e.target.value))}
-          className="w-20 h-1 accent-primary"
+          className="w-20"
         />
         <input
           type="number"

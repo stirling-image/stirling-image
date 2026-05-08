@@ -112,10 +112,10 @@ export function EditorToolbar() {
   const sourceImageUrl = useEditorStore((s) => s.sourceImageUrl);
 
   return (
-    <div className="flex flex-col items-center w-12 bg-card border-r border-border py-2 gap-0.5 overflow-y-auto">
+    <div className="flex flex-col items-center w-9 bg-card border-r border-border py-1.5 gap-0 overflow-y-auto">
       {TOOL_GROUPS.map((group, gi) => (
         <div key={group.tools[0].tool}>
-          {gi > 0 && <div className="w-6 h-px bg-border mx-auto my-1" />}
+          {gi > 0 && <div className="w-4 h-px bg-border/50 mx-auto my-0.5" />}
           {group.tools.map((t) => (
             <IconButton
               key={t.tool}

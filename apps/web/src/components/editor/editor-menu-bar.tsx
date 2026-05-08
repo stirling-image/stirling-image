@@ -1,7 +1,8 @@
 // apps/web/src/components/editor/editor-menu-bar.tsx
 
-import { Check, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
 
@@ -441,6 +442,7 @@ export function EditorMenuBar(props: MenuBarCallbacks) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpenMenu(null), []);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!openMenu) return;
@@ -465,40 +467,50 @@ export function EditorMenuBar(props: MenuBarCallbacks) {
   return (
     <div
       ref={barRef}
-      className="flex items-center h-7 bg-card border-b border-border px-1 select-none shrink-0"
+      className="flex items-center h-8 bg-background border-b border-border select-none shrink-0"
       data-testid="editor-menu-bar"
     >
-      {menus.map((menu) => (
-        <div key={menu.testId} className="relative">
-          <button
-            type="button"
-            className={cn(
-              "px-2.5 py-0.5 text-xs rounded-sm transition-colors",
-              openMenu === menu.testId
-                ? "bg-accent text-accent-foreground"
-                : "text-foreground hover:bg-accent/50",
-            )}
-            data-testid={`menu-${menu.testId}`}
-            onClick={() => setOpenMenu(openMenu === menu.testId ? null : menu.testId)}
-            onMouseEnter={() => {
-              if (openMenu) setOpenMenu(menu.testId);
-            }}
-          >
-            {menu.label}
-          </button>
-          {openMenu === menu.testId && (
-            <div
-              className="absolute left-0 top-full mt-0.5 min-w-[220px] bg-card border border-border rounded-md shadow-lg py-1 z-50"
-              data-testid={`menu-dropdown-${menu.testId}`}
-              role="menu"
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="flex items-center gap-1.5 px-2.5 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-r border-border"
+        title="Back to SnapOtter"
+      >
+        <ArrowLeft size={14} />
+      </button>
+      <div className="flex items-center px-1">
+        {menus.map((menu) => (
+          <div key={menu.testId} className="relative">
+            <button
+              type="button"
+              className={cn(
+                "px-2.5 h-8 text-xs transition-colors",
+                openMenu === menu.testId
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
+              )}
+              data-testid={`menu-${menu.testId}`}
+              onClick={() => setOpenMenu(openMenu === menu.testId ? null : menu.testId)}
+              onMouseEnter={() => {
+                if (openMenu) setOpenMenu(menu.testId);
+              }}
             >
-              {menu.items.map((item) => (
-                <MenuItemRow key={item.label} item={item} onClose={close} />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+              {menu.label}
+            </button>
+            {openMenu === menu.testId && (
+              <div
+                className="absolute left-0 top-full min-w-[220px] bg-card border border-border rounded-md shadow-lg py-1 z-50"
+                data-testid={`menu-dropdown-${menu.testId}`}
+                role="menu"
+              >
+                {menu.items.map((item) => (
+                  <MenuItemRow key={item.label} item={item} onClose={close} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

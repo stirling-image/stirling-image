@@ -11,7 +11,7 @@ export function EditorStatusBar() {
   const zoomPercent = Math.round(zoom * 100);
 
   return (
-    <div className="flex items-center justify-between h-7 px-3 bg-card border-t border-border text-xs text-muted-foreground">
+    <div className="flex items-center justify-between h-7 px-3 bg-background border-t border-border text-xs text-muted-foreground shrink-0">
       <div className="flex items-center gap-3" data-testid="status-cursor">
         {sourceImageUrl && (
           <>

@@ -162,7 +162,7 @@ export function FillDialog({ open, onClose }: FillDialogProps) {
               max={100}
               value={opacity}
               onChange={(e) => setOpacity(Number(e.target.value))}
-              className="flex-1 h-1 accent-primary"
+              className="flex-1"
             />
             <input
               type="number"
