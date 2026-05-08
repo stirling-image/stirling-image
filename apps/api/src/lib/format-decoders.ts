@@ -85,7 +85,6 @@ export async function decodeToSharpCompat(
     case "pgm":
     case "pbm":
       return decodeNetpbm(buffer, format);
-      return decodeQoi(buffer);
     default:
       return buffer;
   }
