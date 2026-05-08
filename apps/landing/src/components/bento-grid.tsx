@@ -153,6 +153,12 @@ const tools: { name: string; description: string; category: string; icon: Lucide
     category: "adjustments",
     icon: Pipette,
   },
+  {
+    name: "Color Blindness Simulation",
+    description: "Simulate how images appear under different types of color vision deficiency",
+    category: "adjustments",
+    icon: Eye,
+  },
   // AI Tools
   {
     name: "Remove Background",
@@ -336,6 +342,12 @@ const tools: { name: string; description: string; category: string; icon: Lucide
     description: "Add borders, rounded corners, shadows",
     category: "layout",
     icon: Frame,
+  },
+  {
+    name: "Beautify Screenshot",
+    description: "Add gradient backgrounds, device frames, shadows, and social media sizing",
+    category: "layout",
+    icon: Sparkles,
   },
   // Format & Conversion
   {
