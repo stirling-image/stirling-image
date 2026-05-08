@@ -9,6 +9,7 @@ import { PhotoPlaceholder } from "./components/PhotoPlaceholder";
 import { ToolPill } from "./components/ToolPill";
 import { BrandGradient } from "./compositions/ambient/BrandGradient";
 import { FloatingTools } from "./compositions/ambient/FloatingTools";
+import { AiMagicReel } from "./compositions/features/AiMagicReel";
 import { FormatUniverse } from "./compositions/features/FormatUniverse";
 import { PipelineFlow } from "./compositions/features/PipelineFlow";
 import { TEXT } from "./lib/fonts";
@@ -80,6 +81,14 @@ export const RemotionRoot: React.FC = () => (
       id="FormatUniverse"
       component={FormatUniverse}
       durationInFrames={180}
+      fps={30}
+      width={800}
+      height={600}
+    />
+    <Composition
+      id="AiMagicReel"
+      component={AiMagicReel}
+      durationInFrames={480}
       fps={30}
       width={800}
       height={600}
