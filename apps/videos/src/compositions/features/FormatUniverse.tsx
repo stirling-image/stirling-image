@@ -67,12 +67,14 @@ const Badge: React.FC<{
   );
 };
 
-const GhostBadge: React.FC<{
+/** Trail badge - renders a badge at a past frame's position with reduced opacity */
+const TrailBadge: React.FC<{
   label: string;
   color: string;
   angle: number;
   radius: number;
-}> = ({ label, color, angle, radius }) => {
+  trailOpacity: number;
+}> = ({ label, color, angle, radius, trailOpacity }) => {
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius * 0.55;
   const z = Math.sin(angle);
@@ -86,12 +88,12 @@ const GhostBadge: React.FC<{
         left: 400 + x,
         top: 280 + y,
         transform: `translate(-50%, -50%) scale(${scale})`,
-        opacity: 0.2,
+        opacity: trailOpacity,
         zIndex,
         padding: "6px 14px",
         borderRadius: 8,
         backgroundColor: `${color}26`,
-        border: `1px solid ${color}66`,
+        border: `1px solid ${color}44`,
         fontFamily: FONT.body,
         fontWeight: 600,
         fontSize: 14,
@@ -107,26 +109,61 @@ const GhostBadge: React.FC<{
 
 export const FormatUniverse: React.FC = () => {
   const frame = useCurrentFrame();
-  const logoScale = Math.sin(frame * 0.06) * 0.03 + 1;
+  const logoScale = Math.sin(frame * 0.06) * 0.05 + 1;
 
   return (
     <AbsoluteFill style={{ backgroundColor: COLOR.dark, overflow: "hidden" }}>
+      {/* Orbit ring lines (faint elliptical paths behind each ring) */}
+      <svg
+        style={{ position: "absolute", inset: 0 }}
+        width={800}
+        height={600}
+        role="img"
+        aria-label="Orbit rings"
+      >
+        {RINGS.map((ring) => (
+          <ellipse
+            key={`orbit-${ring.radius}`}
+            cx={400}
+            cy={280}
+            rx={ring.radius}
+            ry={ring.radius * 0.55}
+            fill="none"
+            stroke={ring.color}
+            strokeWidth={0.5}
+            opacity={0.05}
+          />
+        ))}
+      </svg>
+
+      {/* Opacity trail: render each badge at frame-1 and frame-2 positions */}
       {RINGS.map((ring) =>
         ring.formats.map((fmt, fi) => {
           const angleOffset = (fi / ring.formats.length) * Math.PI * 2;
-          const ghostAngle = angleOffset + (frame - 2) * SPEED * ring.direction;
-          return (
-            <GhostBadge
-              key={`ghost-${ring.radius}-${fmt}`}
+          const trail1Angle = angleOffset + (frame - 1) * SPEED * ring.direction;
+          const trail2Angle = angleOffset + (frame - 2) * SPEED * ring.direction;
+          return [
+            <TrailBadge
+              key={`trail2-${ring.radius}-${fmt}`}
               label={fmt}
               color={ring.color}
-              angle={ghostAngle}
+              angle={trail2Angle}
               radius={ring.radius}
-            />
-          );
+              trailOpacity={0.1}
+            />,
+            <TrailBadge
+              key={`trail1-${ring.radius}-${fmt}`}
+              label={fmt}
+              color={ring.color}
+              angle={trail1Angle}
+              radius={ring.radius}
+              trailOpacity={0.3}
+            />,
+          ];
         }),
       )}
 
+      {/* Main badges at current frame */}
       {RINGS.map((ring) =>
         ring.formats.map((fmt, fi) => {
           const angleOffset = (fi / ring.formats.length) * Math.PI * 2;

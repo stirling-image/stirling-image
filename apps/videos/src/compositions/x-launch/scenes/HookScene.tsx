@@ -1,5 +1,5 @@
 import type React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { ClipReveal } from "@/components/ClipReveal";
 import { COLOR } from "@/lib/colors";
 import { TEXT } from "@/lib/fonts";

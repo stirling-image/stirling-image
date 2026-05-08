@@ -7,9 +7,9 @@ import { FONT } from "@/lib/fonts";
 import { TOOLS } from "@/lib/tools";
 
 const LAYERS = [
-  { speed: 0.8, fontSize: 14, opacity: 0.06, count: 10 },
-  { speed: 1.5, fontSize: 18, opacity: 0.12, count: 9 },
-  { speed: 2.5, fontSize: 24, opacity: 0.2, count: 6 },
+  { speed: 0.8, fontSize: 14, opacity: 0.12, count: 10, blur: 1 },
+  { speed: 1.5, fontSize: 18, opacity: 0.22, count: 9, blur: 0.5 },
+  { speed: 2.5, fontSize: 24, opacity: 0.35, count: 6, blur: 0 },
 ];
 
 const X_FREQ = (2 * Math.PI) / 120;
@@ -41,7 +41,7 @@ export const FloatingTools: React.FC = () => {
       {items.map((item, idx) => {
         const rawY = item.startY - frame * item.layer.speed;
         const y = (((rawY % wrapH) + wrapH) % wrapH) - 50;
-        const xOffset = Math.sin(frame * X_FREQ + item.phase) * 3;
+        const xOffset = Math.sin(frame * X_FREQ + item.phase) * 8;
 
         return (
           <span
@@ -56,12 +56,23 @@ export const FloatingTools: React.FC = () => {
               color: COLOR.category[item.tool.category] ?? COLOR.accent,
               opacity: item.layer.opacity,
               whiteSpace: "nowrap",
+              filter: item.layer.blur > 0 ? `blur(${item.layer.blur}px)` : undefined,
             }}
           >
             {item.tool.name}
           </span>
         );
       })}
+      {/* Radial vignette */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse 60% 55% at 50% 50%, transparent 0%, rgba(0,0,0,0.6) 100%)",
+          pointerEvents: "none",
+        }}
+      />
       <GrainOverlay opacity={0.02} />
     </AbsoluteFill>
   );
