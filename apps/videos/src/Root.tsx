@@ -14,6 +14,8 @@ import { FormatUniverse } from "./compositions/features/FormatUniverse";
 import { PipelineFlow } from "./compositions/features/PipelineFlow";
 import { OneCommand } from "./compositions/hero/OneCommand";
 import { PrivacyPromise } from "./compositions/hero/PrivacyPromise";
+import { PromoTeaser } from "./compositions/promo-teaser/PromoTeaser";
+import { PromoTeaserVertical } from "./compositions/promo-teaser/PromoTeaserVertical";
 import { TEXT } from "./lib/fonts";
 
 const ComponentTest: React.FC = () => (
@@ -118,6 +120,22 @@ export const RemotionRoot: React.FC = () => (
       fps={30}
       width={1920}
       height={1080}
+    />
+    <Composition
+      id="PromoTeaser"
+      component={PromoTeaser}
+      durationInFrames={600}
+      fps={30}
+      width={1080}
+      height={1080}
+    />
+    <Composition
+      id="PromoTeaserVertical"
+      component={PromoTeaserVertical}
+      durationInFrames={600}
+      fps={30}
+      width={1080}
+      height={1920}
     />
   </>
 );
