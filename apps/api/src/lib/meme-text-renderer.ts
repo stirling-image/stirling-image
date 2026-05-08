@@ -210,7 +210,7 @@ export function renderMemeTextSvg(opts: MemeTextOptions): Buffer {
     const bw = (box.width / 100) * imageWidth;
     const bh = (box.height / 100) * imageHeight;
 
-    const pad = Math.max(4, Math.round(bw * 0.02));
+    const pad = Math.max(8, Math.round(bw * 0.05));
     const innerW = bw - pad * 2;
     const innerH = bh - pad * 2;
     const fontSize = fixedFontSize ?? autoSizeFontToFit(text, fontFamily, innerW, innerH);
