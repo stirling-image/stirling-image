@@ -128,6 +128,14 @@ export const TOOLS: Tool[] = [
     icon: "Pipette",
     route: "/replace-color",
   },
+  {
+    id: "color-blindness",
+    name: "Color Blindness Simulation",
+    description: "Simulate how images appear with color vision deficiency",
+    category: "adjustments",
+    icon: "Eye",
+    route: "/color-blindness",
+  },
   // AI Tools
   {
     id: "remove-background",

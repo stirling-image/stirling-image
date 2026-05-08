@@ -72,6 +72,10 @@ export const en = {
       name: "Replace & Invert Color",
       description: "Replace specific colors or invert",
     },
+    "color-blindness": {
+      name: "Color Blindness Simulation",
+      description: "Simulate how images appear with different types of color vision deficiency",
+    },
     "remove-background": {
       name: "Remove Background",
       description: "AI-powered background removal",
