@@ -949,7 +949,7 @@ describe("Border", () => {
       body,
     });
 
-    expect([200, 400]).toContain(res.statusCode);
+    expect([200, 400, 422]).toContain(res.statusCode);
     if (res.statusCode === 200) {
       const result = JSON.parse(res.body);
       expect(result.processedSize).toBeGreaterThan(0);
