@@ -84,7 +84,12 @@ export function Sidebar({
     }
     if (item.label === "Help") {
       return (
-        <button key={item.label} type="button" onClick={onHelpClick} className="w-full">
+        <button
+          key={item.label}
+          type="button"
+          onClick={onHelpClick}
+          className="w-full text-sidebar-foreground"
+        >
           {content}
         </button>
       );

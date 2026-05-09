@@ -582,8 +582,8 @@ test.describe("Watermark Image — tiled", () => {
         { name: "file", filename: "main.jpg", contentType: "image/jpeg", buffer: JPG_SAMPLE },
         {
           name: "watermark",
-          filename: "wm.png",
-          contentType: "image/png",
+          filename: "wm.webp",
+          contentType: "image/webp",
           buffer: WEBP_50x50,
         },
       ],
@@ -629,15 +629,15 @@ test.describe("Compose — format combinations", () => {
     expect(json.downloadUrl).toBeTruthy();
   });
 
-  test("compose WebP base with JPEG overlay", async ({ request }) => {
+  test("compose JPEG base with WebP overlay", async ({ request }) => {
     const { body, contentType } = buildMultipart(
       [
-        { name: "file", filename: "base.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "base.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
         {
           name: "overlay",
-          filename: "overlay.jpg",
-          contentType: "image/jpeg",
-          buffer: JPG_100x100,
+          filename: "overlay.webp",
+          contentType: "image/webp",
+          buffer: WEBP_50x50,
         },
       ],
       [{ name: "settings", value: JSON.stringify({ x: 0, y: 0, opacity: 80 }) }],

@@ -107,7 +107,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       />
 
       {/* Dialog */}
-      <div className="relative bg-background border border-border rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative bg-background border border-border rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex overflow-hidden"
+      >
         {/* Sidebar nav */}
         <div className="w-48 border-r border-border bg-muted/30 p-3 space-y-1 shrink-0">
           <div className="flex items-center justify-between mb-4 px-2">

@@ -404,7 +404,7 @@ test.describe("Convert", () => {
     expect(body.processedSize).toBeGreaterThan(0);
   });
 
-  test("convert rejects invalid format", async ({ request }) => {
+  test("convert PNG to BMP", async ({ request }) => {
     const res = await request.post("/api/v1/tools/convert", {
       headers: { Authorization: `Bearer ${token}` },
       multipart: {
@@ -412,9 +412,10 @@ test.describe("Convert", () => {
         settings: JSON.stringify({ format: "bmp" }),
       },
     });
-    expect(res.ok()).toBe(false);
+    expect(res.ok()).toBe(true);
     const body = await res.json();
-    expect(body.error).toBeDefined();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeGreaterThan(0);
   });
 });
 
