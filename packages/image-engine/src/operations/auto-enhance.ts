@@ -20,6 +20,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: number;
     sharpness: number;
     denoise: number;
+    clahe: number;
+    normalise: number;
   }
 > = {
   auto: {
@@ -29,6 +31,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 1.0,
     sharpness: 1.0,
     denoise: 1.0,
+    clahe: 1.0,
+    normalise: 1.0,
   },
   portrait: {
     brightness: 0.8,
@@ -37,6 +41,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 0.6,
     sharpness: 0.5,
     denoise: 1.5,
+    clahe: 0.7,
+    normalise: 0.8,
   },
   landscape: {
     brightness: 1.0,
@@ -45,6 +51,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 1.4,
     sharpness: 1.5,
     denoise: 0.5,
+    clahe: 1.3,
+    normalise: 1.2,
   },
   "low-light": {
     brightness: 1.8,
@@ -53,6 +61,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 0.8,
     sharpness: 1.2,
     denoise: 2.0,
+    clahe: 1.5,
+    normalise: 1.5,
   },
   food: {
     brightness: 0.8,
@@ -61,6 +71,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 1.3,
     sharpness: 1.2,
     denoise: 0.5,
+    clahe: 1.1,
+    normalise: 1.0,
   },
   document: {
     brightness: 1.5,
@@ -69,6 +81,8 @@ const PRESET_MULTIPLIERS: Record<
     saturation: 0.0,
     sharpness: 2.0,
     denoise: 2.0,
+    clahe: 2.0,
+    normalise: 1.5,
   },
 };
 
@@ -201,56 +215,76 @@ export function applyCorrections(
   mode: EnhancementMode,
   intensity: number,
   toggles: Record<string, boolean>,
+  imageSize?: { width: number; height: number },
 ): Sharp {
   const presets = PRESET_MULTIPLIERS[mode];
   const scale = intensity / 50;
 
   let result = image;
 
+  // Step 1: CLAHE - adaptive local contrast enhancement
+  // maxSlope must be an integer (Sharp requirement); skip for tiny images
+  if (toggles.contrast !== false) {
+    const maxSlope = clamp(Math.round(1.0 + (intensity / 100) * 4.0 * presets.clahe), 1, 10);
+    const minDim = imageSize ? Math.min(imageSize.width, imageSize.height) : 4;
+    const tileSize = minDim >= 3 ? 3 : 1;
+    if (maxSlope >= 2) {
+      result = result.clahe({ width: tileSize, height: tileSize, maxSlope });
+    }
+  }
+
+  // Step 2: Normalise - auto-levels histogram stretch
+  // lower = percentile below which pixels are clipped to black (0-99)
+  // upper = percentile above which pixels are clipped to white (1-100)
+  if (toggles.exposure !== false) {
+    const baseClip = 5 - (intensity / 100) * 4.5;
+    const clipPct = clamp(Math.round(baseClip * presets.normalise), 0, 10);
+    const lower = clipPct;
+    const upper = 100 - clipPct;
+    if (lower < upper) {
+      result = result.normalise({ lower, upper });
+    }
+  }
+
+  // Step 3: Gamma - perceptual exposure correction (only outside dead zone)
   if (toggles.exposure !== false) {
     const adj = corrections.brightness * presets.brightness * scale;
     if (Math.abs(adj) > 2) {
-      const multiplier = clamp(1 + adj / 100, 0.2, 3.0);
-      result = result.modulate({ brightness: multiplier });
+      const gamma = clamp(1 + adj / 100, 1.0, 3.0);
+      result = result.gamma(gamma);
     }
   }
 
-  if (toggles.contrast !== false) {
-    const adj = corrections.contrast * presets.contrast * scale;
-    if (Math.abs(adj) > 2) {
-      const slope = 1 + adj / 100;
-      const intercept = 128 * (1 - slope);
-      result = result.linear(slope, intercept);
-    }
-  }
-
+  // Step 4: White balance via per-channel linear scaling
+  // Uses linear() instead of recomb() to avoid float-cast that breaks CLAHE
   if (toggles.whiteBalance !== false) {
     const adj = corrections.temperature * presets.temperature * scale;
     if (Math.abs(adj) > 2) {
       const t = adj / 100;
-      result = result.recomb([
-        [1 + t * 0.15, 0, 0],
-        [0, 1 + t * 0.05, 0],
-        [0, 0, 1 - t * 0.15],
-      ]);
+      result = result.linear([1 + t * 0.15, 1 + t * 0.05, 1 - t * 0.15], [0, 0, 0]);
     }
   }
 
+  // Step 5: Saturation (with small CLAHE compensation boost)
   if (toggles.saturation !== false) {
     const adj = corrections.saturation * presets.saturation * scale;
-    if (Math.abs(adj) > 2) {
-      result = result.modulate({ saturation: 1 + adj / 100 });
+    const claheCompensation = toggles.contrast !== false && intensity > 10 ? 0.05 : 0;
+    const satMul = 1 + adj / 100 + claheCompensation;
+    if (Math.abs(satMul - 1) > 0.02) {
+      result = result.modulate({ saturation: clamp(satMul, 0.2, 3.0) });
     }
   }
 
+  // Step 6: Sharpen with flat parameter to avoid sharpening noise
   if (toggles.sharpness !== false) {
     const adj = corrections.sharpness * presets.sharpness * scale;
     if (adj > 2) {
       const sigma = 0.5 + (adj / 100) * 4;
-      result = result.sharpen({ sigma });
+      result = result.sharpen({ sigma, flat: 1.0 });
     }
   }
 
+  // Denoise via median (kept for backward compat, Deep Enhance uses SCUNet)
   if (toggles.denoise !== false) {
     const adj = corrections.denoise * presets.denoise * scale;
     if (adj >= 2) {

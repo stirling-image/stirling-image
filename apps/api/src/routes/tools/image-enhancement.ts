@@ -33,6 +33,7 @@ async function processImageEnhancement(
 ) {
   const outputFormat = await resolveOutputFormat(inputBuffer, filename);
   const analysis = await analyzeImage(inputBuffer);
+  const meta = await sharp(inputBuffer).metadata();
 
   let image = sharp(inputBuffer);
   image = applyCorrections(
@@ -41,6 +42,7 @@ async function processImageEnhancement(
     settings.mode,
     settings.intensity,
     settings.corrections,
+    { width: meta.width ?? 1, height: meta.height ?? 1 },
   );
 
   const buffer = await image

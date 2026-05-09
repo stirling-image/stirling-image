@@ -205,3 +205,79 @@ describe("applyCorrections", () => {
     expect(enhancedMeta.height).toBe(originalMeta.height);
   });
 });
+
+describe("applyCorrections pipeline (CLAHE + normalise + gamma)", () => {
+  it("does not darken a well-exposed image", async () => {
+    const analysis = await analyzeImage(PNG_200x150);
+    const image = sharp(PNG_200x150);
+    const enhanced = applyCorrections(image, analysis.corrections, "auto", 50, {});
+    const enhancedBuf = await enhanced.toBuffer();
+
+    const origStats = await sharp(PNG_200x150).stats();
+    const enhStats = await sharp(enhancedBuf).stats();
+
+    const origLum =
+      origStats.channels[0].mean * 0.299 +
+      origStats.channels[1].mean * 0.587 +
+      origStats.channels[2].mean * 0.114;
+    const enhLum =
+      enhStats.channels[0].mean * 0.299 +
+      enhStats.channels[1].mean * 0.587 +
+      enhStats.channels[2].mean * 0.114;
+
+    // Enhanced image should not be more than 5% darker
+    expect(enhLum).toBeGreaterThan(origLum * 0.95);
+  });
+
+  it("brightens a dark image", async () => {
+    const darkBuffer = await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 30, g: 30, b: 30 } },
+    })
+      .png()
+      .toBuffer();
+
+    const analysis = await analyzeImage(darkBuffer);
+    const enhanced = applyCorrections(sharp(darkBuffer), analysis.corrections, "auto", 50, {});
+    const enhancedBuf = await enhanced.toBuffer();
+
+    const origStats = await sharp(darkBuffer).stats();
+    const enhStats = await sharp(enhancedBuf).stats();
+
+    const origLum =
+      origStats.channels[0].mean * 0.299 +
+      origStats.channels[1].mean * 0.587 +
+      origStats.channels[2].mean * 0.114;
+    const enhLum =
+      enhStats.channels[0].mean * 0.299 +
+      enhStats.channels[1].mean * 0.587 +
+      enhStats.channels[2].mean * 0.114;
+
+    expect(enhLum).toBeGreaterThan(origLum * 1.1);
+  });
+
+  it("applies CLAHE at intensity 0 with no visible effect", async () => {
+    const image = sharp(PNG_200x150);
+    const corrections = {
+      brightness: 0,
+      contrast: 0,
+      temperature: 0,
+      saturation: 0,
+      sharpness: 0,
+      denoise: 0,
+    };
+    const enhanced = applyCorrections(image, corrections, "auto", 0, {});
+    const enhancedBuf = await enhanced.toBuffer();
+
+    const origStats = await sharp(PNG_200x150).stats();
+    const enhStats = await sharp(enhancedBuf).stats();
+    const origLum =
+      origStats.channels[0].mean * 0.299 +
+      origStats.channels[1].mean * 0.587 +
+      origStats.channels[2].mean * 0.114;
+    const enhLum =
+      enhStats.channels[0].mean * 0.299 +
+      enhStats.channels[1].mean * 0.587 +
+      enhStats.channels[2].mean * 0.114;
+    expect(Math.abs(enhLum - origLum)).toBeLessThan(origLum * 0.15);
+  });
+});
