@@ -225,5 +225,50 @@ describe("enhanceFaces", () => {
         expect.objectContaining({ onProgress }),
       );
     });
+
+    it("omits onProgress when not provided", async () => {
+      await enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.onProgress).toBeUndefined();
+    });
+  });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Invalid JPEG")),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Invalid JPEG");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("handles response with zero facesDetected and non-empty faces array", async () => {
+      vi.mocked(parseStdoutJson).mockReturnValue({
+        success: true,
+        facesDetected: 0,
+        faces: [{ x: 10, y: 20, w: 30, h: 40 }],
+        model: "gfpgan",
+      });
+
+      const result = await enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR);
+      // The function trusts what Python returns
+      expect(result.facesDetected).toBe(0);
+      expect(result.faces).toHaveLength(1);
+    });
+
+    it("propagates segfault errors from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+    });
   });
 });

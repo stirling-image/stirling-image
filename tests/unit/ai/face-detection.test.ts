@@ -311,5 +311,38 @@ describe("detectFaces", () => {
         expect.objectContaining({ onProgress }),
       );
     });
+
+    it("omits onProgress when not provided", async () => {
+      await detectFaces(FAKE_INPUT);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.onProgress).toBeUndefined();
+    });
+  });
+
+  describe("edge cases", () => {
+    it("converts input to PNG before writing to tmpdir", async () => {
+      await detectFaces(FAKE_INPUT);
+
+      expect(sharp).toHaveBeenCalledWith(FAKE_INPUT);
+    });
+
+    it("propagates sharp conversion errors", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Corrupt image")),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(detectFaces(FAKE_INPUT)).rejects.toThrow("Corrupt image");
+    });
+
+    it("propagates writeFile errors", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("Permission denied"));
+
+      await expect(detectFaces(FAKE_INPUT)).rejects.toThrow("Permission denied");
+    });
   });
 });

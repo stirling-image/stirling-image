@@ -343,3 +343,71 @@ describe("throwWithMessage error extraction", () => {
     await expect(apiGet("/v1/test")).rejects.toThrow("API error: 502");
   });
 });
+
+// ==========================================================================
+// apiGetFileDetails
+// ==========================================================================
+describe("apiGetFileDetails", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    storageMap.clear();
+  });
+
+  it("returns merged file and versions", async () => {
+    const { apiGetFileDetails } = await import("@/lib/api");
+    fetchMock.mockReturnValueOnce(
+      okJson({
+        file: {
+          id: "f1",
+          originalName: "photo.jpg",
+          size: 2048,
+          mimeType: "image/jpeg",
+          createdAt: "2025-01-01",
+        },
+        versions: [{ version: 1, size: 2048 }],
+      }),
+    );
+    const result = await apiGetFileDetails("f1");
+    expect(result.id).toBe("f1");
+    expect(result.originalName).toBe("photo.jpg");
+    expect(result.versions).toHaveLength(1);
+  });
+});
+
+// ==========================================================================
+// apiDownloadBlob network error coverage
+// ==========================================================================
+describe("apiDownloadBlob network errors", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    storageMap.clear();
+  });
+
+  it("triggers disconnected on TypeError from fetch", async () => {
+    const { apiDownloadBlob } = await import("@/lib/api");
+    const { useConnectionStore } = await import("@/stores/connection-store");
+    useConnectionStore.setState({
+      status: "connected",
+      failedSince: null,
+      lastHealthCheck: null,
+    });
+
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await expect(apiDownloadBlob("job-x", "file.png")).rejects.toThrow("Failed to fetch");
+    expect(useConnectionStore.getState().status).toBe("disconnected");
+  });
+
+  it("does NOT trigger disconnected on non-TypeError", async () => {
+    const { apiDownloadBlob } = await import("@/lib/api");
+    const { useConnectionStore } = await import("@/stores/connection-store");
+    useConnectionStore.setState({
+      status: "connected",
+      failedSince: null,
+      lastHealthCheck: null,
+    });
+
+    fetchMock.mockRejectedValueOnce(new Error("Some other error"));
+    await expect(apiDownloadBlob("job-x", "file.png")).rejects.toThrow("Some other error");
+    expect(useConnectionStore.getState().status).toBe("connected");
+  });
+});

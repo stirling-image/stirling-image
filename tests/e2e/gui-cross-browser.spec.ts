@@ -251,4 +251,148 @@ test.describe("Cross-browser smoke tests", () => {
 
     expect(errors).toHaveLength(0);
   });
+
+  test("CSS rendering: verify core layout elements render correctly", async ({
+    loggedInPage: page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    // Verify sidebar renders with correct structure
+    const sidebar = page.locator("aside");
+    if (await sidebar.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const sidebarBox = await sidebar.boundingBox();
+      expect(sidebarBox).not.toBeNull();
+      if (sidebarBox) {
+        expect(sidebarBox.width).toBeGreaterThan(0);
+        expect(sidebarBox.height).toBeGreaterThan(0);
+      }
+    }
+
+    // Verify main content area has correct background (not blank)
+    const bgColor = await page.evaluate(() => {
+      return getComputedStyle(document.body).backgroundColor;
+    });
+    expect(bgColor).toBeTruthy();
+    expect(bgColor).not.toBe("");
+
+    // Navigate to a tool page and verify CSS layout
+    await page.goto("/resize");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    // Verify the tool title renders
+    await expect(page.getByText(/resize/i).first()).toBeVisible();
+
+    // Verify the dropzone has a dashed border (CSS rendered correctly)
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    await expect(dropzone).toBeVisible();
+
+    expect(errors).toHaveLength(0);
+  });
+
+  test("file download: upload to resize, process, verify download", async ({
+    loggedInPage: page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+
+    await page.goto("/resize");
+    await page.waitForLoadState("networkidle");
+
+    await uploadImage(page);
+
+    // Set dimensions and process
+    const widthInput = page.locator("input[type='number']").first();
+    await expect(widthInput).toBeVisible();
+    await widthInput.fill("150");
+
+    await waitForProcessing(page);
+
+    // Verify download works by intercepting the download event
+    const downloadPromise = page.waitForEvent("download", { timeout: 15000 }).catch(() => null);
+    const downloadBtn = page.getByRole("button", { name: /download/i }).first();
+    const downloadLink = page.getByRole("link", { name: /download/i }).first();
+    const hasBtn = await downloadBtn.isVisible({ timeout: 5000 }).catch(() => false);
+    const hasLink = await downloadLink.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (hasBtn) {
+      await downloadBtn.click();
+    } else if (hasLink) {
+      await downloadLink.click();
+    }
+
+    if (hasBtn || hasLink) {
+      const download = await downloadPromise;
+      if (download) {
+        // Verify the download completed and has a filename
+        const suggestedName = download.suggestedFilename();
+        expect(suggestedName).toBeTruthy();
+        expect(suggestedName.length).toBeGreaterThan(0);
+      }
+    }
+
+    expect(errors).toHaveLength(0);
+  });
+
+  test("drag-and-drop: drop image file onto dropzone", async ({ loggedInPage: page }) => {
+    const errors = collectConsoleErrors(page);
+
+    await page.goto("/resize");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    await expect(dropzone).toBeVisible();
+
+    // Use the file chooser approach to set files on the dropzone input
+    // since cross-browser DataTransfer file simulation is unreliable
+    await uploadImage(page);
+
+    // Verify the file was accepted -- look for a success indicator or preview
+    const hasPreview = await page
+      .locator("[class*='text-green'], img[src*='blob:']")
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+    expect(hasPreview).toBe(true);
+
+    expect(errors).toHaveLength(0);
+  });
+
+  test("canvas interactions: crop tool draw and adjust region", async ({ loggedInPage: page }) => {
+    const errors = collectConsoleErrors(page);
+
+    await page.goto("/crop");
+    await page.waitForLoadState("networkidle");
+
+    await uploadImage(page);
+    await page.waitForTimeout(1000);
+
+    // Wait for the crop canvas to render
+    const canvas = page.locator("canvas").first();
+    const canvasVisible = await canvas.isVisible({ timeout: 10000 }).catch(() => false);
+
+    if (canvasVisible) {
+      const box = await canvas.boundingBox();
+      if (box) {
+        // Draw a crop selection by clicking and dragging on the canvas
+        const startX = box.x + box.width * 0.25;
+        const startY = box.y + box.height * 0.25;
+        const endX = box.x + box.width * 0.75;
+        const endY = box.y + box.height * 0.75;
+
+        await page.mouse.move(startX, startY);
+        await page.mouse.down();
+        await page.mouse.move(endX, endY, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(500);
+
+        // Verify the canvas is still rendered after interaction (no crash)
+        await expect(canvas).toBeVisible();
+      }
+    }
+
+    expect(errors).toHaveLength(0);
+  });
 });

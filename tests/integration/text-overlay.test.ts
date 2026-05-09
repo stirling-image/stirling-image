@@ -807,4 +807,102 @@ describe("text-overlay", () => {
     const json = JSON.parse(res.body);
     expect(json.downloadUrl).toBeDefined();
   });
+
+  // ── Rejects invalid settings JSON ───────────────────────────────
+
+  it("rejects invalid settings JSON", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: "not-valid-json" },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/text-overlay",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  // ── Empty text rejected ─────────────────────────────────────────
+
+  it("rejects empty text string", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ text: "" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/text-overlay",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  // ── TIFF input with all options ─────────────────────────────────
+
+  it("processes TIFF input with background box and shadow at top position", async () => {
+    const TIFF = readFileSync(join(FIXTURES, "formats", "sample.tiff"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.tiff", contentType: "image/tiff", content: TIFF },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          text: "TIFF Full",
+          position: "top",
+          fontSize: 24,
+          color: "#FFFF00",
+          backgroundBox: true,
+          backgroundColor: "#000000",
+          shadow: true,
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/text-overlay",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.downloadUrl).toBeDefined();
+  });
+
+  // ── Stress large file with background box ───────────────────────
+
+  it("handles stress-large.jpg with background box at bottom", async () => {
+    const LARGE = readFileSync(join(FIXTURES, "content", "stress-large.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "large.jpg", contentType: "image/jpeg", content: LARGE },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          text: "Large Image Caption",
+          position: "bottom",
+          backgroundBox: true,
+          backgroundColor: "#222222",
+          fontSize: 48,
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/text-overlay",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
 });

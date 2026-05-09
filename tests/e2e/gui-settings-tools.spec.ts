@@ -129,6 +129,76 @@ test.describe("GUI Settings - Tools Tab (toggle visibility)", () => {
     await page.waitForTimeout(500);
   });
 
+  test("toggling a tool off and saving, then on again restores it", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /tools/i }).click();
+    await expect(page.getByText(/\d+ tools? disabled/)).toBeVisible({ timeout: 5_000 });
+
+    // Read the initial disabled count
+    const counterText = page.getByText(/\d+ tools? disabled/);
+    const initialText = await counterText.textContent();
+    const initialCount = parseInt(initialText?.match(/(\d+)/)?.[1] || "0", 10);
+
+    // Toggle the first tool off (if it is currently enabled)
+    const firstToggle = page.locator("button.w-11.h-6").first();
+    const wasEnabled = await firstToggle.evaluate((el) => el.classList.contains("bg-primary"));
+
+    if (wasEnabled) {
+      await firstToggle.click();
+      // Counter should increase by 1
+      const afterText = await counterText.textContent();
+      const afterCount = parseInt(afterText?.match(/(\d+)/)?.[1] || "0", 10);
+      expect(afterCount).toBe(initialCount + 1);
+
+      // Toggle it back on
+      await firstToggle.click();
+      const restoredText = await counterText.textContent();
+      const restoredCount = parseInt(restoredText?.match(/(\d+)/)?.[1] || "0", 10);
+      expect(restoredCount).toBe(initialCount);
+    }
+  });
+
+  test("tool toggle state persists after saving and re-opening dialog", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /tools/i }).click();
+    await expect(page.getByText(/\d+ tools? disabled/)).toBeVisible({ timeout: 5_000 });
+
+    // Read the initial disabled count
+    const counterText = page.getByText(/\d+ tools? disabled/);
+    const initialText = await counterText.textContent();
+    const initialCount = parseInt(initialText?.match(/(\d+)/)?.[1] || "0", 10);
+
+    // Toggle the first tool to change state
+    const firstToggle = page.locator("button.w-11.h-6").first();
+    await firstToggle.click();
+
+    // Save
+    await page.getByRole("button", { name: /save tool settings/i }).click();
+    await expect(page.getByText("Restart required for changes to take effect.")).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Close and re-open
+    await page.keyboard.press("Escape");
+    await openSettings(page);
+    await page.getByRole("button", { name: /tools/i }).click();
+    await expect(page.getByText(/\d+ tools? disabled/)).toBeVisible({ timeout: 5_000 });
+
+    // The count should reflect the saved change
+    const afterReopen = await page.getByText(/\d+ tools? disabled/).textContent();
+    const afterCount = parseInt(afterReopen?.match(/(\d+)/)?.[1] || "0", 10);
+    expect(Math.abs(afterCount - initialCount)).toBe(1);
+
+    // Revert: toggle the first tool back
+    await page.locator("button.w-11.h-6").first().click();
+    await page.getByRole("button", { name: /save tool settings/i }).click();
+    await page.waitForTimeout(500);
+  });
+
   test("Enable All and Disable All buttons work", async ({ loggedInPage: page }) => {
     await openSettings(page);
     await page.getByRole("button", { name: /tools/i }).click();

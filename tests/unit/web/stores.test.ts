@@ -443,6 +443,49 @@ describe("FileStore", () => {
     expect(allDone).toBe(false);
   });
 
+  // -- HEIC async preview in setFiles -----------------------------------------
+
+  it("setFiles triggers async preview for HEIC files", async () => {
+    const previewBlob = new Blob(["decoded"], { type: "image/png" });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      blob: () => Promise.resolve(previewBlob),
+    });
+
+    const heicFile = makeFile("photo.heic", 500, "image/heic");
+    useFileStore.getState().setFiles([heicFile]);
+
+    // Entry should have previewLoading=true initially
+    expect(useFileStore.getState().entries[0].previewLoading).toBe(true);
+
+    // Wait for async preview to resolve
+    await vi.waitFor(() => {
+      expect(useFileStore.getState().entries[0].previewLoading).toBe(false);
+    });
+  });
+
+  it("addFiles triggers async preview for HEIC files", async () => {
+    // First add a normal file
+    useFileStore.getState().setFiles([makeFile("normal.png", 100)]);
+
+    const previewBlob = new Blob(["decoded"], { type: "image/png" });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      blob: () => Promise.resolve(previewBlob),
+    });
+
+    const heicFile = makeFile("photo2.heic", 500, "image/heic");
+    useFileStore.getState().addFiles([heicFile]);
+
+    // Second entry should have previewLoading=true initially
+    expect(useFileStore.getState().entries[1].previewLoading).toBe(true);
+
+    // Wait for async preview to resolve
+    await vi.waitFor(() => {
+      expect(useFileStore.getState().entries[1].previewLoading).toBe(false);
+    });
+  });
+
   // -- setProcessedUrl (backward compat, updates current entry) -------------
 
   it("setProcessedUrl updates current entry processedUrl and status", () => {

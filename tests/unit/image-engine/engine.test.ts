@@ -233,3 +233,42 @@ describe("processImage with different input formats", () => {
     expect(result.buffer.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// OPERATION_MAP coverage -- operations invoked through processImage
+// ---------------------------------------------------------------------------
+describe("processImage OPERATION_MAP coverage", () => {
+  it("color-blindness operation through processImage", async () => {
+    const result = await processImage(png200x150, [
+      { type: "color-blindness", options: { type: "protanopia" } },
+    ]);
+    expect(result.buffer.length).toBeGreaterThan(0);
+    expect(result.info.width).toBe(200);
+    expect(result.info.height).toBe(150);
+  });
+
+  it("edit-metadata operation through processImage", async () => {
+    const result = await processImage(jpg100x100, [
+      { type: "edit-metadata", options: { artist: "Engine Test" } },
+    ]);
+    expect(result.buffer.length).toBeGreaterThan(0);
+  });
+
+  it("sharpen-advanced operation through processImage", async () => {
+    const result = await processImage(png200x150, [
+      { type: "sharpen-advanced", options: { method: "adaptive" } },
+    ]);
+    expect(result.buffer.length).toBeGreaterThan(0);
+    expect(result.info.width).toBe(200);
+  });
+
+  it("sharpen operation through processImage", async () => {
+    const result = await processImage(png200x150, [{ type: "sharpen", options: { value: 30 } }]);
+    expect(result.buffer.length).toBeGreaterThan(0);
+  });
+
+  it("heif output format maps to avif", async () => {
+    const result = await processImage(png200x150, [], "heif");
+    expect(result.info.format).toBe("heif");
+  });
+});

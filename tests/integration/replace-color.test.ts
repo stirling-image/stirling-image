@@ -563,3 +563,106 @@ describe("SVG input", () => {
     expect(result.downloadUrl).toBeDefined();
   });
 });
+
+// ── makeTransparent explicitly false ──────────────────────────
+describe("Explicit makeTransparent false", () => {
+  it("replaces color normally when makeTransparent is false", async () => {
+    const res = await postTool(
+      { sourceColor: "#FF0000", targetColor: "#00FF00", makeTransparent: false, tolerance: 30 },
+      solidRedBuffer,
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+
+    // Download and verify color changed (not transparent)
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const { data } = await sharp(dlRes.rawPayload)
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    // First pixel should be green-ish
+    expect(data[1]).toBeGreaterThan(data[0]); // green > red
+  });
+});
+
+// ── makeTransparent on HEIC input ─────────────────────────────
+describe("makeTransparent on HEIC", () => {
+  it("makes pixels transparent in a HEIC image", { timeout: 120_000 }, async () => {
+    const HEIC = readFileSync(join(FIXTURES, "test-200x150.heic"));
+    const res = await postTool(
+      { sourceColor: "#808080", makeTransparent: true, tolerance: 100 },
+      HEIC,
+      "photo.heic",
+      "image/heic",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.channels).toBe(4);
+  });
+});
+
+// ── Invalid settings JSON ─────────────────────────────────────
+describe("Invalid settings JSON", () => {
+  it("rejects malformed settings JSON", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: "not-valid-json" },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/replace-color",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ── Verify pixel accuracy with exact tolerance ────────────────
+describe("Pixel accuracy verification", () => {
+  it("replaces all pixels in solid image at tolerance=0", async () => {
+    const res = await postTool(
+      { sourceColor: "#FF0000", targetColor: "#FFFFFF", tolerance: 0 },
+      solidRedBuffer,
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+
+    // All pixels should be white now
+    const { data, info } = await sharp(dlRes.rawPayload)
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Check a sample of pixels are white (R=255, G=255, B=255)
+    let whiteCount = 0;
+    const totalPixels = info.width * info.height;
+    for (let i = 0; i < data.length; i += 3) {
+      if (data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250) {
+        whiteCount++;
+      }
+    }
+    // Nearly all pixels should be white
+    expect(whiteCount / totalPixels).toBeGreaterThan(0.9);
+  });
+});

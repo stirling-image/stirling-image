@@ -843,6 +843,309 @@ test.describe("Favicon — output verification", () => {
   });
 });
 
+// ─── Optimize for Web -- Target Format ────────────────────────────
+
+test.describe("Optimize for Web -- target format", () => {
+  test("optimize with target format WebP", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+        settings: JSON.stringify({ maxWidth: 800, quality: 75, targetFormat: "webp" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  test("optimize with target format AVIF", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+        settings: JSON.stringify({ maxWidth: 640, quality: 60, targetFormat: "avif" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+
+  test("optimize preserves original format when no target specified", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ maxWidth: 100, quality: 50 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+});
+
+// ─── Optimize for Web -- Constraint Combinations ──────────────────
+
+test.describe("Optimize for Web -- constraints", () => {
+  test("optimize with maxWidth only (no quality)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+        settings: JSON.stringify({ maxWidth: 400 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  test("optimize with quality only (no resize)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+        settings: JSON.stringify({ quality: 30 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeLessThan(body.originalSize);
+  });
+
+  test("optimize with very small maxWidth", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/optimize-for-web", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+        settings: JSON.stringify({ maxWidth: 50, quality: 50 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeLessThan(body.originalSize);
+  });
+});
+
+// ─── Favicon -- Multi-size Output ─────────────────────────────────
+
+test.describe("Favicon -- multi-size", () => {
+  test("favicon from PNG generates downloadable output", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/favicon", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const ct = res.headers()["content-type"] ?? "";
+    if (ct.includes("application/json")) {
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+
+      // Download and verify non-empty
+      const dlRes = await request.get(body.downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(dlRes.ok()).toBe(true);
+      const buffer = Buffer.from(await dlRes.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("favicon from JPEG", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/favicon", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.jpg", mimeType: "image/jpeg", buffer: JPG_100x100 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+  });
+
+  test("favicon from PNG content image", async ({ request }) => {
+    const portrait = contentFixture("portrait-isolated.png");
+    const res = await request.post("/api/v1/tools/favicon", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "portrait.png", mimeType: "image/png", buffer: portrait },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+  });
+
+  test("favicon from GIF format", async ({ request }) => {
+    const gif = formatFixture("sample.gif");
+    const res = await request.post("/api/v1/tools/favicon", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.gif", mimeType: "image/gif", buffer: gif },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+  });
+});
+
+// ─── Replace Color -- Tolerance Levels ────────────────────────────
+
+test.describe("Replace Color -- tolerance levels", () => {
+  const tolerances = [0, 5, 10, 25, 50, 75, 100] as const;
+
+  for (const tolerance of tolerances) {
+    test(`replace color with tolerance=${tolerance}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/replace-color", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+          settings: JSON.stringify({
+            targetColor: "#FFFFFF",
+            replacementColor: "#FF0000",
+            tolerance,
+          }),
+        },
+      });
+      expect(res.ok(), `replace-color with tolerance=${tolerance} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+      expect(body.processedSize).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ─── Replace Color -- Download Verification ───────────────────────
+
+test.describe("Replace Color -- download verification", () => {
+  test("replaced-color image is downloadable and valid", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/replace-color", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({
+          targetColor: "#FFFFFF",
+          replacementColor: "#00FF00",
+          tolerance: 30,
+        }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+
+    const dlRes = await request.get(body.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const buffer = Buffer.from(await dlRes.body());
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── Bulk Rename -- ZIP Verification ──────────────────────────────
+
+test.describe("Bulk Rename -- ZIP output", () => {
+  test("rename 5 files and verify ZIP output", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        {
+          name: "file",
+          filename: "d.heic",
+          contentType: "image/heic",
+          buffer: HEIC_200x150,
+        },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: JPG_SAMPLE,
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ pattern: "photo-{{index}}", startIndex: 1 }) }],
+    );
+    const res = await request.post("/api/v1/tools/bulk-rename", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      if (json.downloadUrl) {
+        const dlRes = await request.get(json.downloadUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        expect(dlRes.ok()).toBe(true);
+        const buffer = Buffer.from(await dlRes.body());
+        expect(buffer.length).toBeGreaterThan(0);
+        // ZIP magic bytes: PK
+        expect(buffer[0]).toBe(0x50);
+        expect(buffer[1]).toBe(0x4b);
+      }
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+      expect(buffer[0]).toBe(0x50);
+      expect(buffer[1]).toBe(0x4b);
+    }
+  });
+
+  test("rename with prefix-suffix pattern", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({ pattern: "project_{{index}}_final", startIndex: 10 }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/bulk-rename", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+  });
+});
+
+// ─── Image Enhancement -- Preset Variations ───────────────────────
+
+test.describe("Image Enhancement -- presets", () => {
+  const presets = ["auto", "vivid", "soft", "portrait"] as const;
+
+  for (const preset of presets) {
+    test(`enhancement with preset=${preset}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/image-enhancement", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.jpg", mimeType: "image/jpeg", buffer: JPG_100x100 },
+          settings: JSON.stringify({ preset }),
+        },
+      });
+      expect(res.ok(), `enhancement with preset=${preset} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+      expect(body.processedSize).toBeGreaterThan(0);
+    });
+  }
+});
+
 // ─── Auth Failure ──────────────────────────────────────────────────
 
 test.describe("Auth failure", () => {

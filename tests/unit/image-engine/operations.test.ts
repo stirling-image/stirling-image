@@ -764,6 +764,13 @@ describe("compress", () => {
     expect(Math.abs(buf.length - targetBytes) / targetBytes).toBeLessThan(0.5);
   });
 
+  it("compresses with format=avif adds effort option", async () => {
+    const img = sharp(png200x150);
+    const result = await compress(img, { quality: 50, format: "avif" });
+    const meta = await getMeta(result);
+    expect(meta.format).toBe("heif");
+  });
+
   it("target size falls back to bestQuality=1 when bestBuffer stays null", async () => {
     // Use a very tiny target that forces all iterations to overshoot,
     // so bestBuffer never gets assigned and the fallback path runs

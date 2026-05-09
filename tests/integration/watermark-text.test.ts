@@ -792,4 +792,94 @@ describe("watermark-text", () => {
     expect(meta.width).toBe(200);
     expect(meta.height).toBe(150);
   });
+
+  // ── Invalid settings JSON ───────────────────────────────────────
+
+  it("rejects malformed settings JSON string", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: "not-valid-json" },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/watermark-text",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  // ── Stress file with all options ────────────────────────────────
+
+  it("applies full options to stress-large.jpg at bottom-right", async () => {
+    const LARGE = readFileSync(join(FIXTURES, "content", "stress-large.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "large.jpg", contentType: "image/jpeg", content: LARGE },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          text: "CONFIDENTIAL",
+          position: "bottom-right",
+          color: "#FF0000",
+          opacity: 80,
+          fontSize: 64,
+          rotation: -30,
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/watermark-text",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── Empty text rejected ─────────────────────────────────────────
+
+  it("rejects empty text string", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ text: "" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/watermark-text",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  // ── Response fields verification ────────────────────────────────
+
+  it("response includes jobId, downloadUrl, originalSize, processedSize", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ text: "Fields" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/watermark-text",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.jobId).toBeDefined();
+    expect(json.downloadUrl).toContain("/api/v1/download/");
+    expect(json.originalSize).toBeGreaterThan(0);
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
 });

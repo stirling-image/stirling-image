@@ -339,4 +339,45 @@ describe("extractText", () => {
       );
     });
   });
+
+  describe("edge cases", () => {
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("Permission denied"));
+
+      await expect(extractText(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Permission denied");
+    });
+
+    it("handles zero dimensions from metadata for timeout calculation", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            resize: vi.fn().mockReturnThis(),
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-png-data")),
+            metadata: vi.fn().mockResolvedValue({ width: undefined, height: undefined }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await extractText(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      // 0 MP: timeout = max(600_000, 0) = 600_000
+      expect(options.timeout).toBe(600_000);
+    });
+
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(extractText(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+    });
+
+    it("passes empty options as empty JSON", async () => {
+      await extractText(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[1])).toEqual({});
+    });
+  });
 });

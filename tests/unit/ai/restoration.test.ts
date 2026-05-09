@@ -288,5 +288,78 @@ describe("restorePhoto", () => {
         expect.objectContaining({ onProgress }),
       );
     });
+
+    it("omits onProgress when not provided", async () => {
+      await restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.onProgress).toBeUndefined();
+    });
+  });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Damaged TIFF")),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Damaged TIFF");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output missing");
+    });
+
+    it("passes empty options as empty JSON object", async () => {
+      await restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({});
+    });
+
+    it("handles single-step restoration pipeline", async () => {
+      vi.mocked(parseStdoutJson).mockReturnValue({
+        success: true,
+        width: 400,
+        height: 300,
+        steps: ["denoise"],
+        scratchCoverage: 0,
+        facesEnhanced: 0,
+        isGrayscale: false,
+        colorized: false,
+      });
+
+      const result = await restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR);
+      expect(result.steps).toEqual(["denoise"]);
+    });
+
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+    });
+
+    it("passes mode option", async () => {
+      await restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR, { mode: "light" });
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({ mode: "light" });
+    });
   });
 });

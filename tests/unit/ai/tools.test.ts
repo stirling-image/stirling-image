@@ -1664,4 +1664,337 @@ describe("parseStdoutJson throws in tool pipeline", () => {
       "No JSON response from Python script",
     );
   });
+
+  it("propagates parse error through colorize", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through blurFaces", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(blurFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through detectFaces", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(detectFaces(FAKE_INPUT)).rejects.toThrow("No JSON response from Python script");
+  });
+
+  it("propagates parse error through enhanceFaces", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through noiseRemoval", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through removeRedEye", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through restorePhoto", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through inpaint", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    const maskBuffer = Buffer.from("fake-mask");
+    await expect(inpaint(FAKE_INPUT, maskBuffer, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+
+  it("propagates parse error through detectFaceLandmarks", async () => {
+    vi.mocked(parseStdoutJson).mockImplementation(() => {
+      throw new Error("No JSON response from Python script");
+    });
+
+    await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow(
+      "No JSON response from Python script",
+    );
+  });
+});
+
+// ── readFile errors after successful Python run ────────────────────────
+
+describe("readFile errors after successful Python run", () => {
+  beforeEach(() => {
+    vi.mocked(parseStdoutJson).mockReturnValue({ success: true, width: 800, height: 600 });
+  });
+
+  it("colorize propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+    vi.mocked(parseStdoutJson).mockReturnValue({
+      success: true,
+      width: 800,
+      height: 600,
+      method: "deoldify",
+    });
+
+    await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("blurFaces propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+    vi.mocked(parseStdoutJson).mockReturnValue({
+      success: true,
+      facesDetected: 1,
+      faces: [{ x: 0, y: 0, w: 50, h: 50 }],
+    });
+
+    await expect(blurFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("enhanceFaces propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+    vi.mocked(parseStdoutJson).mockReturnValue({
+      success: true,
+      facesDetected: 1,
+      faces: [],
+      model: "gfpgan",
+    });
+
+    await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("noiseRemoval propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+
+    await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("removeRedEye propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+
+    await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("restorePhoto propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+
+    await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("upscale propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+    vi.mocked(parseStdoutJson).mockReturnValue({
+      success: true,
+      width: 1600,
+      height: 1200,
+    });
+
+    await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+
+  it("inpaint propagates readFile error", async () => {
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output file missing"));
+
+    const mask = Buffer.from("mask");
+    await expect(inpaint(FAKE_INPUT, mask, FAKE_OUTPUT_DIR)).rejects.toThrow("output file missing");
+  });
+});
+
+// ── writeFile errors before Python run ─────────────────────────────────
+
+describe("writeFile errors before Python run", () => {
+  it("colorize propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("blurFaces propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(blurFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("enhanceFaces propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("noiseRemoval propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("removeRedEye propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("restorePhoto propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("upscale propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("inpaint propagates writeFile error on input", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    const mask = Buffer.from("mask");
+    await expect(inpaint(FAKE_INPUT, mask, FAKE_OUTPUT_DIR)).rejects.toThrow("no space left");
+  });
+
+  it("detectFaceLandmarks propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow("no space left");
+  });
+
+  it("detectFaces propagates writeFile error", async () => {
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: no space left"));
+
+    await expect(detectFaces(FAKE_INPUT)).rejects.toThrow("no space left");
+  });
+});
+
+// ── Segfault propagation through all tools ─────────────────────────────
+
+describe("segfault propagation through all tools", () => {
+  beforeEach(() => {
+    vi.mocked(runPythonWithProgress).mockRejectedValue(
+      new Error("Process crashed (segmentation fault)"),
+    );
+  });
+
+  it("propagates segfault through colorize", async () => {
+    await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through blurFaces", async () => {
+    await expect(blurFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through enhanceFaces", async () => {
+    await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through detectFaceLandmarks", async () => {
+    await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through inpaint", async () => {
+    const mask = Buffer.from("mask");
+    await expect(inpaint(FAKE_INPUT, mask, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through noiseRemoval", async () => {
+    await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through removeRedEye", async () => {
+    await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through restorePhoto", async () => {
+    await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+
+  it("propagates segfault through removeBackground", async () => {
+    await expect(removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+      "segmentation fault",
+    );
+  });
+
+  it("propagates segfault through upscale", async () => {
+    await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+  });
+});
+
+// ── OOM propagation through all tools ──────────────────────────────────
+
+describe("OOM propagation through all tools", () => {
+  beforeEach(() => {
+    vi.mocked(runPythonWithProgress).mockRejectedValue(
+      new Error("Process killed (out of memory) -- try a lighter model or smaller image"),
+    );
+  });
+
+  it("propagates OOM through colorize", async () => {
+    await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through blurFaces", async () => {
+    await expect(blurFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through enhanceFaces", async () => {
+    await expect(enhanceFaces(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through detectFaceLandmarks", async () => {
+    await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through inpaint", async () => {
+    const mask = Buffer.from("mask");
+    await expect(inpaint(FAKE_INPUT, mask, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through noiseRemoval", async () => {
+    await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through removeRedEye", async () => {
+    await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through restorePhoto", async () => {
+    await expect(restorePhoto(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("out of memory");
+  });
+
+  it("propagates OOM through detectFaces", async () => {
+    await expect(detectFaces(FAKE_INPUT)).rejects.toThrow("out of memory");
+  });
 });

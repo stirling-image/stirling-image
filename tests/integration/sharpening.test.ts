@@ -655,3 +655,105 @@ describe("Output format preservation", () => {
     expect(meta.height).toBe(50);
   });
 });
+
+// ── High-pass with default kernelSize 3 ──────────────────────
+describe("High-pass default kernelSize", () => {
+  it("uses default kernelSize (3) when not specified", async () => {
+    const res = await postTool({ method: "high-pass", strength: 50 });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+});
+
+// ── Before-after comparison for each method ────────────────────
+describe("Before-after pixel comparison", () => {
+  it("unsharp-mask changes pixel data", async () => {
+    const res = await postTool({ method: "unsharp-mask", amount: 500, radius: 2.0, threshold: 0 });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(Buffer.compare(dlRes.rawPayload, PNG)).not.toBe(0);
+  });
+
+  it("high-pass changes pixel data", async () => {
+    const res = await postTool({ method: "high-pass", strength: 80, kernelSize: 5 });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+
+    expect(Buffer.compare(dlRes.rawPayload, PNG)).not.toBe(0);
+  });
+});
+
+// ── Invalid settings JSON ────────────────────────────────────
+describe("Invalid settings JSON", () => {
+  it("rejects malformed settings JSON string", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: "not-valid-json" },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/sharpening",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ── Extreme sharpening on tiny image ──────────────────────────
+describe("Extreme sharpening on tiny image", () => {
+  it("applies maximum sharpening to 1x1 pixel image", async () => {
+    const TINY = readFileSync(join(FIXTURES, "test-1x1.png"));
+    const res = await postTool(
+      { method: "unsharp-mask", amount: 1000, radius: 5.0, threshold: 0 },
+      TINY,
+      "tiny.png",
+      "image/png",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+});
+
+// ── Adaptive with denoise on JPEG ─────────────────────────────
+describe("Adaptive with denoise on JPEG", () => {
+  it("applies adaptive sharpening with medium denoise on JPEG", async () => {
+    const res = await postTool(
+      { method: "adaptive", sigma: 2.0, denoise: "medium" },
+      JPG,
+      "test.jpg",
+      "image/jpeg",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("jpeg");
+    expect(meta.width).toBe(100);
+    expect(meta.height).toBe(100);
+  });
+});

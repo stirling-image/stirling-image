@@ -820,6 +820,363 @@ test.describe("Batch with HEIC input", () => {
   });
 });
 
+// ─── Batch Color Blindness ────────────────────────────────────────
+
+test.describe("Batch Color Blindness", () => {
+  test("batch color-blindness simulation on 3 images", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [{ name: "settings", value: JSON.stringify({ simulationType: "deuteranopia" }) }],
+    );
+    const res = await request.post("/api/v1/tools/color-blindness/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Meme Generator ─────────────────────────────────────────
+
+test.describe("Batch Meme Generator", () => {
+  test("batch meme-generator on 3 images", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({
+            textLayout: "top-bottom",
+            textBoxes: [
+              { id: "top", text: "BATCH" },
+              { id: "bottom", text: "MEME" },
+            ],
+          }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/meme-generator/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    // meme-generator batch may not be registered
+    if (res.status() === 404) {
+      const json = await res.json();
+      expect(json.error).toBeDefined();
+      return;
+    }
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Beautify ───────────────────────────────────────────────
+
+test.describe("Batch Beautify", () => {
+  test("batch beautify 3 images", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({
+            backgroundType: "solid",
+            backgroundColor: "#1a1a2e",
+            padding: 20,
+            borderRadius: 8,
+            shadowPreset: "none",
+            frame: "none",
+          }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/beautify/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    // beautify batch may not be registered
+    if (res.status() === 404) {
+      const json = await res.json();
+      expect(json.error).toBeDefined();
+      return;
+    }
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Resize -- 5+ Images with Download Verification ────────
+
+test.describe("Batch Resize -- 5+ images verified", () => {
+  test("batch resize 6 mixed-format images and verify ZIP", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "d.heic", contentType: "image/heic", buffer: HEIC_200x150 },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: formatFixture("sample.jpg"),
+        },
+        { name: "file", filename: "f.png", contentType: "image/png", buffer: PNG_200x150 },
+      ],
+      [{ name: "settings", value: JSON.stringify({ width: 50, fit: "contain" }) }],
+    );
+    const res = await request.post("/api/v1/tools/resize/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+
+      // Download the ZIP and verify
+      const dlRes = await request.get(json.downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(dlRes.ok()).toBe(true);
+      const buffer = Buffer.from(await dlRes.body());
+      expect(buffer.length).toBeGreaterThan(0);
+      // ZIP magic bytes
+      expect(buffer[0]).toBe(0x50);
+      expect(buffer[1]).toBe(0x4b);
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+      expect(buffer[0]).toBe(0x50);
+      expect(buffer[1]).toBe(0x4b);
+    }
+  });
+});
+
+// ─── Batch Convert -- 5+ Images ──────────────────────────────────
+
+test.describe("Batch Convert -- 5+ images", () => {
+  test("batch convert 5 images to JPEG", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "c.heic", contentType: "image/heic", buffer: HEIC_200x150 },
+        {
+          name: "file",
+          filename: "d.jpg",
+          contentType: "image/jpeg",
+          buffer: formatFixture("sample.jpg"),
+        },
+        { name: "file", filename: "e.png", contentType: "image/png", buffer: PNG_200x150 },
+      ],
+      [{ name: "settings", value: JSON.stringify({ format: "jpg", quality: 80 }) }],
+    );
+    const res = await request.post("/api/v1/tools/convert/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Compress -- 5+ Images ─────────────────────────────────
+
+test.describe("Batch Compress -- 5+ images", () => {
+  test("batch compress 5 images with varying formats", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "d.heic", contentType: "image/heic", buffer: HEIC_200x150 },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: formatFixture("sample.jpg"),
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ quality: 40 }) }],
+    );
+    const res = await request.post("/api/v1/tools/compress/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Enhancement -- 5+ Images ──────────────────────────────
+
+test.describe("Batch Enhancement -- 5+ images", () => {
+  test("batch enhance 5 images with auto preset", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "d.heic", contentType: "image/heic", buffer: HEIC_200x150 },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: formatFixture("sample.jpg"),
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ preset: "auto" }) }],
+    );
+    const res = await request.post("/api/v1/tools/image-enhancement/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Watermark Text -- 5+ Images ───────────────────────────
+
+test.describe("Batch Watermark Text -- 5+ images", () => {
+  test("batch watermark 5 images with tiled text", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        { name: "file", filename: "d.heic", contentType: "image/heic", buffer: HEIC_200x150 },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: formatFixture("sample.jpg"),
+        },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({
+            text: "DO NOT COPY",
+            fontSize: 16,
+            color: "#999999",
+            opacity: 20,
+            position: "tiled",
+            rotation: -30,
+          }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/watermark-text/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Batch Optimize -- Download Verification ─────────────────────
+
+test.describe("Batch Optimize -- download verification", () => {
+  test("batch optimize and verify ZIP download", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [{ name: "settings", value: JSON.stringify({ maxWidth: 400, quality: 60 }) }],
+    );
+    const res = await request.post("/api/v1/tools/optimize-for-web/batch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+
+      const dlRes = await request.get(json.downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(dlRes.ok()).toBe(true);
+      const buffer = Buffer.from(await dlRes.body());
+      expect(buffer.length).toBeGreaterThan(0);
+      expect(buffer[0]).toBe(0x50);
+      expect(buffer[1]).toBe(0x4b);
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 // ─── Batch with Empty File List ────────────────────────────────────
 
 test.describe("Batch validation", () => {

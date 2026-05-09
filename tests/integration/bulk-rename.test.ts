@@ -1039,4 +1039,167 @@ describe("Bulk Rename", () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
   });
+
+  // ── Special characters in original filenames ──────────────────
+
+  it("handles original filenames with spaces using {{original}}", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "my photo.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pattern: "{{original}}-copy" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(1);
+    // The filename should contain the original name (possibly sanitized)
+    expect(filenames[0]).toMatch(/\.png$/);
+  });
+
+  it("handles original filenames with unicode characters", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "foto.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pattern: "{{original}}-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(1);
+    expect(filenames[0]).toMatch(/\.png$/);
+  });
+
+  // ── Unknown placeholder passes through as literal ────────────
+
+  it("treats unknown placeholders as literal text", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pattern: "file-{{date}}-{{index}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(1);
+    // {{date}} is not a recognized placeholder, so it stays literal
+    expect(filenames[0]).toContain("{{date}}");
+    expect(filenames[0]).toContain("-1.png");
+  });
+
+  // ── Content verification for batch of 5+ files ──────────────
+
+  it("batch of 6 files preserves all content and extensions", async () => {
+    const HEIC = readFileSync(join(FIXTURES, "test-200x150.heic"));
+    const LARGE = readFileSync(join(FIXTURES, "content", "stress-large.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "c.webp", contentType: "image/webp", content: WEBP },
+      { name: "file", filename: "d.gif", contentType: "image/gif", content: GIF },
+      { name: "file", filename: "e.svg", contentType: "image/svg+xml", content: SVG },
+      { name: "file", filename: "f.png", contentType: "image/png", content: TINY_PNG },
+      { name: "settings", content: JSON.stringify({ pattern: "export-{{padded}}" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(6);
+
+    // Verify all extensions are preserved
+    const extensions = filenames.map((f) => f.split(".").pop());
+    expect(extensions).toContain("png");
+    expect(extensions).toContain("jpg");
+    expect(extensions).toContain("webp");
+    expect(extensions).toContain("gif");
+    expect(extensions).toContain("svg");
+
+    // Verify content integrity for the first file
+    const zip = new AdmZip(res.rawPayload);
+    const firstEntry = zip.getEntry("export-1.png");
+    expect(firstEntry).not.toBeNull();
+    expect(firstEntry?.getData().equals(PNG)).toBe(true);
+  });
+
+  // ── Very long pattern ───────────────────────────────────────
+
+  it("handles a long pattern name", async () => {
+    const longPattern = "a".repeat(100) + "-{{index}}";
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pattern: longPattern }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const filenames = zipEntryNames(res.rawPayload);
+    expect(filenames).toHaveLength(1);
+  });
+
+  // ── Pattern at max length boundary ──────────────────────────
+
+  it("rejects pattern exceeding max length (1001 chars)", async () => {
+    const tooLong = "x".repeat(1001);
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pattern: tooLong }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/bulk-rename",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
 });

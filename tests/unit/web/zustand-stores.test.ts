@@ -937,6 +937,23 @@ describe("useThemeStore", () => {
     useThemeStore.getState().applyServerDefault("dark");
     expect(localStorage.getItem("snapotter-theme-user-set")).toBeNull();
   });
+
+  it("system theme resolves to dark when matchMedia prefers dark", () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    useThemeStore.getState().setTheme("system");
+    const s = useThemeStore.getState();
+    expect(s.theme).toBe("system");
+    expect(s.resolvedTheme).toBe("dark");
+    vi.stubGlobal("matchMedia", originalMatchMedia);
+  });
 });
 
 // ==========================================================================
@@ -1510,6 +1527,79 @@ describe("useCollageStore", () => {
     const s = useCollageStore.getState();
     expect(s.images).toEqual([]);
     expect(s.phase).toBe("upload");
+  });
+
+  it("addImages triggers async preview loading for HEIC files", async () => {
+    // Override the mocked needsServerPreview to return true for this test
+    const imagePreview = await import("@/lib/image-preview");
+    const needsMock = vi.mocked(imagePreview.needsServerPreview);
+    const fetchPreviewMock = vi.mocked(imagePreview.fetchDecodedPreview);
+    needsMock.mockReturnValueOnce(true);
+    fetchPreviewMock.mockResolvedValueOnce("blob:preview-decoded");
+
+    const heicFile = new File(["heic-data"], "photo.heic", { type: "image/heic" });
+    useCollageStore.getState().addImages([heicFile]);
+
+    // The image should initially have previewLoading = true
+    expect(useCollageStore.getState().images[0].previewLoading).toBe(true);
+
+    // Wait for the async fetchDecodedPreview to complete
+    await vi.waitFor(() => {
+      const img = useCollageStore.getState().images[0];
+      expect(img.previewLoading).toBe(false);
+    });
+
+    // The preview blob URL should be set
+    expect(useCollageStore.getState().images[0].previewBlobUrl).toBe("blob:preview-decoded");
+  });
+
+  it("addImages preview callback handles image removed before resolve", async () => {
+    const imagePreview = await import("@/lib/image-preview");
+    const needsMock = vi.mocked(imagePreview.needsServerPreview);
+    const fetchPreviewMock = vi.mocked(imagePreview.fetchDecodedPreview);
+    needsMock.mockReturnValueOnce(true);
+
+    let resolvePreview!: (v: string | null) => void;
+    fetchPreviewMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePreview = resolve;
+      }),
+    );
+
+    const heicFile = new File(["data"], "gone.heic", { type: "image/heic" });
+    useCollageStore.getState().addImages([heicFile]);
+
+    // Remove the image before the preview resolves
+    useCollageStore.getState().removeImage(0);
+
+    // Now resolve the preview -- should not crash (idx === -1 path)
+    resolvePreview("blob:late-preview");
+
+    // Give the promise chain time to settle
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Store should still be in reset state
+    expect(useCollageStore.getState().images).toEqual([]);
+  });
+
+  it("addImages preview callback handles null URL from fetchDecodedPreview", async () => {
+    const imagePreview = await import("@/lib/image-preview");
+    const needsMock = vi.mocked(imagePreview.needsServerPreview);
+    const fetchPreviewMock = vi.mocked(imagePreview.fetchDecodedPreview);
+    needsMock.mockReturnValueOnce(true);
+    fetchPreviewMock.mockResolvedValueOnce(null);
+
+    const heicFile = new File(["data"], "fail.heic", { type: "image/heic" });
+    useCollageStore.getState().addImages([heicFile]);
+
+    // Wait for the async preview to resolve with null
+    await vi.waitFor(() => {
+      const img = useCollageStore.getState().images[0];
+      expect(img.previewLoading).toBe(false);
+    });
+
+    // previewBlobUrl should NOT be set when URL is null
+    expect(useCollageStore.getState().images[0].previewBlobUrl).toBeUndefined();
   });
 
   it("clearImages revokes all blob URLs and resets to upload phase", () => {

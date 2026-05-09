@@ -453,4 +453,92 @@ describe("seamCarve", () => {
     // shortest side is 400
     expect(caireCall?.[1]).toContain("400");
   });
+
+  it("propagates sharp metadata error", async () => {
+    const { seamCarve } = await importFresh();
+    vi.mocked(sharp).mockImplementation(
+      () =>
+        ({
+          png: vi.fn().mockReturnThis(),
+          jpeg: vi.fn().mockReturnThis(),
+          toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-jpeg-data")),
+          metadata: vi.fn().mockRejectedValue(new Error("Corrupt file header")),
+        }) as unknown as ReturnType<typeof sharp>,
+    );
+
+    await expect(seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Corrupt file header");
+  });
+
+  it("propagates sharp jpeg conversion error", async () => {
+    const { seamCarve } = await importFresh();
+    vi.mocked(sharp).mockImplementation(
+      () =>
+        ({
+          png: vi.fn().mockReturnThis(),
+          jpeg: vi.fn().mockReturnThis(),
+          toBuffer: vi.fn().mockRejectedValue(new Error("JPEG encode failed")),
+          metadata: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+        }) as unknown as ReturnType<typeof sharp>,
+    );
+
+    await expect(seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("JPEG encode failed");
+  });
+
+  it("propagates readFile error when reading caire output", async () => {
+    const { seamCarve } = await importFresh();
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: caire output missing"));
+
+    await expect(seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("caire output missing");
+  });
+
+  it("propagates writeFile error when writing input", async () => {
+    const { seamCarve } = await importFresh();
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+    await expect(seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+  });
+
+  it("uses default width and height when no options are specified", async () => {
+    const { seamCarve } = await importFresh();
+    // With 800x600, no width/height options, targetW = 800, targetH = 600
+    // wRatio = 1, hRatio = 1, so no 75% check triggers
+    await seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+    const calls = mockExecFileAsync.mock.calls;
+    const caireCall = calls.find(
+      (c: unknown[]) => Array.isArray(c[1]) && c[1].includes("-preview=false"),
+    );
+    expect(caireCall).toBeDefined();
+    // No -width or -height when defaults match original
+    expect(caireCall?.[1]).not.toContain("-width");
+    expect(caireCall?.[1]).not.toContain("-height");
+  });
+
+  it("accepts 75% reduction exactly (ratio = 0.25)", async () => {
+    vi.mocked(sharp).mockImplementation(
+      () =>
+        ({
+          png: vi.fn().mockReturnThis(),
+          jpeg: vi.fn().mockReturnThis(),
+          toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-jpeg-data")),
+          metadata: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+        }) as unknown as ReturnType<typeof sharp>,
+    );
+
+    const { seamCarve } = await importFresh();
+    // 200/800 = 0.25, exactly at boundary -- should NOT throw
+    await expect(seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR, { width: 200 })).resolves.toBeDefined();
+  });
+
+  it("uses unique UUID in temp file names to prevent collisions", async () => {
+    const { seamCarve } = await importFresh();
+
+    await seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR);
+    await seamCarve(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+    const writeCalls = vi.mocked(writeFile).mock.calls;
+    const paths = writeCalls.map((c) => c[0] as string);
+    // Each call generates a different UUID in the filename
+    expect(paths[0]).not.toBe(paths[1]);
+  });
 });

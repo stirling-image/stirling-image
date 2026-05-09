@@ -125,6 +125,17 @@ describe("analytics lib", () => {
       expect(mockSentryInit).not.toHaveBeenCalled();
     });
 
+    it("swallows Sentry init errors and logs a warning", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      mockSentryInit.mockImplementationOnce(() => {
+        throw new Error("Sentry init boom");
+      });
+      setAnalyticsConsent(true);
+      await initAnalytics(enabledConfig);
+      expect(consoleSpy).toHaveBeenCalledWith("[analytics] Sentry init failed:", expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+
     it("does not double-initialize on repeated calls", async () => {
       setAnalyticsConsent(true);
       await initAnalytics(enabledConfig);

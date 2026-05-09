@@ -726,3 +726,87 @@ describe("Effect combined with adjustments", () => {
     expect(result.downloadUrl).toBeDefined();
   });
 });
+
+// ── Reset to defaults (all zeroes) verifies no change ─────────
+describe("Reset to defaults", () => {
+  it("all-zero settings produce output matching dimensions", async () => {
+    const res = await postTool("adjust-colors", {
+      brightness: 0,
+      contrast: 0,
+      exposure: 0,
+      saturation: 0,
+      temperature: 0,
+      tint: 0,
+      hue: 0,
+      sharpness: 0,
+      red: 100,
+      green: 100,
+      blue: 100,
+      effect: "none",
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.width).toBe(200);
+    expect(meta.height).toBe(150);
+  });
+});
+
+// ── Invalid settings JSON ────────────────────────────────────
+describe("Invalid settings JSON", () => {
+  it("rejects malformed settings JSON string", async () => {
+    const { body: payload, contentType } = makePayload({ brightness: 50 });
+    // Override the settings field to invalid JSON
+    const { body: badPayload, contentType: badCt } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: "not-json" },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/adjust-colors",
+      payload: badPayload,
+      headers: {
+        "content-type": badCt,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ── Sepia effect with extreme values ──────────────────────────
+describe("Sepia with extreme values", () => {
+  it("applies sepia with max brightness and min contrast", async () => {
+    const res = await postTool("adjust-colors", {
+      effect: "sepia",
+      brightness: 100,
+      contrast: -100,
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+});
+
+// ── Grayscale preserves dimensions ────────────────────────────
+describe("Grayscale dimension preservation", () => {
+  it("grayscale output preserves original dimensions", async () => {
+    const res = await postTool("adjust-colors", { effect: "grayscale" });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.width).toBe(200);
+    expect(meta.height).toBe(150);
+  });
+});

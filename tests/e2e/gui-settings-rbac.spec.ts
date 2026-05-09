@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { login, openSettings } from "./helpers";
+import { getTestImagePath, login, openSettings } from "./helpers";
 
 const API = process.env.API_URL || "http://localhost:13490";
 
@@ -312,6 +312,24 @@ base.describe("RBAC Settings Visibility - Editor", () => {
     await expect(page.getByText(/\d+ tools? disabled/)).toBeVisible({ timeout: 5_000 });
   });
 
+  base.test("editor can access Product Analytics tab", async ({ page }) => {
+    await login(page, EDITOR_USER, EDITOR_PASS);
+    await openSettings(page);
+    await page.getByRole("button", { name: /product analytics/i }).click();
+
+    await expect(page.getByText("Product Analytics").first()).toBeVisible();
+    await expect(page.getByText(/share anonymous usage data/i)).toBeVisible();
+  });
+
+  base.test("editor General tab shows correct username and role", async ({ page }) => {
+    await login(page, EDITOR_USER, EDITOR_PASS);
+    await openSettings(page);
+
+    // General is the default tab
+    await expect(page.getByText(EDITOR_USER)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("editor").first()).toBeVisible();
+  });
+
   base.test("editor gets 403 on admin API endpoints", async ({ page }) => {
     await login(page, EDITOR_USER, EDITOR_PASS);
 
@@ -493,5 +511,53 @@ base.describe("RBAC Settings Visibility - User", () => {
     const headingVisible = await toolHeading.isVisible().catch(() => false);
 
     expect(dropzoneVisible || headingVisible).toBe(true);
+  });
+
+  base.test("user can upload an image to a tool page", async ({ page }) => {
+    await login(page, USER_USER, USER_PASS);
+
+    // Navigate to the resize tool
+    await page.goto("/resize");
+    await page.waitForLoadState("networkidle");
+
+    // Upload a test image via the file chooser
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    const dropzoneVisible = await dropzone.isVisible().catch(() => false);
+
+    if (dropzoneVisible) {
+      const fileChooserPromise = page.waitForEvent("filechooser");
+      await dropzone.click();
+      const fileChooser = await fileChooserPromise;
+
+      const testImagePath = getTestImagePath();
+      await fileChooser.setFiles(testImagePath);
+
+      // Wait for the upload to register (the image preview should appear)
+      await page.waitForTimeout(1_000);
+
+      // Verify the image was accepted (a download or process button should appear,
+      // or the filename should show in the UI)
+      const hasProcessButton = await page
+        .getByRole("button", { name: /process|download|resize/i })
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const hasImagePreview = await page
+        .locator("img")
+        .first()
+        .isVisible()
+        .catch(() => false);
+
+      expect(hasProcessButton || hasImagePreview).toBe(true);
+    }
+  });
+
+  base.test("user can access API Keys tab", async ({ page }) => {
+    await login(page, USER_USER, USER_PASS);
+    await openSettings(page);
+    await page.getByRole("button", { name: /api keys/i }).click();
+
+    await expect(page.locator("h3").filter({ hasText: "API Keys" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /generate api key/i })).toBeVisible();
   });
 });

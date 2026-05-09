@@ -1225,4 +1225,65 @@ describe("Border", () => {
     const result = JSON.parse(res.body);
     expect(result.processedSize).toBeGreaterThan(0);
   });
+
+  // ── Response includes all expected fields ───────────────────────
+
+  it("response includes jobId, downloadUrl, originalSize, processedSize", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      {
+        name: "settings",
+        content: JSON.stringify({ borderWidth: 10, borderColor: "#000000" }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/border",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.jobId).toBeDefined();
+    expect(result.downloadUrl).toContain("/api/v1/download/");
+    expect(result.originalSize).toBeGreaterThan(0);
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── Padding with non-default padding color ─────────────────────
+
+  it("handles padding with hex alpha in 6-char format", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          borderWidth: 5,
+          borderColor: "#AA5500",
+          padding: 15,
+          paddingColor: "#00AA55",
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/border",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.width).toBe(200 + 15 * 2 + 5 * 2);
+    expect(meta.height).toBe(150 + 15 * 2 + 5 * 2);
+  });
 });

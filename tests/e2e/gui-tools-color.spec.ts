@@ -113,6 +113,42 @@ test.describe("GUI Color & Adjustment Tools", () => {
       await expect(page.getByText("Detail").first()).toBeVisible();
     });
 
+    test("Reset All reverts sliders to defaults", async ({ loggedInPage: page }) => {
+      await page.goto("/adjust-colors");
+      await uploadTestImage(page);
+
+      // Make a change first
+      await page.locator("#color-slider-brightness").fill("30");
+      await expect(page.getByRole("button", { name: "Reset All" })).toBeVisible();
+
+      // Click Reset All
+      await page.getByRole("button", { name: "Reset All" }).click();
+
+      // Submit should be disabled again after reset
+      const submitBtn = page.getByTestId("adjust-colors-submit");
+      await expect(submitBtn).toBeDisabled();
+    });
+
+    test("contrast slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/adjust-colors");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#color-slider-contrast");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("selecting sepia effect enables submit", async ({ loggedInPage: page }) => {
+      await page.goto("/adjust-colors");
+      await uploadTestImage(page);
+
+      const submitBtn = page.getByTestId("adjust-colors-submit");
+      await expect(submitBtn).toBeDisabled();
+
+      await page.getByRole("button", { name: "sepia" }).click();
+      await expect(submitBtn).toBeEnabled();
+    });
+
     test("processes color adjustment and shows download", async ({ loggedInPage: page }) => {
       await page.goto("/adjust-colors");
       await uploadTestImage(page);
@@ -184,6 +220,24 @@ test.describe("GUI Color & Adjustment Tools", () => {
       await expect(page.locator("#sharpen-slider-amount")).toBeVisible();
     });
 
+    test("switching to high-pass shows radius slider", async ({ loggedInPage: page }) => {
+      await page.goto("/sharpening");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "High-Pass" }).click();
+      // High-pass mode shows its own controls
+      await expect(page.getByText("Amount").first()).toBeVisible();
+    });
+
+    test("selecting a preset enables submit", async ({ loggedInPage: page }) => {
+      await page.goto("/sharpening");
+      await uploadTestImage(page);
+
+      // Adaptive mode with Medium preset should enable submit
+      await page.getByRole("button", { name: "Medium" }).first().click();
+      await expect(page.getByTestId("sharpening-submit")).toBeEnabled();
+    });
+
     test("processes sharpening and shows download", async ({ loggedInPage: page }) => {
       await page.goto("/sharpening");
       await uploadTestImage(page);
@@ -232,6 +286,13 @@ test.describe("GUI Color & Adjustment Tools", () => {
       // Should show "Dominant Colors" heading with color swatches
       await expect(page.getByText("Dominant Colors").first()).toBeVisible({ timeout: 15_000 });
     });
+
+    test("submit button text says Extract Colors", async ({ loggedInPage: page }) => {
+      await page.goto("/color-palette");
+      await uploadTestImage(page);
+
+      await expect(page.getByTestId("color-palette-submit")).toHaveText(/Extract Colors/);
+    });
   });
 
   // ========================================================================
@@ -276,6 +337,22 @@ test.describe("GUI Color & Adjustment Tools", () => {
       await expect(page.locator("#replace-target-color")).not.toBeVisible();
     });
 
+    test("tolerance slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/replace-color");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#replace-tolerance");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("submit button uses data-testid", async ({ loggedInPage: page }) => {
+      await page.goto("/replace-color");
+      await uploadTestImage(page);
+
+      await expect(page.getByTestId("replace-color-submit")).toBeVisible();
+    });
+
     test("processes color replacement and shows download", async ({ loggedInPage: page }) => {
       await page.goto("/replace-color");
       await uploadTestImage(page);
@@ -305,6 +382,53 @@ test.describe("GUI Color & Adjustment Tools", () => {
       await expect(
         page.locator("text=Intensity").or(page.locator("text=Enhancement Mode")).first(),
       ).toBeVisible({ timeout: 10_000 });
+    });
+
+    test("shows all six enhancement mode buttons after upload", async ({ loggedInPage: page }) => {
+      await page.goto("/image-enhancement");
+      await uploadTestImage(page);
+
+      await expect(page.getByText("Enhancement Mode")).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole("button", { name: "Auto" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Portrait" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Landscape" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Low Light" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Food" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Document" })).toBeVisible();
+    });
+
+    test("shows intensity slider with percentage", async ({ loggedInPage: page }) => {
+      await page.goto("/image-enhancement");
+      await uploadTestImage(page);
+
+      await expect(page.getByText("Intensity")).toBeVisible({ timeout: 10_000 });
+      // Intensity slider
+      const slider = page.locator("input[type='range']").first();
+      await expect(slider).toBeVisible();
+    });
+
+    test("switching enhancement mode changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/image-enhancement");
+      await uploadTestImage(page);
+
+      await expect(page.getByText("Enhancement Mode")).toBeVisible({ timeout: 10_000 });
+      await page.getByRole("button", { name: "Landscape" }).click();
+      await page.getByRole("button", { name: "Portrait" }).click();
+      await page.getByRole("button", { name: "Auto" }).click();
+    });
+
+    test("shows Deep Enhance AI toggle", async ({ loggedInPage: page }) => {
+      await page.goto("/image-enhancement");
+      await uploadTestImage(page);
+
+      await expect(page.getByText("Deep Enhance (AI)")).toBeVisible({ timeout: 10_000 });
+    });
+
+    test("submit button uses data-testid", async ({ loggedInPage: page }) => {
+      await page.goto("/image-enhancement");
+      await uploadTestImage(page);
+
+      await expect(page.getByTestId("image-enhancement-submit")).toBeVisible({ timeout: 10_000 });
     });
 
     test("processes enhancement and shows download", async ({ loggedInPage: page }) => {

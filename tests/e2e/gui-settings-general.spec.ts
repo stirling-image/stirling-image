@@ -183,6 +183,34 @@ test.describe("GUI Settings - General Tab", () => {
     await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
   });
 
+  test("setting Fullscreen Grid and saving redirects home to /fullscreen", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+
+    const select = page.locator("select").first();
+    const originalValue = await select.inputValue();
+
+    // Set to fullscreen
+    await select.selectOption("fullscreen");
+    await page.getByRole("button", { name: /save settings/i }).click();
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+
+    // Close settings and navigate home
+    await page.keyboard.press("Escape");
+    await page.goto("/");
+
+    // Should redirect to /fullscreen
+    await page.waitForURL(/\/fullscreen/, { timeout: 10_000 });
+    expect(page.url()).toContain("/fullscreen");
+
+    // Restore original value
+    await openSettings(page);
+    await page.locator("select").first().selectOption(originalValue);
+    await page.getByRole("button", { name: /save settings/i }).click();
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+  });
+
   test("shows App Version string", async ({ loggedInPage: page }) => {
     await openSettings(page);
 
@@ -310,6 +338,73 @@ test.describe("GUI Settings - System Settings Tab", () => {
     await page.getByRole("button", { name: /save settings/i }).click();
 
     // Should show a success message
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("changed File Upload Limit persists after dialog re-open", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /system settings/i }).click();
+    await expect(page.getByText("File Upload Limit (MB)")).toBeVisible();
+
+    const uploadInput = page.locator("input[type='number']").first();
+    const originalValue = await uploadInput.inputValue();
+
+    // Change to a different value
+    const testValue = originalValue === "100" ? "200" : "100";
+    await uploadInput.fill(testValue);
+
+    await page.getByRole("button", { name: /save settings/i }).click();
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+
+    // Close and re-open
+    await page.keyboard.press("Escape");
+    await openSettings(page);
+    await page.getByRole("button", { name: /system settings/i }).click();
+    await expect(page.getByText("File Upload Limit (MB)")).toBeVisible();
+
+    const persistedValue = await page.locator("input[type='number']").first().inputValue();
+    expect(persistedValue).toBe(testValue);
+
+    // Restore original value
+    await page.locator("input[type='number']").first().fill(originalValue);
+    await page.getByRole("button", { name: /save settings/i }).click();
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("changed Default Theme persists after dialog re-open", async ({ loggedInPage: page }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /system settings/i }).click();
+    await expect(page.getByText("Default Theme")).toBeVisible();
+
+    const themeSelect = page
+      .locator("select")
+      .filter({ has: page.locator("option[value='dark']") });
+    const originalValue = await themeSelect.inputValue();
+
+    // Switch theme
+    const newValue = originalValue === "dark" ? "light" : "dark";
+    await themeSelect.selectOption(newValue);
+
+    await page.getByRole("button", { name: /save settings/i }).click();
+    await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
+
+    // Close and re-open
+    await page.keyboard.press("Escape");
+    await openSettings(page);
+    await page.getByRole("button", { name: /system settings/i }).click();
+    await expect(page.getByText("Default Theme")).toBeVisible();
+
+    const themeSelect2 = page
+      .locator("select")
+      .filter({ has: page.locator("option[value='dark']") });
+    const persisted = await themeSelect2.inputValue();
+    expect(persisted).toBe(newValue);
+
+    // Restore original
+    await themeSelect2.selectOption(originalValue);
+    await page.getByRole("button", { name: /save settings/i }).click();
     await expect(page.getByText("Settings saved.")).toBeVisible({ timeout: 5_000 });
   });
 });

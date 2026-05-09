@@ -793,4 +793,92 @@ describe("favicon", () => {
     expect(entries).toContain("favicon-16x16.png");
     expect(entries).toContain("favicon.ico");
   });
+
+  // ── All favicon PNG sizes are valid images ──────────────────────
+
+  it("all generated PNG files are valid images with non-zero data", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "logo.png", contentType: "image/png", content: PNG },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/favicon",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const zip = new AdmZip(Buffer.from(res.rawPayload));
+
+    const pngEntries = [
+      "favicon-16x16.png",
+      "favicon-32x32.png",
+      "favicon-48x48.png",
+      "apple-touch-icon.png",
+      "android-chrome-192x192.png",
+      "android-chrome-512x512.png",
+    ];
+
+    for (const name of pngEntries) {
+      const entry = zip.getEntry(name);
+      expect(entry).toBeDefined();
+      const data = entry?.getData();
+      expect(data.length).toBeGreaterThan(0);
+      const meta = await sharp(data).metadata();
+      expect(meta.format).toBe("png");
+    }
+  });
+
+  // ── ICO output has valid content ────────────────────────────────
+
+  it("ICO output can be read by Sharp and is 32x32", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "logo.png", contentType: "image/png", content: PNG },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/favicon",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const zip = new AdmZip(Buffer.from(res.rawPayload));
+    const icoEntry = zip.getEntry("favicon.ico");
+    expect(icoEntry).toBeDefined();
+
+    const icoData = icoEntry?.getData();
+    expect(icoData.length).toBeGreaterThan(0);
+
+    // The ICO is actually a PNG wrapped, so Sharp can read it
+    const meta = await sharp(icoData).metadata();
+    expect(meta.width).toBe(32);
+    expect(meta.height).toBe(32);
+  });
+
+  // ── Favicon from stress-large.jpg verifies 512x512 is square ───
+
+  it("512x512 chrome icon is square from large rectangular input", async () => {
+    const LARGE = readFileSync(join(FIXTURES, "content", "stress-large.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "large.jpg", contentType: "image/jpeg", content: LARGE },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/favicon",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const zip = new AdmZip(Buffer.from(res.rawPayload));
+    const entry512 = zip.getEntry("android-chrome-512x512.png");
+    expect(entry512).toBeDefined();
+    const meta = await sharp(entry512?.getData()).metadata();
+    expect(meta.width).toBe(512);
+    expect(meta.height).toBe(512);
+  });
 });

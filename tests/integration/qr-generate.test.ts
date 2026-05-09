@@ -1030,4 +1030,227 @@ describe("QR Generate", () => {
     expect(dlRes.statusCode).toBe(200);
     expect(dlRes.rawPayload.length).toBeGreaterThan(0);
   });
+
+  // ── URL-encoded content ──────────────────────────────────────
+
+  it("generates QR code for URL with encoded characters", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "https://example.com/search?q=hello%20world&lang=en%26fr",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── vCard format ─────────────────────────────────────────────
+
+  it("generates QR code for vCard contact", async () => {
+    const vcard = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      "N:Doe;John",
+      "FN:John Doe",
+      "TEL:+1234567890",
+      "EMAIL:john@example.com",
+      "END:VCARD",
+    ].join("\n");
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: vcard,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── Telephone number format ──────────────────────────────────
+
+  it("generates QR code for tel: URI", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "tel:+1-555-123-4567",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── Color pixel verification ─────────────────────────────────
+
+  it("QR with custom colors contains correct foreground color", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "color verify",
+        foreground: "#FF0000",
+        background: "#FFFFFF",
+        size: 200,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+    });
+    const { data, info } = await sharp(dlRes.rawPayload)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Scan for at least one red pixel (foreground)
+    let foundRed = false;
+    for (let i = 0; i < data.length; i += info.channels) {
+      if (data[i] > 200 && data[i + 1] < 50 && data[i + 2] < 50) {
+        foundRed = true;
+        break;
+      }
+    }
+    expect(foundRed).toBe(true);
+  });
+
+  // ── Higher error correction means more data redundancy ───────
+
+  it("higher EC level produces larger or equal processedSize", async () => {
+    const resL = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "error correction size test with enough data",
+        errorCorrection: "L",
+        size: 400,
+      },
+    });
+
+    const resH = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "error correction size test with enough data",
+        errorCorrection: "H",
+        size: 400,
+      },
+    });
+
+    expect(resL.statusCode).toBe(200);
+    expect(resH.statusCode).toBe(200);
+
+    // H level has more modules, so same-size PNG is typically larger or equal
+    const sizeL = JSON.parse(resL.body).processedSize;
+    const sizeH = JSON.parse(resH.body).processedSize;
+    expect(sizeH).toBeGreaterThanOrEqual(sizeL);
+  });
+
+  // ── Geo location QR code ─────────────────────────────────────
+
+  it("generates QR code for geo location", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: "geo:40.7128,-74.0060",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+  });
+
+  // ── JSON text payload ────────────────────────────────────────
+
+  it("generates QR code containing JSON text", async () => {
+    const jsonText = JSON.stringify({ key: "value", nested: { a: 1 } });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/qr-generate",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": "application/json",
+      },
+      payload: {
+        text: jsonText,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+
+  // ── Output is always square ──────────────────────────────────
+
+  it("output image is always square regardless of content", async () => {
+    for (const size of [150, 300, 500]) {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/tools/qr-generate",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": "application/json",
+        },
+        payload: {
+          text: `square test at ${size}`,
+          size,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const result = JSON.parse(res.body);
+
+      const dlRes = await app.inject({
+        method: "GET",
+        url: result.downloadUrl,
+      });
+      const meta = await sharp(dlRes.rawPayload).metadata();
+      expect(meta.width).toBe(size);
+      expect(meta.height).toBe(size);
+    }
+  });
 });

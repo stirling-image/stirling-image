@@ -107,6 +107,30 @@ test.describe("Cross-tool file carrying", () => {
     await expect(page.getByRole("link", { name: /download/i })).not.toBeVisible();
   });
 
+  test("upload on resize, browser back returns to previous page", async ({
+    loggedInPage: page,
+  }) => {
+    // Start on the home page
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    // Navigate to resize
+    await page.goto("/resize");
+    await page.waitForLoadState("networkidle");
+
+    // Upload a file on resize
+    await uploadTestImage(page);
+
+    // Confirm the file is loaded
+    await expect(page.getByText(/test-image/i).first()).toBeVisible();
+
+    // Press browser back
+    await page.goBack();
+
+    // Should return to the home page
+    await expect(page).toHaveURL("/");
+  });
+
   test("file carry works only via Quick Actions, not via sidebar navigation", async ({
     loggedInPage: page,
   }) => {

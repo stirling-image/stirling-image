@@ -979,4 +979,91 @@ describe("image-to-pdf", () => {
 
     expect(res.statusCode).toBe(400);
   });
+
+  // ── Rejects Legal as unsupported page size ──────────────────────
+
+  it("rejects Legal page size (not supported)", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ pageSize: "Legal" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-pdf",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  // ── Portrait A4 explicitly ──────────────────────────────────────
+
+  it("creates portrait A4 PDF explicitly", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          pageSize: "A4",
+          orientation: "portrait",
+          margin: 20,
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-pdf",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.pages).toBe(1);
+    expect(json.processedSize).toBeGreaterThan(0);
+
+    // Verify PDF magic bytes
+    const dlRes = await app.inject({
+      method: "GET",
+      url: json.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(dlRes.rawPayload.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  });
+
+  // ── Multi-image with all settings ────────────────────────────────
+
+  it("creates multi-page PDF with all settings combined", async () => {
+    const WEBP = readFileSync(join(FIXTURES, "test-50x50.webp"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "p1.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "p2.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "p3.webp", contentType: "image/webp", content: WEBP },
+      {
+        name: "settings",
+        content: JSON.stringify({
+          pageSize: "A5",
+          orientation: "landscape",
+          margin: 50,
+          targetSize: { value: 5, unit: "MB" },
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-pdf",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.pages).toBe(3);
+    expect(json.compression).toBeDefined();
+    expect(json.compression.targetMet).toBe(true);
+  });
 });

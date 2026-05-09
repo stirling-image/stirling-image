@@ -258,5 +258,47 @@ describe("removeRedEye", () => {
         expect.objectContaining({ onProgress }),
       );
     });
+
+    it("omits onProgress when not provided", async () => {
+      await removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.onProgress).toBeUndefined();
+    });
+  });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Invalid BMP data")),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Invalid BMP data");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output missing");
+    });
+
+    it("passes empty options as empty JSON object", async () => {
+      await removeRedEye(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({});
+    });
   });
 });

@@ -32,7 +32,80 @@ vi.stubGlobal("localStorage", {
 // fetchDecodedPreview & revokePreviewUrl (image-preview.ts)
 // ==========================================================================
 
-import { fetchDecodedPreview, revokePreviewUrl } from "@/lib/image-preview";
+import { fetchDecodedPreview, needsServerPreview, revokePreviewUrl } from "@/lib/image-preview";
+
+describe("needsServerPreview", () => {
+  it("returns true for HEIC files", () => {
+    const file = new File(["data"], "photo.heic", { type: "image/heic" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for HEIF files", () => {
+    const file = new File(["data"], "photo.heif", { type: "image/heif" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for HIF files", () => {
+    const file = new File(["data"], "photo.hif", { type: "image/heif" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for JXL files", () => {
+    const file = new File(["data"], "photo.jxl", { type: "image/jxl" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for RAW formats (dng, cr2, nef, arw, orf, rw2)", () => {
+    for (const ext of ["dng", "cr2", "nef", "arw", "orf", "rw2"]) {
+      const file = new File(["data"], `photo.${ext}`, { type: "image/raw" });
+      expect(needsServerPreview(file)).toBe(true);
+    }
+  });
+
+  it("returns true for ICO files", () => {
+    const file = new File(["data"], "icon.ico", { type: "image/x-icon" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for TGA files", () => {
+    const file = new File(["data"], "texture.tga", { type: "image/tga" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for PSD files", () => {
+    const file = new File(["data"], "design.psd", { type: "image/vnd.adobe.photoshop" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for EXR files", () => {
+    const file = new File(["data"], "render.exr", { type: "image/x-exr" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns true for HDR files", () => {
+    const file = new File(["data"], "panorama.hdr", { type: "image/vnd.radiance" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+
+  it("returns false for common browser-decodable formats", () => {
+    expect(needsServerPreview(new File(["data"], "photo.png", { type: "image/png" }))).toBe(false);
+    expect(needsServerPreview(new File(["data"], "photo.jpg", { type: "image/jpeg" }))).toBe(false);
+    expect(needsServerPreview(new File(["data"], "photo.webp", { type: "image/webp" }))).toBe(
+      false,
+    );
+    expect(needsServerPreview(new File(["data"], "photo.gif", { type: "image/gif" }))).toBe(false);
+  });
+
+  it("returns false for files without extension", () => {
+    const file = new File(["data"], "noextension", { type: "application/octet-stream" });
+    expect(needsServerPreview(file)).toBe(false);
+  });
+
+  it("handles uppercase extensions (case insensitive)", () => {
+    const file = new File(["data"], "photo.HEIC", { type: "image/heic" });
+    expect(needsServerPreview(file)).toBe(true);
+  });
+});
 
 describe("fetchDecodedPreview", () => {
   beforeEach(() => {

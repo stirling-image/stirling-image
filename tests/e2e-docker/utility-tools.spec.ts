@@ -915,6 +915,420 @@ test.describe("Color Palette — additional", () => {
   });
 });
 
+// ─── Find Duplicates -- 5+ Files ──────────────────────────────────
+
+test.describe("Find Duplicates -- large set", () => {
+  test("find duplicates with 5 files (3 identical, 2 unique)", async ({ request }) => {
+    const portrait = contentFixture("portrait-color.jpg");
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "c.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "d.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        {
+          name: "file",
+          filename: "e.jpg",
+          contentType: "image/jpeg",
+          buffer: portrait,
+        },
+      ],
+      [],
+    );
+    const res = await request.post("/api/v1/tools/find-duplicates", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+
+    expect(json.totalImages).toBe(5);
+    expect(json.duplicateGroups).toBeInstanceOf(Array);
+    // The three identical PNGs should form at least one duplicate group
+    expect(json.duplicateGroups.length).toBeGreaterThan(0);
+  });
+
+  test("find duplicates with 6 files (2 pairs of duplicates)", async ({ request }) => {
+    const portrait = contentFixture("portrait-color.jpg");
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "d.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "e.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        {
+          name: "file",
+          filename: "f.jpg",
+          contentType: "image/jpeg",
+          buffer: portrait,
+        },
+      ],
+      [],
+    );
+    const res = await request.post("/api/v1/tools/find-duplicates", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+
+    expect(json.totalImages).toBe(6);
+    expect(json.duplicateGroups).toBeInstanceOf(Array);
+    // Should have at least 2 duplicate groups
+    expect(json.duplicateGroups.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("find-duplicates with all unique files returns 0 groups", async ({ request }) => {
+    const portrait = contentFixture("portrait-color.jpg");
+    const motorcycle = contentFixture("motorcycle.heif");
+    const portraitBw = contentFixture("portrait-bw.jpeg");
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: portrait },
+        { name: "file", filename: "c.heif", contentType: "image/heif", buffer: motorcycle },
+        { name: "file", filename: "d.jpeg", contentType: "image/jpeg", buffer: portraitBw },
+        { name: "file", filename: "e.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [],
+    );
+    const res = await request.post("/api/v1/tools/find-duplicates", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+
+    expect(json.totalImages).toBe(5);
+    expect(json.duplicateGroups).toBeInstanceOf(Array);
+    expect(json.duplicateGroups.length).toBe(0);
+  });
+});
+
+// ─── Color Palette -- Count Variations ───────────────────────────
+
+test.describe("Color Palette -- count variations", () => {
+  test("extract palette from monochrome-like image", async ({ request }) => {
+    const portraitBw = contentFixture("portrait-bw.jpeg");
+    const res = await request.post("/api/v1/tools/color-palette", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "bw.jpeg", mimeType: "image/jpeg", buffer: portraitBw },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.colors).toBeInstanceOf(Array);
+    expect(body.colors.length).toBeGreaterThan(0);
+    for (const color of body.colors) {
+      expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+
+  test("extract palette from colorful content image", async ({ request }) => {
+    const portrait = contentFixture("portrait-color.jpg");
+    const res = await request.post("/api/v1/tools/color-palette", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "colorful.jpg", mimeType: "image/jpeg", buffer: portrait },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.colors).toBeInstanceOf(Array);
+    // Colorful images should yield more colors
+    expect(body.colors.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test("extract palette from large stress image", async ({ request }) => {
+    const large = contentFixture("stress-large.jpg");
+    const res = await request.post("/api/v1/tools/color-palette", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "large.jpg", mimeType: "image/jpeg", buffer: large },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.colors).toBeInstanceOf(Array);
+    expect(body.colors.length).toBeGreaterThan(0);
+    expect(body.count).toBe(body.colors.length);
+  });
+});
+
+// ─── QR Generate -- All Error Correction Levels with Round-trip ──
+
+test.describe("QR Generate -- EC levels round-trip", () => {
+  const ecLevels = ["L", "M", "Q", "H"] as const;
+
+  for (const ec of ecLevels) {
+    test(`generate QR with EC=${ec} and verify via barcode-read`, async ({ request }) => {
+      const testText = `EC-${ec}-round-trip`;
+      const genRes = await request.post("/api/v1/tools/qr-generate", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { text: testText, size: 400, errorCorrection: ec },
+      });
+      expect(genRes.ok(), `QR generation with EC=${ec} should succeed`).toBe(true);
+      const genBody = await genRes.json();
+      expect(genBody.downloadUrl).toBeTruthy();
+
+      // Download the generated QR
+      const dlRes = await request.get(genBody.downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(dlRes.ok()).toBe(true);
+      const qrBuffer = Buffer.from(await dlRes.body());
+      expect(qrBuffer.length).toBeGreaterThan(0);
+
+      // Read it back
+      const readRes = await request.post("/api/v1/tools/barcode-read", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "qr.png", mimeType: "image/png", buffer: qrBuffer },
+          settings: JSON.stringify({}),
+        },
+      });
+      expect(readRes.ok()).toBe(true);
+      const readBody = await readRes.json();
+      expect(readBody.barcodes).toBeInstanceOf(Array);
+      expect(readBody.barcodes.length).toBeGreaterThan(0);
+      expect(readBody.barcodes[0].text).toBe(testText);
+    });
+  }
+});
+
+// ─── QR Generate -- Size Variations ──────────────────────────────
+
+test.describe("QR Generate -- size variations", () => {
+  const sizes = [100, 200, 400, 512, 1024] as const;
+
+  for (const size of sizes) {
+    test(`generate QR code at size=${size}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/qr-generate", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { text: `size-${size}`, size },
+      });
+      expect(res.ok(), `QR at size=${size} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+      expect(body.processedSize).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ─── Barcode Read -- No Barcode in Image ─────────────────────────
+
+test.describe("Barcode Read -- no barcode scenarios", () => {
+  test("return empty for WebP with no barcode", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/barcode-read", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.webp", mimeType: "image/webp", buffer: WEBP_50x50 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.barcodes).toBeInstanceOf(Array);
+    expect(body.barcodes.length).toBe(0);
+  });
+
+  test("return empty for HEIC with no barcode", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/barcode-read", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.heic", mimeType: "image/heic", buffer: HEIC_200x150 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.barcodes).toBeInstanceOf(Array);
+    expect(body.barcodes.length).toBe(0);
+  });
+});
+
+// ─── Image to Base64 -- Data URI Format Verification ─────────────
+
+test.describe("Image to Base64 -- data URI verification", () => {
+  test("data URI starts with correct MIME prefix for PNG", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/image-to-base64", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const result = body.results[0];
+    expect(result.dataUri).toMatch(/^data:image\/png;base64,/);
+    expect(result.base64.length).toBeGreaterThan(0);
+    // Base64 encoding is ~33% overhead
+    expect(result.overheadPercent).toBeGreaterThan(20);
+    expect(result.overheadPercent).toBeLessThan(50);
+  });
+
+  test("data URI starts with correct MIME prefix for JPEG", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/image-to-base64", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.jpg", mimeType: "image/jpeg", buffer: JPG_100x100 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const result = body.results[0];
+    expect(result.dataUri).toMatch(/^data:image\/jpeg;base64,/);
+    expect(result.mimeType).toBe("image/jpeg");
+  });
+
+  test("data URI with format conversion has correct prefix", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/image-to-base64", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ outputFormat: "webp", quality: 80 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const result = body.results[0];
+    expect(result.dataUri).toMatch(/^data:image\/webp;base64,/);
+    expect(result.mimeType).toBe("image/webp");
+  });
+
+  test("base64 output with maxWidth and maxHeight", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/image-to-base64", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ maxWidth: 50, maxHeight: 50 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const result = body.results[0];
+    expect(result.width).toBeLessThanOrEqual(50);
+    expect(result.height).toBeLessThanOrEqual(50);
+    expect(result.base64).toBeTruthy();
+  });
+});
+
+// ─── Bulk Rename -- ZIP Content Verification ─────────────────────
+
+test.describe("Bulk Rename -- ZIP verification", () => {
+  test("renamed files ZIP is downloadable", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "photo1.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "photo2.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "photo3.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [{ name: "settings", value: JSON.stringify({ pattern: "renamed-{{index}}" }) }],
+    );
+    const res = await request.post("/api/v1/tools/bulk-rename", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+    const resContentType = res.headers()["content-type"] ?? "";
+    if (resContentType.includes("application/json")) {
+      const json = await res.json();
+      expect(json.downloadUrl || json.files).toBeTruthy();
+      if (json.downloadUrl) {
+        const dlRes = await request.get(json.downloadUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        expect(dlRes.ok()).toBe(true);
+        const buffer = Buffer.from(await dlRes.body());
+        expect(buffer.length).toBeGreaterThan(0);
+        // ZIP magic bytes
+        expect(buffer[0]).toBe(0x50);
+        expect(buffer[1]).toBe(0x4b);
+      }
+    } else {
+      const buffer = Buffer.from(await res.body());
+      expect(buffer.length).toBeGreaterThan(0);
+      expect(buffer[0]).toBe(0x50);
+      expect(buffer[1]).toBe(0x4b);
+    }
+  });
+
+  test("rename with original-name pattern", async ({ request }) => {
+    const { body: reqBody, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "sunrise.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "sunset.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({ pattern: "edited-{{original}}" }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/bulk-rename", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: reqBody,
+    });
+    expect(res.ok()).toBe(true);
+  });
+});
+
+// ─── Info -- Detailed Metadata ──────────────────────────────────
+
+test.describe("Info -- detailed metadata", () => {
+  test("info returns density and color space for JPEG", async ({ request }) => {
+    const sample = contentFixture("portrait-color.jpg");
+    const res = await request.post("/api/v1/tools/info", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "portrait.jpg", mimeType: "image/jpeg", buffer: sample },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.width).toBeGreaterThan(0);
+    expect(body.height).toBeGreaterThan(0);
+    expect(body.format).toBe("jpeg");
+    expect(body.colorSpace).toBeTruthy();
+    expect(body.channels).toBeGreaterThanOrEqual(3);
+    expect(body.fileSize).toBeGreaterThan(0);
+  });
+
+  test("info returns correct format for AVIF", async ({ request }) => {
+    const avif = readFileSync(join(FORMATS, "sample.avif"));
+    const res = await request.post("/api/v1/tools/info", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.avif", mimeType: "image/avif", buffer: avif },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.width).toBeGreaterThan(0);
+    expect(body.height).toBeGreaterThan(0);
+  });
+
+  test("info returns correct format for TIFF", async ({ request }) => {
+    const tiff = readFileSync(join(FORMATS, "sample.tiff"));
+    const res = await request.post("/api/v1/tools/info", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "sample.tiff", mimeType: "image/tiff", buffer: tiff },
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.width).toBeGreaterThan(0);
+    expect(body.height).toBeGreaterThan(0);
+    expect(body.format).toBeTruthy();
+  });
+});
+
 // ─── Auth Failure ──────────────────────────────────────────────────
 
 test.describe("Auth failure", () => {

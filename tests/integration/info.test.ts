@@ -914,4 +914,187 @@ describe("Info", () => {
     expect(typeof result.fileSize).toBe("number");
     expect(typeof result.pages).toBe("number");
   });
+
+  // ── Multi-page PDF info ──────────────────────────────────────────
+
+  it("returns metadata for multi-page PDF", async () => {
+    const PDF = readFileSync(join(FIXTURES, "test-3page.pdf"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test-3page.pdf", contentType: "application/pdf", content: PDF },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    // PDF may not be supported -- accept success or processing error
+    expect([200, 400, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const result = JSON.parse(res.body);
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.fileSize).toBeGreaterThan(0);
+    }
+  });
+
+  // ── Image with no EXIF returns false ─────────────────────────────
+
+  it("hasExif is false for a synthetic PNG with no EXIF", async () => {
+    const sharp = (await import("sharp")).default;
+    const synthetic = await sharp({
+      create: {
+        width: 10,
+        height: 10,
+        channels: 3,
+        background: { r: 100, g: 100, b: 100 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "no-exif.png", contentType: "image/png", content: synthetic },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.hasExif).toBe(false);
+    expect(result.hasIcc).toBe(false);
+    expect(result.width).toBe(10);
+    expect(result.height).toBe(10);
+  });
+
+  // ── SVG info detailed checks ─────────────────────────────────────
+
+  it("returns correct dimensions and format for SVG", async () => {
+    const SVG = readFileSync(join(FIXTURES, "test-100x100.svg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.svg", contentType: "image/svg+xml", content: SVG },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    // SVG is rasterized for metadata extraction -- check that it has valid dimensions
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
+    expect(result.fileSize).toBe(SVG.length);
+    expect(result.channels).toBeGreaterThanOrEqual(3);
+  });
+
+  // ── Extreme portrait image info ──────────────────────────────────
+
+  it("returns correct dimensions for extreme portrait image", async () => {
+    const PORTRAIT_TALL = readFileSync(join(FIXTURES, "test-portrait-tall.png"));
+    const { body, contentType } = createMultipartPayload([
+      {
+        name: "file",
+        filename: "portrait-tall.png",
+        contentType: "image/png",
+        content: PORTRAIT_TALL,
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
+    // Portrait-tall should have height > width
+    expect(result.height).toBeGreaterThan(result.width);
+  });
+
+  // ── Content fixture info ─────────────────────────────────────────
+
+  it("returns detailed metadata for content/portrait-color.jpg", async () => {
+    const PORTRAIT_COLOR = readFileSync(join(FIXTURES, "content", "portrait-color.jpg"));
+    const { body, contentType } = createMultipartPayload([
+      {
+        name: "file",
+        filename: "portrait-color.jpg",
+        contentType: "image/jpeg",
+        content: PORTRAIT_COLOR,
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.format).toBe("jpeg");
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
+    expect(result.fileSize).toBe(PORTRAIT_COLOR.length);
+    expect(result.channels).toBeGreaterThanOrEqual(3);
+    expect(result.histogram).toBeDefined();
+    expect(result.histogram.length).toBeGreaterThanOrEqual(3);
+  });
+
+  // ── SVG logo info ───────────────────────────────────────────────
+
+  it("returns info for content/svg-logo.svg", async () => {
+    const SVG_LOGO = readFileSync(join(FIXTURES, "content", "svg-logo.svg"));
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "svg-logo.svg", contentType: "image/svg+xml", content: SVG_LOGO },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/info",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.filename).toBe("svg-logo.svg");
+    expect(result.fileSize).toBe(SVG_LOGO.length);
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
+  });
 });

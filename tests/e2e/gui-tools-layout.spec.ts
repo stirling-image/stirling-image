@@ -59,6 +59,22 @@ test.describe("GUI Layout Tools", () => {
       // Spacing & Style section should show gap controls
       await expect(page.getByText(/gap|spacing/i).first()).toBeVisible();
     });
+
+    test("submit button is disabled without images", async ({ loggedInPage: page }) => {
+      await page.goto("/collage");
+
+      const submitBtn = page.getByTestId("collage-submit");
+      await expect(submitBtn).toBeDisabled();
+    });
+
+    test("shows quality slider in Output section for JPEG", async ({ loggedInPage: page }) => {
+      await page.goto("/collage");
+
+      await page.getByText("Output").click();
+      await page.getByRole("button", { name: "JPEG" }).first().click();
+      // Quality slider should appear for lossy format
+      await expect(page.getByText(/quality/i).first()).toBeVisible();
+    });
   });
 
   // ========================================================================
@@ -112,6 +128,31 @@ test.describe("GUI Layout Tools", () => {
       await uploadTestImage(page);
       await expect(submitBtn).toBeEnabled();
     });
+
+    test("direction buttons switch active state", async ({ loggedInPage: page }) => {
+      await page.goto("/stitch");
+      await uploadTestImage(page);
+
+      // Click vertical
+      await page
+        .getByText(/vertical/i)
+        .first()
+        .click();
+      // Click grid
+      await page.getByText(/grid/i).first().click();
+      // Click horizontal
+      await page
+        .getByText(/horizontal/i)
+        .first()
+        .click();
+    });
+
+    test("shows gap slider after upload", async ({ loggedInPage: page }) => {
+      await page.goto("/stitch");
+      await uploadTestImage(page);
+
+      await expect(page.getByText(/gap/i).first()).toBeVisible();
+    });
   });
 
   // ========================================================================
@@ -156,6 +197,24 @@ test.describe("GUI Layout Tools", () => {
 
       // Output format options
       await expect(page.getByText(/output format|format/i).first()).toBeVisible();
+    });
+
+    test("shows 3x3 and 4x4 grid presets", async ({ loggedInPage: page }) => {
+      await page.goto("/split");
+      await uploadTestImage(page);
+
+      await expect(page.getByRole("button", { name: "3x3" }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "4x4" }).first()).toBeVisible();
+    });
+
+    test("switching to tile size mode and back to grid works", async ({ loggedInPage: page }) => {
+      await page.goto("/split");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "Tile Size" }).first().click();
+      await page.getByRole("button", { name: "Grid" }).first().click();
+      // Grid presets should reappear
+      await expect(page.getByRole("button", { name: "2x2" }).first()).toBeVisible();
     });
 
     test("processes split and shows download", async ({ loggedInPage: page }) => {

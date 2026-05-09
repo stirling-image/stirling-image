@@ -115,6 +115,12 @@ test.describe("Login Page", () => {
     await page.getByLabel("Password").fill("admin");
     await expect(loginBtn).toBeDisabled();
   });
+
+  test("SnapOtter branding is visible on login page", async ({ page }) => {
+    await page.goto("/login");
+
+    await expect(page.getByText("SnapOtter").first()).toBeVisible();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -130,6 +136,21 @@ test.describe("Home Page - Before Upload", () => {
   test("tool panel is visible with search bar and categories", async ({ loggedInPage: page }) => {
     await expect(page.getByPlaceholder(/search/i).first()).toBeVisible();
     await expect(page.getByText("Essentials").first()).toBeVisible();
+  });
+
+  test("each tool category header is visible in tool panel", async ({ loggedInPage: page }) => {
+    const toolPanel = page.locator("aside, [class*='tool-panel'], section").filter({
+      hasText: "Essentials",
+    });
+    await expect(toolPanel.getByText("Essentials").first()).toBeVisible();
+    await expect(toolPanel.getByText("Optimization").first()).toBeVisible();
+  });
+
+  test("clicking a tool in the panel navigates to its page", async ({ loggedInPage: page }) => {
+    // Click on a specific tool from the panel
+    const compressLink = page.getByText("Compress").first();
+    await compressLink.click();
+    await expect(page).toHaveURL("/compress");
   });
 
   test("search filters tools in tool panel", async ({ loggedInPage: page }) => {
@@ -195,6 +216,22 @@ test.describe("Home Page - After Upload", () => {
     await expect(img).toBeVisible();
   });
 
+  test("Change file button resets to dropzone state", async ({ loggedInPage: page }) => {
+    await uploadTestImage(page);
+
+    // File info should be visible
+    await expect(page.getByText(/test-image/i).first()).toBeVisible();
+
+    // Click Change file
+    await page.getByText("Change file").click();
+    await page.waitForTimeout(300);
+
+    // Dropzone should reappear
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    await expect(dropzone).toBeVisible();
+    await expect(page.getByText("Upload from computer")).toBeVisible();
+  });
+
   test("multi-upload shows file count badge", async ({ loggedInPage: page }) => {
     // Upload first image
     await uploadTestImage(page);
@@ -239,6 +276,11 @@ test.describe("Fullscreen Grid Page", () => {
     await expect(page.getByText("Essentials")).toBeVisible();
     await expect(page.getByText("Optimization")).toBeVisible();
     await expect(page.getByText("Adjustments")).toBeVisible();
+    await expect(page.getByText("Watermark & Overlay")).toBeVisible();
+    await expect(page.getByText("Utilities")).toBeVisible();
+    await expect(page.getByText("Layout & Composition")).toBeVisible();
+    await expect(page.getByText("Format & Conversion")).toBeVisible();
+    await expect(page.getByText("AI Tools")).toBeVisible();
   });
 
   test("tool cards are links to tool pages", async ({ loggedInPage: page }) => {
@@ -341,16 +383,61 @@ test.describe("Tool Page - Resize", () => {
 // Tool Page - Parameterized structure tests across multiple tools
 // ---------------------------------------------------------------------------
 const DROPZONE_TOOLS = [
+  // Essentials
   { id: "resize", name: "Resize" },
   { id: "crop", name: "Crop" },
   { id: "rotate", name: "Rotate" },
   { id: "convert", name: "Convert" },
   { id: "compress", name: "Compress" },
-  { id: "adjust-colors", name: "Adjust Colors" },
-  { id: "watermark-text", name: "Text Watermark" },
-  { id: "border", name: "Border" },
+  // Optimization
+  { id: "optimize-for-web", name: "Optimize for Web" },
   { id: "strip-metadata", name: "Remove Metadata" },
+  { id: "edit-metadata", name: "Edit Metadata" },
+  { id: "bulk-rename", name: "Bulk Rename" },
+  { id: "image-to-pdf", name: "Image to PDF" },
+  { id: "favicon", name: "Favicon Generator" },
+  // Adjustments
+  { id: "adjust-colors", name: "Adjust Colors" },
   { id: "sharpening", name: "Sharpening" },
+  { id: "replace-color", name: "Replace & Invert Color" },
+  { id: "color-blindness", name: "Color Blindness Simulation" },
+  // AI Tools
+  { id: "remove-background", name: "Remove Background" },
+  { id: "upscale", name: "Image Upscaling" },
+  { id: "erase-object", name: "Object Eraser" },
+  { id: "ocr", name: "OCR / Text Extraction" },
+  { id: "blur-faces", name: "Face / PII Blur" },
+  { id: "smart-crop", name: "Smart Crop" },
+  { id: "image-enhancement", name: "Image Enhancement" },
+  { id: "enhance-faces", name: "Face Enhancement" },
+  { id: "colorize", name: "AI Colorization" },
+  { id: "noise-removal", name: "Noise Removal" },
+  { id: "red-eye-removal", name: "Red Eye Removal" },
+  { id: "restore-photo", name: "Photo Restoration" },
+  { id: "passport-photo", name: "Passport Photo" },
+  { id: "content-aware-resize", name: "Content-Aware Resize" },
+  { id: "transparency-fixer", name: "PNG Transparency Fixer" },
+  // Watermark & Overlay
+  { id: "watermark-text", name: "Text Watermark" },
+  { id: "watermark-image", name: "Image Watermark" },
+  { id: "text-overlay", name: "Text Overlay" },
+  { id: "compose", name: "Image Composition" },
+  // Utilities
+  { id: "info", name: "Image Info" },
+  { id: "compare", name: "Image Compare" },
+  { id: "find-duplicates", name: "Find Duplicates" },
+  { id: "color-palette", name: "Color Palette" },
+  { id: "barcode-read", name: "Barcode Reader" },
+  { id: "image-to-base64", name: "Image to Base64" },
+  // Layout & Composition
+  { id: "stitch", name: "Stitch / Combine" },
+  { id: "split", name: "Image Splitting" },
+  { id: "border", name: "Border & Frame" },
+  { id: "beautify", name: "Beautify Screenshot" },
+  // Format & Conversion
+  { id: "svg-to-raster", name: "SVG to Raster" },
+  { id: "vectorize", name: "Image to SVG" },
+  { id: "gif-tools", name: "GIF Tools" },
 ];
 
 const NO_DROPZONE_TOOLS = [
@@ -414,6 +501,21 @@ test.describe("Tool Page - Settings and Process Flow", () => {
     await uploadTestImage(page);
 
     await expect(page.getByText("Settings").first()).toBeVisible();
+  });
+
+  test("resize: download link appears after processing", async ({ loggedInPage: page }) => {
+    await page.goto("/resize");
+    await uploadTestImage(page);
+
+    // Click the process button
+    const processBtn = page.getByRole("button", { name: /process/i }).first();
+    await expect(processBtn).toBeVisible();
+    await processBtn.click();
+
+    // Wait for processing to complete and download link to appear
+    await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("mobile: settings panel is collapsible on tool page", async ({ browser }) => {
@@ -504,6 +606,25 @@ test.describe("Automate Page", () => {
     await expect(page.getByText("No steps yet")).not.toBeVisible();
   });
 
+  test("Save button appears when pipeline has steps", async ({ loggedInPage: page }) => {
+    await page.goto("/automate");
+
+    // Save button should not be visible before adding steps
+    await expect(page.getByRole("button", { name: /^Save$/i })).not.toBeVisible();
+
+    // Add a tool step
+    const resizeTool = page.locator("[data-tool-id='resize']").first();
+    if (await resizeTool.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await resizeTool.click();
+    } else {
+      await page.getByText("Resize").first().click();
+    }
+    await page.waitForTimeout(500);
+
+    // Save button should now be visible
+    await expect(page.getByRole("button", { name: /^Save$/i })).toBeVisible();
+  });
+
   test("process button remains disabled with steps but no file", async ({ loggedInPage: page }) => {
     await page.goto("/automate");
 
@@ -540,13 +661,16 @@ test.describe("Files Page", () => {
 // Sidebar Navigation
 // ---------------------------------------------------------------------------
 test.describe("Sidebar Navigation", () => {
-  test("sidebar has 4 top items: Tools, Grid, Automate, Files", async ({ loggedInPage: page }) => {
+  test("sidebar has 5 top items: Tools, Grid, Automate, Editor, Files", async ({
+    loggedInPage: page,
+  }) => {
     const sidebar = page.locator("aside");
     await expect(sidebar).toBeVisible();
 
     await expect(sidebar.getByText("Tools")).toBeVisible();
     await expect(sidebar.getByText("Grid")).toBeVisible();
     await expect(sidebar.getByText("Automate")).toBeVisible();
+    await expect(sidebar.getByText("Editor")).toBeVisible();
     await expect(sidebar.getByText("Files")).toBeVisible();
   });
 
@@ -576,6 +700,11 @@ test.describe("Sidebar Navigation", () => {
   test("Automate link navigates to /automate", async ({ loggedInPage: page }) => {
     await page.locator("aside").getByText("Automate").click();
     await expect(page).toHaveURL("/automate");
+  });
+
+  test("Editor link navigates to /editor", async ({ loggedInPage: page }) => {
+    await page.locator("aside").getByText("Editor").click();
+    await expect(page).toHaveURL("/editor");
   });
 
   test("Files link navigates to /files", async ({ loggedInPage: page }) => {
@@ -794,6 +923,15 @@ test.describe("Routing Edge Cases", () => {
 
     await expect(page).toHaveURL("/adjust-colors");
   });
+
+  test("/login when already logged in redirects to /", async ({ loggedInPage: page }) => {
+    // loggedInPage already has authentication via storageState
+    await page.goto("/login");
+
+    // Should redirect away from login since already authenticated
+    await page.waitForURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -907,6 +1045,36 @@ test.describe("Mobile Navigation", () => {
     await context.close();
   });
 
+  test("tapping backdrop closes sidebar overlay", async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 667 },
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+    await page.getByLabel("Username").fill("admin");
+    await page.getByLabel("Password").fill("admin");
+    await page.getByRole("button", { name: /login/i }).click();
+    await page.waitForURL("/", { timeout: 15_000 });
+
+    // Open hamburger menu
+    const topBar = page.locator(".fixed").filter({ hasText: "SnapOtter" }).first();
+    const hamburger = topBar.locator("button").first();
+    await hamburger.click();
+
+    // Sidebar overlay should appear
+    const backdrop = page.locator(".fixed.inset-0").first();
+    await expect(backdrop).toBeVisible();
+
+    // Click the backdrop to close
+    await backdrop.click({ position: { x: 300, y: 300 } });
+    await page.waitForTimeout(300);
+
+    // Sidebar overlay should be closed (expanded sidebar nav no longer visible)
+    await expect(backdrop).not.toBeVisible();
+
+    await context.close();
+  });
+
   test("bottom nav navigates between all main sections", async ({ browser }) => {
     const context = await browser.newContext({
       viewport: { width: 375, height: 667 },
@@ -931,6 +1099,26 @@ test.describe("Mobile Navigation", () => {
     // Navigate back to Tools
     await bottomNav.getByText("Tools").click();
     await expect(page).toHaveURL("/");
+
+    await context.close();
+  });
+
+  test("bottom nav has Editor link", async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 667 },
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+    await page.getByLabel("Username").fill("admin");
+    await page.getByLabel("Password").fill("admin");
+    await page.getByRole("button", { name: /login/i }).click();
+    await page.waitForURL("/", { timeout: 15_000 });
+
+    const bottomNav = page.locator("nav.fixed");
+    await expect(bottomNav.getByText("Editor")).toBeVisible();
+
+    await bottomNav.getByText("Editor").click();
+    await expect(page).toHaveURL("/editor");
 
     await context.close();
   });

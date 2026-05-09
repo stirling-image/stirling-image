@@ -198,5 +198,48 @@ describe("colorize", () => {
         expect.objectContaining({ onProgress }),
       );
     });
+
+    it("omits onProgress when not provided", async () => {
+      await colorize(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.onProgress).toBeUndefined();
+    });
+  });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Corrupt image data")),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(colorize(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Corrupt image data");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("passes empty options as empty JSON object", async () => {
+      await colorize(FAKE_INPUT, FAKE_OUTPUT_DIR, {});
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({});
+    });
+
+    it("handles zero width and height in response", async () => {
+      vi.mocked(parseStdoutJson).mockReturnValue({
+        success: true,
+        width: 0,
+        height: 0,
+        method: "deoldify",
+      });
+
+      const result = await colorize(FAKE_INPUT, FAKE_OUTPUT_DIR);
+      expect(result.width).toBe(0);
+      expect(result.height).toBe(0);
+    });
   });
 });

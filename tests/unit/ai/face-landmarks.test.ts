@@ -263,4 +263,41 @@ describe("detectFaceLandmarks", () => {
       expect(options.onProgress).toBeUndefined();
     });
   });
+
+  describe("edge cases", () => {
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("Permission denied"));
+
+      await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow("Permission denied");
+    });
+
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(detectFaceLandmarks(FAKE_INPUT)).rejects.toThrow("segmentation fault");
+    });
+
+    it("uses timestamps in temp file names", async () => {
+      await detectFaceLandmarks(FAKE_INPUT);
+
+      const writePath = vi.mocked(writeFile).mock.calls[0][0] as string;
+      // File path includes a numeric timestamp
+      expect(writePath).toMatch(/face_landmarks_\d+\.png$/);
+    });
+
+    it("handles faceDetected true with missing landmarks", async () => {
+      vi.mocked(parseStdoutJson).mockReturnValue({
+        success: true,
+        faceDetected: true,
+        imageWidth: 1920,
+        imageHeight: 1080,
+      });
+
+      const result = await detectFaceLandmarks(FAKE_INPUT);
+      expect(result.faceDetected).toBe(true);
+      expect(result.landmarks).toBeNull();
+    });
+  });
 });

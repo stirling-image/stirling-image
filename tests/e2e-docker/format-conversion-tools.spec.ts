@@ -838,6 +838,394 @@ test.describe("PDF to Image — output verification", () => {
   });
 });
 
+// ─── SVG to Raster -- Background Color ──────────────────────────
+
+test.describe("SVG to Raster -- background color", () => {
+  test("SVG to PNG with white background", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "png", width: 256, background: "#FFFFFF" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  test("SVG to JPEG with red background", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "jpg", width: 200, background: "#FF0000" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+
+  test("SVG to WebP with transparent background", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "webp", width: 300, background: "#00000000" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+});
+
+// ─── SVG to Raster -- Width/Height Combos ───────────────────────
+
+test.describe("SVG to Raster -- dimensions", () => {
+  test("SVG to PNG with width only", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "png", width: 512 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  test("SVG to PNG with height only", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "png", height: 512 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+
+  test("SVG to PNG with both width and height", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/svg-to-raster", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.svg", mimeType: "image/svg+xml", buffer: SVG_100x100 },
+        settings: JSON.stringify({ format: "png", width: 400, height: 300 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toBeTruthy();
+  });
+});
+
+// ─── Vectorize -- Detail and Color Options ──────────────────────
+
+test.describe("Vectorize -- options", () => {
+  test("vectorize with default options", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/vectorize", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.jpg", mimeType: "image/jpeg", buffer: fixture("test-100x100.jpg") },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toContain(".svg");
+    expect(body.processedSize).toBeGreaterThan(0);
+  });
+
+  test("vectorize with high detail (if supported)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/vectorize", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ detail: "high" }),
+      },
+    });
+    // detail param may not exist; either succeed or ignore it
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toContain(".svg");
+  });
+
+  test("vectorize with color count (if supported)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/vectorize", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ colors: 4 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl).toContain(".svg");
+  });
+
+  test("vectorized SVG content is valid XML", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/vectorize", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({}),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+
+    const dlRes = await request.get(body.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const svgContent = await dlRes.text();
+    expect(svgContent).toContain("<svg");
+    expect(svgContent).toContain("</svg>");
+  });
+});
+
+// ─── GIF Tools -- All Modes ─────────────────────────────────────
+
+test.describe("GIF Tools -- all modes", () => {
+  test("GIF tool with slow speed (0.5x)", async ({ request }) => {
+    const simpsons = contentFixture("animated-simpsons.gif");
+    const res = await request.post("/api/v1/tools/gif-tools", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "simpsons.gif", mimeType: "image/gif", buffer: simpsons },
+        settings: JSON.stringify({ action: "speed", speedFactor: 0.5 }),
+      },
+    });
+    if (res.ok()) {
+      const body = await res.json();
+      expect(body.downloadUrl || body.frames).toBeTruthy();
+    } else {
+      const body = await res.json();
+      expect(body.error).toBeDefined();
+    }
+  });
+
+  test("GIF tool with fast speed (4x)", async ({ request }) => {
+    const simpsons = contentFixture("animated-simpsons.gif");
+    const res = await request.post("/api/v1/tools/gif-tools", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "simpsons.gif", mimeType: "image/gif", buffer: simpsons },
+        settings: JSON.stringify({ action: "speed", speedFactor: 4 }),
+      },
+    });
+    if (res.ok()) {
+      const body = await res.json();
+      expect(body.downloadUrl || body.frames).toBeTruthy();
+    } else {
+      const body = await res.json();
+      expect(body.error).toBeDefined();
+    }
+  });
+
+  test("GIF tool with bounce (forward+reverse)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/gif-tools", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "animated.gif", mimeType: "image/gif", buffer: ANIMATED_GIF },
+        settings: JSON.stringify({ action: "bounce" }),
+      },
+    });
+    if (res.ok()) {
+      const body = await res.json();
+      expect(body.downloadUrl || body.frames).toBeTruthy();
+    } else {
+      const body = await res.json();
+      expect(body.error).toBeDefined();
+    }
+  });
+});
+
+// ─── PDF to Image -- Page Selection ─────────────────────────────
+
+test.describe("PDF to Image -- page selection", () => {
+  test("convert PDF page range 1-2", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/pdf-to-image", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.pdf", mimeType: "application/pdf", buffer: PDF_3PAGE },
+        settings: JSON.stringify({ format: "png", dpi: 150, pages: "1-2" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl || body.pages || body.jobId).toBeTruthy();
+  });
+
+  test("convert PDF page range 2-3", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/pdf-to-image", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.pdf", mimeType: "application/pdf", buffer: PDF_3PAGE },
+        settings: JSON.stringify({ format: "jpg", dpi: 200, pages: "2-3" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.downloadUrl || body.pages || body.jobId).toBeTruthy();
+  });
+});
+
+// ─── PDF to Image -- DPI Variations ──────────────────────────────
+
+test.describe("PDF to Image -- DPI variations", () => {
+  const dpis = [72, 100, 150, 200, 300] as const;
+
+  for (const dpi of dpis) {
+    test(`convert PDF at DPI=${dpi}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/pdf-to-image", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.pdf", mimeType: "application/pdf", buffer: PDF_3PAGE },
+          settings: JSON.stringify({ format: "png", dpi, pages: "1" }),
+        },
+      });
+      expect(res.ok(), `PDF at DPI=${dpi} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl || body.pages || body.jobId).toBeTruthy();
+    });
+  }
+});
+
+// ─── Image to PDF -- Orientation ─────────────────────────────────
+
+test.describe("Image to PDF -- orientation", () => {
+  /**
+   * Build a raw multipart/form-data body for multi-file uploads.
+   */
+  function buildMultipartLocal(
+    files: Array<{ name: string; filename: string; contentType: string; buffer: Buffer }>,
+    fields: Array<{ name: string; value: string }>,
+  ): { body: Buffer; contentType: string } {
+    const boundary = `----PlaywrightBoundary${Date.now()}`;
+    const parts: Buffer[] = [];
+    for (const f of files) {
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\nContent-Disposition: form-data; name="${f.name}"; filename="${f.filename}"\r\nContent-Type: ${f.contentType}\r\n\r\n`,
+        ),
+      );
+      parts.push(f.buffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+    for (const field of fields) {
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\nContent-Disposition: form-data; name="${field.name}"\r\n\r\n${field.value}\r\n`,
+        ),
+      );
+    }
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+    return {
+      body: Buffer.concat(parts),
+      contentType: `multipart/form-data; boundary=${boundary}`,
+    };
+  }
+
+  test("convert image to PDF with landscape orientation", async ({ request }) => {
+    const { body, contentType } = buildMultipartLocal(
+      [{ name: "file", filename: "test.png", contentType: "image/png", buffer: PNG_200x150 }],
+      [{ name: "settings", value: JSON.stringify({ pageSize: "A4", orientation: "landscape" }) }],
+    );
+    const res = await request.post("/api/v1/tools/image-to-pdf", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
+
+  test("convert image to PDF with portrait orientation", async ({ request }) => {
+    const { body, contentType } = buildMultipartLocal(
+      [{ name: "file", filename: "test.png", contentType: "image/png", buffer: PNG_200x150 }],
+      [{ name: "settings", value: JSON.stringify({ pageSize: "A4", orientation: "portrait" }) }],
+    );
+    const res = await request.post("/api/v1/tools/image-to-pdf", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+  });
+
+  test("convert multiple images to multi-page PDF", async ({ request }) => {
+    const { body, contentType } = buildMultipartLocal(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        {
+          name: "file",
+          filename: "b.jpg",
+          contentType: "image/jpeg",
+          buffer: fixture("test-100x100.jpg"),
+        },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+        {
+          name: "file",
+          filename: "d.heic",
+          contentType: "image/heic",
+          buffer: fixture("test-200x150.heic"),
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ pageSize: "Letter" }) }],
+    );
+    const res = await request.post("/api/v1/tools/image-to-pdf", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
+
+  test("image-to-pdf output is downloadable as valid PDF", async ({ request }) => {
+    const { body, contentType } = buildMultipartLocal(
+      [
+        {
+          name: "file",
+          filename: "test.jpg",
+          contentType: "image/jpeg",
+          buffer: fixture("test-100x100.jpg"),
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ pageSize: "A4" }) }],
+    );
+    const res = await request.post("/api/v1/tools/image-to-pdf", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+
+    const dlRes = await request.get(json.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const buffer = Buffer.from(await dlRes.body());
+    expect(buffer.length).toBeGreaterThan(0);
+    // PDF magic bytes: %PDF
+    expect(buffer[0]).toBe(0x25); // %
+    expect(buffer[1]).toBe(0x50); // P
+    expect(buffer[2]).toBe(0x44); // D
+    expect(buffer[3]).toBe(0x46); // F
+  });
+});
+
 // ─── Auth Failure ──────────────────────────────────────────────────
 
 test.describe("Auth failure", () => {

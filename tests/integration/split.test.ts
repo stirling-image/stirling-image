@@ -724,6 +724,70 @@ describe("Split", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("splits into a 4x4 grid", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      {
+        name: "settings",
+        content: JSON.stringify({ columns: 4, rows: 4 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/split",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const zip = new AdmZip(res.rawPayload);
+    const entries = zip.getEntries();
+    expect(entries.length).toBe(16);
+
+    // First tile dimensions: 200/4 = 50 wide, 150/4 = floor(37) tall
+    const firstTile = entries.find((e) => e.entryName === "test_r1_c1.png");
+    expect(firstTile).toBeDefined();
+    const meta = await sharp(firstTile?.getData()).metadata();
+    expect(meta.width).toBe(50);
+    expect(meta.height).toBe(37);
+  });
+
+  it("splits into a 5x5 grid", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      {
+        name: "settings",
+        content: JSON.stringify({ columns: 5, rows: 5 }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/split",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        "content-type": contentType,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const zip = new AdmZip(res.rawPayload);
+    const entries = zip.getEntries();
+    expect(entries.length).toBe(25);
+
+    // Each standard tile: 200/5 = 40 wide, 150/5 = 30 tall
+    const midTile = entries.find((e) => e.entryName === "test_r2_c2.png");
+    expect(midTile).toBeDefined();
+    const meta = await sharp(midTile?.getData()).metadata();
+    expect(meta.width).toBe(40);
+    expect(meta.height).toBe(30);
+  });
+
   it("handles a 10x10 grid (many tiles)", async () => {
     const { body, contentType } = createMultipartPayload([
       { name: "file", filename: "test.png", contentType: "image/png", content: PNG },

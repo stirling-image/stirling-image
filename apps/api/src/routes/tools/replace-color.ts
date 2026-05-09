@@ -66,7 +66,7 @@ export function registerReplaceColor(app: FastifyInstance) {
             pixels[i + 3] = 0; // Make transparent
           } else {
             // Blend: closer to source color = more of target color
-            const blend = 1 - dist / maxDist;
+            const blend = maxDist > 0 ? 1 - dist / maxDist : 1;
             pixels[i] = Math.round(pixels[i] * (1 - blend) + target.r * blend);
             pixels[i + 1] = Math.round(pixels[i + 1] * (1 - blend) + target.g * blend);
             pixels[i + 2] = Math.round(pixels[i + 2] * (1 - blend) + target.b * blend);

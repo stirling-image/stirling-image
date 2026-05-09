@@ -199,4 +199,51 @@ describe("inpaint", () => {
       expect(options.onProgress).toBeUndefined();
     });
   });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp error on mask conversion", async () => {
+      let callCount = 0;
+      vi.mocked(sharp).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-png-data")),
+          } as unknown as ReturnType<typeof sharp>;
+        }
+        return {
+          png: vi.fn().mockReturnThis(),
+          toBuffer: vi.fn().mockRejectedValue(new Error("Corrupt mask")),
+        } as unknown as ReturnType<typeof sharp>;
+      });
+
+      await expect(inpaint(FAKE_INPUT, FAKE_MASK, FAKE_OUTPUT_DIR)).rejects.toThrow("Corrupt mask");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(inpaint(FAKE_INPUT, FAKE_MASK, FAKE_OUTPUT_DIR)).rejects.toThrow(
+        "segmentation fault",
+      );
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(inpaint(FAKE_INPUT, FAKE_MASK, FAKE_OUTPUT_DIR)).rejects.toThrow(
+        "output missing",
+      );
+    });
+
+    it("propagates writeFile error when writing input", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(inpaint(FAKE_INPUT, FAKE_MASK, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
+  });
 });

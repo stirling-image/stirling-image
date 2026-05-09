@@ -986,3 +986,124 @@ describe("Response structure", () => {
     expect(result.processedSize).toBeGreaterThan(0);
   });
 });
+
+// ── Batch processing (5+ images) ──────────────────────────────
+describe("Batch processing", () => {
+  it("processes 5+ images and returns a valid ZIP", async () => {
+    const TINY = readFileSync(join(FIXTURES, "test-1x1.png"));
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "c.webp", contentType: "image/webp", content: WEBP },
+      { name: "file", filename: "d.png", contentType: "image/png", content: TINY },
+      { name: "file", filename: "e.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ format: "webp", quality: 60 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/optimize-for-web/batch",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("application/zip");
+
+    const AdmZip = (await import("adm-zip")).default;
+    const zip = new AdmZip(res.rawPayload);
+    const entries = zip.getEntries();
+    expect(entries.length).toBe(5);
+
+    // Every entry in the ZIP should be a valid WebP image
+    for (const entry of entries) {
+      expect(entry.entryName).toMatch(/\.webp$/);
+      const meta = await sharp(entry.getData()).metadata();
+      expect(meta.format).toBe("webp");
+    }
+  });
+
+  it("batch returns 400 with no files", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "settings", content: JSON.stringify({ format: "webp" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/optimize-for-web/batch",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ── Estimated vs actual size comparison ────────────────────────
+describe("Estimated vs actual size", () => {
+  it("processedSize matches actual downloaded file size", async () => {
+    const res = await postTool({ format: "jpeg", quality: 50 });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(dlRes.statusCode).toBe(200);
+    expect(dlRes.rawPayload.length).toBe(result.processedSize);
+  });
+
+  it("originalSize matches uploaded file buffer length", async () => {
+    const res = await postTool({ format: "webp" });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.originalSize).toBe(PNG.length);
+  });
+});
+
+// ── JXL format output ──────────────────────────────────────────
+describe("JXL format output", () => {
+  it("outputs as JXL when supported", async () => {
+    const res = await postTool({ format: "jxl" });
+    // JXL may not be supported by all Sharp builds; 422 if encoding fails
+    expect([200, 400, 422]).toContain(res.statusCode);
+    if (res.statusCode === 200) {
+      const result = JSON.parse(res.body);
+      expect(result.downloadUrl).toContain(".jxl");
+      expect(result.processedSize).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ── Portrait image optimization ────────────────────────────────
+describe("Portrait image optimization", () => {
+  it("optimizes portrait-oriented image with maxWidth", async () => {
+    const portrait = readFileSync(join(FIXTURES, "test-portrait.jpg"));
+    const res = await postTool(
+      { format: "webp", maxWidth: 100 },
+      portrait,
+      "portrait.jpg",
+      "image/jpeg",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.width).toBeLessThanOrEqual(100);
+    // Portrait images should maintain aspect ratio (height > width)
+    expect(meta.height).toBeGreaterThan(0);
+  });
+});

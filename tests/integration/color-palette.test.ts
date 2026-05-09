@@ -571,3 +571,89 @@ describe("Filename tracking", () => {
     expect(result.filename).toBe("my-image-2024.png");
   });
 });
+
+// ── Extracted colors are unique ────────────────────────────────
+describe("Color uniqueness", () => {
+  it("returns only unique colors (no duplicates)", async () => {
+    const PHOTO = readFileSync(join(FIXTURES, "content", "portrait-color.jpg"));
+    const { body: payload, contentType } = makeFilePayload(PHOTO, "photo.jpg", "image/jpeg");
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/color-palette",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    const uniqueColors = new Set(result.colors);
+    expect(uniqueColors.size).toBe(result.colors.length);
+  });
+});
+
+// ── SVG logo from content fixtures ────────────────────────────
+describe("SVG logo input", () => {
+  it("extracts palette from svg-logo.svg", async () => {
+    const SVG_LOGO = readFileSync(join(FIXTURES, "content", "svg-logo.svg"));
+    const { body: payload, contentType } = makeFilePayload(SVG_LOGO, "logo.svg", "image/svg+xml");
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/color-palette",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.colors.length).toBeGreaterThan(0);
+    expect(result.filename).toBe("logo.svg");
+  });
+});
+
+// ── Three-color image ─────────────────────────────────────────
+describe("Three-color image", () => {
+  it("extracts 3 colors from a 3-stripe image", async () => {
+    const w = 60;
+    const h = 30;
+    const raw = Buffer.alloc(w * h * 3);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 3;
+        if (x < 20) {
+          raw[idx] = 255;
+          raw[idx + 1] = 0;
+          raw[idx + 2] = 0;
+        } else if (x < 40) {
+          raw[idx] = 0;
+          raw[idx + 1] = 255;
+          raw[idx + 2] = 0;
+        } else {
+          raw[idx] = 0;
+          raw[idx + 1] = 0;
+          raw[idx + 2] = 255;
+        }
+      }
+    }
+    const tricolorBuffer = await sharp(raw, { raw: { width: w, height: h, channels: 3 } })
+      .png()
+      .toBuffer();
+
+    const { body: payload, contentType } = makeFilePayload(tricolorBuffer, "tri.png", "image/png");
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/color-palette",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.colors.length).toBeGreaterThanOrEqual(3);
+  });
+});

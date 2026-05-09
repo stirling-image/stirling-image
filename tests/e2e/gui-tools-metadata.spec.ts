@@ -237,5 +237,15 @@ test.describe("GUI Metadata Tools", () => {
       // Info tool does not produce a downloadable result
       await expect(page.getByRole("link", { name: /download/i })).not.toBeVisible();
     });
+
+    test("submit disabled without file, enabled with file", async ({ loggedInPage: page }) => {
+      await page.goto("/info");
+
+      const submitBtn = page.getByTestId("info-submit");
+      await expect(submitBtn).toBeDisabled();
+
+      await uploadTestImage(page);
+      await expect(submitBtn).toBeEnabled();
+    });
   });
 });

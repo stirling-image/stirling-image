@@ -142,6 +142,24 @@ test.describe("GUI Essential Tools", () => {
       await expect(downloadLink).toBeVisible({ timeout: 15_000 });
       await expect(downloadLink).toHaveText(/Download/);
     });
+
+    test("width and height inputs accept numeric values", async ({ loggedInPage: page }) => {
+      await page.goto("/resize");
+      await uploadTestImage(page);
+
+      await page.locator("#resize-width").fill("200");
+      await expect(page.locator("#resize-width")).toHaveValue("200");
+    });
+
+    test("scale percentage quick buttons are interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/resize");
+      await uploadTestImage(page);
+
+      await page.getByText("Scale").click();
+      await page.getByRole("button", { name: "50%" }).click();
+      // Scale value should update
+      await expect(page.locator("#resize-scale")).toHaveValue("50");
+    });
   });
 
   // ========================================================================
@@ -482,6 +500,31 @@ test.describe("GUI Essential Tools", () => {
       await expect(page.getByTestId("convert-submit")).toBeVisible();
     });
 
+    test("quality slider hidden for TIFF lossless format", async ({ loggedInPage: page }) => {
+      await page.goto("/convert");
+      await uploadTestImage(page);
+
+      await page.selectOption("#convert-target-format", "tiff");
+      await expect(page.locator("#convert-quality")).not.toBeVisible();
+    });
+
+    test("changing format resets quality slider visibility", async ({ loggedInPage: page }) => {
+      await page.goto("/convert");
+      await uploadTestImage(page);
+
+      // Start with JPG (lossy, shows quality)
+      await page.selectOption("#convert-target-format", "jpg");
+      await expect(page.locator("#convert-quality")).toBeVisible();
+
+      // Switch to PNG (lossless, hides quality)
+      await page.selectOption("#convert-target-format", "png");
+      await expect(page.locator("#convert-quality")).not.toBeVisible();
+
+      // Switch back to WebP (lossy, shows quality)
+      await page.selectOption("#convert-target-format", "webp");
+      await expect(page.locator("#convert-quality")).toBeVisible();
+    });
+
     test("processes conversion and shows download", async ({ loggedInPage: page }) => {
       await page.goto("/convert");
       await uploadTestImage(page);
@@ -552,6 +595,29 @@ test.describe("GUI Essential Tools", () => {
       await uploadTestImage(page);
 
       await expect(page.getByTestId("compress-submit")).toBeVisible();
+    });
+
+    test("switching between Quality and Target Size modes", async ({ loggedInPage: page }) => {
+      await page.goto("/compress");
+      await uploadTestImage(page);
+
+      // Switch to Target Size
+      await page.getByRole("button", { name: "Target Size" }).click();
+      await expect(page.locator("#compress-target-size")).toBeVisible();
+
+      // Switch back to Quality
+      await page.getByRole("button", { name: "Quality" }).click();
+      await expect(page.locator("#compress-quality")).toBeVisible();
+    });
+
+    test("submit disabled without file, enabled with file", async ({ loggedInPage: page }) => {
+      await page.goto("/compress");
+
+      const submitBtn = page.getByTestId("compress-submit");
+      await expect(submitBtn).toBeDisabled();
+
+      await uploadTestImage(page);
+      await expect(submitBtn).toBeEnabled();
     });
 
     test("processes compression and shows download with size info", async ({

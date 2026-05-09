@@ -969,4 +969,80 @@ describe("image-to-base64", () => {
     expect(json.results[0].width).toBe(200);
     expect(json.results[0].height).toBe(150);
   });
+
+  // ── Base64 string can be decoded back to original image ────────
+
+  it("decoded base64 produces a valid image buffer", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({}) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-base64",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    const decoded = Buffer.from(json.results[0].base64, "base64");
+
+    // Verify decoded buffer is a valid image by reading it with Sharp
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(decoded).metadata();
+    expect(meta.width).toBe(200);
+    expect(meta.height).toBe(150);
+    expect(meta.format).toBe("png");
+  });
+
+  // ── Data URI can be parsed correctly ────────────────────────────
+
+  it("data URI contains the correct MIME type prefix", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "settings", content: JSON.stringify({ outputFormat: "webp" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-base64",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    const r = json.results[0];
+
+    // Parse the data URI
+    const [prefix, b64Data] = r.dataUri.split(",");
+    expect(prefix).toBe("data:image/webp;base64");
+    expect(b64Data).toBe(r.base64);
+    expect(r.mimeType).toBe("image/webp");
+  });
+
+  // ── Encoded size matches actual base64 byte length ─────────────
+
+  it("encodedSize matches actual base64 decoded byte count", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({}) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-to-base64",
+      headers: { authorization: `Bearer ${adminToken}`, "content-type": contentType },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    const r = json.results[0];
+
+    // encodedSize should be the length of the base64 string (characters)
+    expect(r.encodedSize).toBe(r.base64.length);
+  });
 });

@@ -1,6 +1,5 @@
 import { expect, openSettings, test, uploadTestImage } from "./helpers";
 
-const isDocker = process.env.CI === "true" || process.env.DOCKER === "true";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 // ---------------------------------------------------------------------------
@@ -27,13 +26,13 @@ async function setTheme(page: import("@playwright/test").Page, theme: "light" | 
 async function takeThemedScreenshots(page: import("@playwright/test").Page, baseName: string) {
   // Light theme
   await setTheme(page, "light");
-  await expect(page).toHaveScreenshot(`${baseName}-light.png`, {
+  await expect(page).toHaveScreenshot(`desktop-${baseName}-light.png`, {
     fullPage: false,
   });
 
   // Dark theme
   await setTheme(page, "dark");
-  await expect(page).toHaveScreenshot(`${baseName}-dark.png`, {
+  await expect(page).toHaveScreenshot(`desktop-${baseName}-dark.png`, {
     fullPage: false,
   });
 
@@ -45,7 +44,6 @@ async function takeThemedScreenshots(page: import("@playwright/test").Page, base
 // Desktop visual regression: 1280x720
 // ---------------------------------------------------------------------------
 test.describe("Visual Desktop (1280x720)", () => {
-  test.skip(!isDocker, "Visual regression baselines are Docker-specific");
   test.use({ viewport: { width: 1280, height: 720 } });
 
   // ---- Login page (unauthenticated) ----
@@ -58,7 +56,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await page.waitForTimeout(500);
 
       // Light screenshot
-      await expect(page).toHaveScreenshot("login-empty-light.png", {
+      await expect(page).toHaveScreenshot("desktop-login-empty-light.png", {
         fullPage: false,
       });
 
@@ -66,7 +64,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await page.keyboard.press(`${MOD}+Shift+d`);
       await page.waitForTimeout(300);
 
-      await expect(page).toHaveScreenshot("login-empty-dark.png", {
+      await expect(page).toHaveScreenshot("desktop-login-empty-dark.png", {
         fullPage: false,
       });
     });
@@ -86,7 +84,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await expect(page.getByText(/invalid|incorrect|failed/i).first()).toBeVisible();
 
       // Light screenshot with error
-      await expect(page).toHaveScreenshot("login-error-light.png", {
+      await expect(page).toHaveScreenshot("desktop-login-error-light.png", {
         fullPage: false,
       });
 
@@ -94,7 +92,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await page.keyboard.press(`${MOD}+Shift+d`);
       await page.waitForTimeout(300);
 
-      await expect(page).toHaveScreenshot("login-error-dark.png", {
+      await expect(page).toHaveScreenshot("desktop-login-error-dark.png", {
         fullPage: false,
       });
     });
@@ -328,7 +326,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await page.waitForTimeout(500);
 
       // Light screenshot
-      await expect(page).toHaveScreenshot("analytics-consent-light.png", {
+      await expect(page).toHaveScreenshot("desktop-analytics-consent-light.png", {
         fullPage: false,
       });
 
@@ -336,7 +334,7 @@ test.describe("Visual Desktop (1280x720)", () => {
       await page.keyboard.press(`${MOD}+Shift+d`);
       await page.waitForTimeout(300);
 
-      await expect(page).toHaveScreenshot("analytics-consent-dark.png", {
+      await expect(page).toHaveScreenshot("desktop-analytics-consent-dark.png", {
         fullPage: false,
       });
     });

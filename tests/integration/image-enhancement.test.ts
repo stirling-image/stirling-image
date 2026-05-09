@@ -995,3 +995,257 @@ describe("Deep Enhance", () => {
     expect(result.downloadUrl).toBeDefined();
   });
 });
+
+// ── Darkening regression test ──────────────────────────────────
+describe("Darkening regression", () => {
+  it("does not darken image at default intensity", async () => {
+    // Create a known mid-brightness image
+    const midGray = await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 3,
+        background: { r: 128, g: 128, b: 128 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const originalStats = await sharp(midGray).stats();
+    const originalMean =
+      originalStats.channels[0].mean * 0.299 +
+      originalStats.channels[1].mean * 0.587 +
+      originalStats.channels[2].mean * 0.114;
+
+    const res = await postTool(
+      { mode: "auto", intensity: 50 },
+      midGray,
+      "midgray.jpg",
+      "image/jpeg",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const enhancedStats = await sharp(dlRes.rawPayload).stats();
+    const enhancedMean =
+      enhancedStats.channels[0].mean * 0.299 +
+      enhancedStats.channels[1].mean * 0.587 +
+      enhancedStats.channels[2].mean * 0.114;
+
+    // The enhanced image should not lose more than 30% brightness
+    // (regression: older versions would darken images dramatically)
+    expect(enhancedMean).toBeGreaterThan(originalMean * 0.7);
+  });
+
+  it("does not darken a bright image", async () => {
+    const bright = await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 3,
+        background: { r: 220, g: 220, b: 220 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const originalStats = await sharp(bright).stats();
+    const originalMean = originalStats.channels[0].mean;
+
+    const res = await postTool({ mode: "auto", intensity: 50 }, bright, "bright.jpg", "image/jpeg");
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const enhancedStats = await sharp(dlRes.rawPayload).stats();
+    const enhancedMean = enhancedStats.channels[0].mean;
+
+    // Bright images should not be darkened more than 25%
+    expect(enhancedMean).toBeGreaterThan(originalMean * 0.75);
+  });
+});
+
+// ── Portrait image enhancement ─────────────────────────────────
+describe("Portrait image enhancement", () => {
+  it("enhances a real portrait image in portrait mode", async () => {
+    const portrait = readFileSync(join(FIXTURES, "test-portrait.jpg"));
+    const res = await postTool(
+      { mode: "portrait", intensity: 60 },
+      portrait,
+      "portrait.jpg",
+      "image/jpeg",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.downloadUrl).toBeDefined();
+
+    const dlRes = await app.inject({
+      method: "GET",
+      url: result.downloadUrl,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    const meta = await sharp(dlRes.rawPayload).metadata();
+    expect(meta.format).toBe("jpeg");
+    expect(meta.width).toBeGreaterThan(0);
+    expect(meta.height).toBeGreaterThan(0);
+  });
+
+  it("enhances portrait-color content image in landscape mode", async () => {
+    const portraitColor = readFileSync(join(FIXTURES, "content", "portrait-color.jpg"));
+    const res = await postTool(
+      { mode: "landscape", intensity: 70 },
+      portraitColor,
+      "portrait-color.jpg",
+      "image/jpeg",
+    );
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.processedSize).toBeGreaterThan(0);
+  });
+});
+
+// ── Batch processing (5+ images) ───────────────────────────────
+describe("Batch processing", () => {
+  it("batch processes 5+ images and returns a ZIP", async () => {
+    const TINY = readFileSync(join(FIXTURES, "test-1x1.png"));
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "a.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "b.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "c.webp", contentType: "image/webp", content: WEBP },
+      { name: "file", filename: "d.png", contentType: "image/png", content: TINY },
+      { name: "file", filename: "e.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "settings", content: JSON.stringify({ mode: "auto", intensity: 50 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement/batch",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("application/zip");
+
+    const AdmZip = (await import("adm-zip")).default;
+    const zip = new AdmZip(res.rawPayload);
+    const entries = zip.getEntries();
+    expect(entries.length).toBe(5);
+
+    // Each entry should be a valid image with size > 0
+    for (const entry of entries) {
+      expect(entry.getData().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("batch returns 400 with no files", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "settings", content: JSON.stringify({ mode: "auto" }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement/batch",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+// ── Analyze endpoint response structure ────────────────────────
+describe("Analyze endpoint response structure", () => {
+  it("analysis returns scores and corrections objects", async () => {
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "test.jpg", contentType: "image/jpeg", content: JPG },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement/analyze",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result).toHaveProperty("scores");
+    expect(result).toHaveProperty("corrections");
+    expect(result).toHaveProperty("issues");
+    expect(result).toHaveProperty("suggestedMode");
+
+    // Scores should have expected fields
+    expect(typeof result.scores.exposure).toBe("number");
+    expect(typeof result.scores.contrast).toBe("number");
+    expect(typeof result.scores.whiteBalance).toBe("number");
+    expect(typeof result.scores.saturation).toBe("number");
+    expect(typeof result.scores.sharpness).toBe("number");
+    expect(typeof result.scores.noise).toBe("number");
+
+    // Corrections should have expected fields
+    expect(typeof result.corrections.brightness).toBe("number");
+    expect(typeof result.corrections.contrast).toBe("number");
+    expect(typeof result.corrections.temperature).toBe("number");
+    expect(typeof result.corrections.saturation).toBe("number");
+    expect(typeof result.corrections.sharpness).toBe("number");
+    expect(typeof result.corrections.denoise).toBe("number");
+
+    // Issues should be an array of strings
+    expect(Array.isArray(result.issues)).toBe(true);
+
+    // SuggestedMode should be a valid mode string
+    expect(["auto", "portrait", "landscape", "low-light", "food", "document"]).toContain(
+      result.suggestedMode,
+    );
+  });
+});
+
+// ── Low-light image detection ──────────────────────────────────
+describe("Low-light image analysis", () => {
+  it("analysis suggests low-light mode for dark image", async () => {
+    const dark = await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 3,
+        background: { r: 20, g: 20, b: 20 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const { body: payload, contentType } = createMultipartPayload([
+      { name: "file", filename: "dark.jpg", contentType: "image/jpeg", content: dark },
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/image-enhancement/analyze",
+      payload,
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const result = JSON.parse(res.body);
+    expect(result.suggestedMode).toBe("low-light");
+    expect(result.issues).toContain("underexposed");
+  });
+});

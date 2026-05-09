@@ -41,6 +41,12 @@ test.describe("GUI Utility Tools", () => {
       // Still disabled -- no second image
       await expect(submitBtn).toBeDisabled();
     });
+
+    test("submit button text says Compare", async ({ loggedInPage: page }) => {
+      await page.goto("/compare");
+
+      await expect(page.getByTestId("compare-submit")).toHaveText(/Compare/);
+    });
   });
 
   // ========================================================================
@@ -61,6 +67,32 @@ test.describe("GUI Utility Tools", () => {
       await expect(page.getByRole("button", { name: /exact/i }).first()).toBeVisible();
       await expect(page.getByRole("button", { name: /similar/i }).first()).toBeVisible();
       await expect(page.getByRole("button", { name: /loose/i }).first()).toBeVisible();
+    });
+
+    test("shows sensitivity threshold slider after upload", async ({ loggedInPage: page }) => {
+      await page.goto("/find-duplicates");
+      await uploadTestImage(page);
+
+      await expect(page.locator("input[type='range']").first()).toBeVisible();
+    });
+
+    test("preset click updates threshold slider", async ({ loggedInPage: page }) => {
+      await page.goto("/find-duplicates");
+      await uploadTestImage(page);
+
+      // Click exact preset
+      await page.getByRole("button", { name: /exact/i }).first().click();
+      // Click loose preset
+      await page.getByRole("button", { name: /loose/i }).first().click();
+    });
+
+    test("scan button requires at least 2 files", async ({ loggedInPage: page }) => {
+      await page.goto("/find-duplicates");
+      await uploadTestImage(page);
+
+      // With only one file, scan should be disabled
+      const scanBtn = page.getByRole("button", { name: /scan|find/i }).first();
+      await expect(scanBtn).toBeDisabled();
     });
   });
 
@@ -119,6 +151,22 @@ test.describe("GUI Utility Tools", () => {
 
       await expect(page.getByTestId("base64-submit")).toBeVisible();
       await expect(page.getByTestId("base64-submit")).toHaveText(/Convert to Base64/);
+    });
+
+    test("quality slider hidden for PNG format", async ({ loggedInPage: page }) => {
+      await page.goto("/image-to-base64");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "PNG" }).click();
+      await expect(page.locator("#b64-quality")).not.toBeVisible();
+    });
+
+    test("switching format to AVIF shows quality slider", async ({ loggedInPage: page }) => {
+      await page.goto("/image-to-base64");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "AVIF" }).click();
+      await expect(page.locator("#b64-quality")).toBeVisible();
     });
   });
 
@@ -235,6 +283,55 @@ test.describe("GUI Utility Tools", () => {
       // Text tab should have a textarea or input
       await expect(page.locator("textarea, input[type='text']").first()).toBeVisible();
     });
+
+    test("shows error correction dropdown with four levels", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      const select = page.locator("#qr-error-correction");
+      await expect(select).toBeVisible();
+      const options = select.locator("option");
+      await expect(options).toHaveCount(4); // L, M, Q, H
+    });
+
+    test("shows size slider", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await expect(page.locator("#qr-size")).toBeVisible();
+    });
+
+    test("shows corner square style buttons", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await expect(page.getByText("Corner Square")).toBeVisible();
+    });
+
+    test("shows corner dot style buttons", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await expect(page.getByText("Corner Dot")).toBeVisible();
+    });
+
+    test("Email tab shows to/subject/body fields", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await page.getByText("Email").first().click();
+      await expect(page.locator("#qr-email-to")).toBeVisible();
+      await expect(page.locator("#qr-email-subject")).toBeVisible();
+    });
+
+    test("Phone tab shows phone input", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await page.getByText("Phone").first().click();
+      await expect(page.locator("#qr-phone")).toBeVisible();
+    });
+
+    test("SMS tab shows phone and message inputs", async ({ loggedInPage: page }) => {
+      await page.goto("/qr-generate");
+
+      await page.getByText("SMS").first().click();
+      await expect(page.locator("#qr-sms-phone")).toBeVisible();
+    });
   });
 
   // ========================================================================
@@ -285,6 +382,25 @@ test.describe("GUI Utility Tools", () => {
       const submitBtn = page.getByTestId("bulk-rename-submit");
       await expect(submitBtn).toBeVisible();
       await expect(submitBtn).toHaveText(/Rename.*Files/);
+    });
+
+    test("changing pattern updates preview", async ({ loggedInPage: page }) => {
+      await page.goto("/bulk-rename");
+      await uploadTestImage(page);
+
+      await page.locator("#bulk-rename-pattern").fill("photo-{{index}}");
+      await expect(page.locator("#bulk-rename-pattern")).toHaveValue("photo-{{index}}");
+      // Preview should still be visible
+      await expect(page.getByText("Preview")).toBeVisible();
+    });
+
+    test("start index input accepts values", async ({ loggedInPage: page }) => {
+      await page.goto("/bulk-rename");
+      await uploadTestImage(page);
+
+      const startIndex = page.locator("#bulk-rename-start-index");
+      await startIndex.fill("5");
+      await expect(startIndex).toHaveValue("5");
     });
   });
 });

@@ -73,6 +73,32 @@ test.describe("GUI Watermark & Overlay Tools", () => {
       await expect(page.locator("#watermark-text-rotation")).toBeVisible();
     });
 
+    test("opacity slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/watermark-text");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#watermark-text-opacity");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("font size slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/watermark-text");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#watermark-text-font-size");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("changing text input updates value", async ({ loggedInPage: page }) => {
+      await page.goto("/watermark-text");
+      await uploadTestImage(page);
+
+      await page.locator("#watermark-text-text").fill("My Custom Text");
+      await expect(page.locator("#watermark-text-text")).toHaveValue("My Custom Text");
+    });
+
     test("processes watermark and shows download", async ({ loggedInPage: page }) => {
       await page.goto("/watermark-text");
       await uploadTestImage(page);
@@ -219,6 +245,23 @@ test.describe("GUI Watermark & Overlay Tools", () => {
 
       // Box color picker should now appear
       await expect(page.locator("#text-overlay-box-color")).toBeVisible();
+    });
+
+    test("font size slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/text-overlay");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#text-overlay-font-size");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("changing text input updates value", async ({ loggedInPage: page }) => {
+      await page.goto("/text-overlay");
+      await uploadTestImage(page);
+
+      await page.locator("#text-overlay-text").fill("Custom Overlay");
+      await expect(page.locator("#text-overlay-text")).toHaveValue("Custom Overlay");
     });
 
     test("processes text overlay and shows download", async ({ loggedInPage: page }) => {
@@ -391,6 +434,35 @@ test.describe("GUI Watermark & Overlay Tools", () => {
       await expect(page.getByText("Vintage").first()).toBeVisible();
       await expect(page.getByText("Minimal").first()).toBeVisible();
       await expect(page.getByText("Cinematic").first()).toBeVisible();
+    });
+
+    test("border width slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/border");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#border-width");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("clicking a preset updates border settings", async ({ loggedInPage: page }) => {
+      await page.goto("/border");
+      await uploadTestImage(page);
+
+      // Click Polaroid preset
+      await page.getByText("Polaroid").first().click();
+      // Click Gallery Black preset
+      await page.getByText("Gallery Black").first().click();
+    });
+
+    test("submit disabled without file, enabled with file", async ({ loggedInPage: page }) => {
+      await page.goto("/border");
+
+      const submitBtn = page.getByTestId("border-submit");
+      await expect(submitBtn).toBeDisabled();
+
+      await uploadTestImage(page);
+      await expect(submitBtn).toBeEnabled();
     });
 
     test("processes border and shows download", async ({ loggedInPage: page }) => {

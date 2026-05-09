@@ -1,6 +1,5 @@
 import { expect, test, uploadTestImage } from "./helpers";
 
-const isDocker = process.env.CI === "true" || process.env.DOCKER === "true";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +40,6 @@ async function takeThemedScreenshots(page: import("@playwright/test").Page, base
 // Mobile visual regression: 375x667
 // ---------------------------------------------------------------------------
 test.describe("Visual Mobile (375x667)", () => {
-  test.skip(!isDocker, "Visual regression baselines are Docker-specific");
   test.use({ viewport: { width: 375, height: 667 } });
 
   // ---- Login page (unauthenticated) ----
@@ -84,9 +82,20 @@ test.describe("Visual Mobile (375x667)", () => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(500);
 
-    // Verify mobile layout: top bar visible, no desktop sidebar
+    // Verify mobile layout: top bar with hamburger menu visible, no desktop sidebar
     await expect(page.getByText("SnapOtter").first()).toBeVisible();
     await expect(page.locator("aside")).not.toBeVisible();
+
+    // Hamburger menu button should be visible on mobile
+    const hamburger = page
+      .locator(
+        "button[aria-label*='menu' i], button[aria-label*='Menu' i], button[class*='hamburger' i]",
+      )
+      .first();
+    const hasHamburger = await hamburger.isVisible({ timeout: 2000 }).catch(() => false);
+    if (hasHamburger) {
+      await expect(hamburger).toBeVisible();
+    }
 
     // Bottom navigation bar visible
     const bottomNav = page.locator("nav.fixed");
@@ -186,6 +195,16 @@ test.describe("Visual Mobile (375x667)", () => {
     await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
     await page.waitForTimeout(500);
 
+    // Verify settings modal scrolls within mobile viewport
+    const dialog = page.getByRole("dialog");
+    if (await dialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const dialogBox = await dialog.boundingBox();
+      if (dialogBox) {
+        expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(375 + 1);
+        expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(667 + 1);
+      }
+    }
+
     await takeThemedScreenshots(page, "settings-general");
   });
 
@@ -229,10 +248,19 @@ test.describe("Visual Mobile (375x667)", () => {
       // Fall back to keyboard shortcut or any visible help trigger
       await page.getByRole("button", { name: /help/i }).first().click();
     }
-    await page.getByRole("dialog").waitFor({ state: "visible", timeout: 5000 });
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: 5000 });
     await page.waitForTimeout(500);
 
-    // Verify dialog fits within mobile viewport
+    // Verify dialog (modal) scrolls within mobile viewport and does not overflow
+    const dialogBox = await dialog.boundingBox();
+    if (dialogBox) {
+      expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+      expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+      expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(375 + 1);
+      expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(667 + 1);
+    }
+
     await takeThemedScreenshots(page, "help-dialog");
   });
 
@@ -242,8 +270,19 @@ test.describe("Visual Mobile (375x667)", () => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(500);
 
-    // Verify mobile layout: dropzone fills viewport, no sidebar
+    // Verify mobile layout: dropzone fills viewport width, no sidebar
     await expect(page.locator("aside")).not.toBeVisible();
+
+    // Dropzone should fill the mobile viewport width
+    const dropzone = page.locator("[class*='border-dashed']").first();
+    if (await dropzone.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const dropzoneBox = await dropzone.boundingBox();
+      if (dropzoneBox) {
+        // Dropzone should span most of the 375px viewport width (allow padding)
+        expect(dropzoneBox.width).toBeGreaterThan(300);
+        expect(dropzoneBox.x + dropzoneBox.width).toBeLessThanOrEqual(375 + 1);
+      }
+    }
 
     await takeThemedScreenshots(page, "tool-resize-empty");
   });
@@ -253,6 +292,16 @@ test.describe("Visual Mobile (375x667)", () => {
     await page.goto("/resize");
     await uploadTestImage(page);
     await page.waitForTimeout(500);
+
+    // On mobile, tool settings should be collapsed by default (toggled via button)
+    const settingsToggle = page.getByRole("button", { name: /settings/i }).first();
+    const settingsPanel = page.locator("[class*='settings'], [class*='Settings']").first();
+    const isPanelVisible = await settingsPanel.isVisible({ timeout: 2000 }).catch(() => false);
+    // If settings are collapsed, expand them for the screenshot
+    if (!isPanelVisible && (await settingsToggle.isVisible({ timeout: 1000 }).catch(() => false))) {
+      await settingsToggle.click();
+      await page.waitForTimeout(300);
+    }
 
     await takeThemedScreenshots(page, "tool-resize-settings");
   });

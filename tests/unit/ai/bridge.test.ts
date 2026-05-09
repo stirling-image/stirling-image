@@ -2113,3 +2113,966 @@ describe("bridge - extractPythonError via dispatcher responses", () => {
     await expect(promise).rejects.toThrow("exited with code 42");
   });
 });
+
+// ── Dispatcher partial stderr buffering ──────────────────────────────
+
+describe("bridge - dispatcher stderr partial buffering", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let initDispatcher: typeof import("../../../packages/ai/src/bridge.js").initDispatcher;
+  let shutdownDispatcher: typeof import("../../../packages/ai/src/bridge.js").shutdownDispatcher;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+    initDispatcher = mod.initDispatcher;
+    shutdownDispatcher = mod.shutdownDispatcher;
+  });
+
+  afterEach(() => {
+    shutdownDispatcher();
+    vi.restoreAllMocks();
+  });
+
+  async function setupReadyDispatcher() {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": false}\n'));
+    await initPromise;
+    return mock;
+  }
+
+  it("buffers partial JSON progress lines across stderr chunks", async () => {
+    const mock = await setupReadyDispatcher();
+    const progressUpdates: Array<{ percent: number; stage: string }> = [];
+
+    const promise = runPythonWithProgress("test.py", [], {
+      onProgress: (p, s) => progressUpdates.push({ percent: p, stage: s }),
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Send a progress line split across two stderr chunks
+    mock.stderr.emit("data", Buffer.from('{"progress": 30, "sta'));
+    mock.stderr.emit("data", Buffer.from('ge": "Loading"}\n'));
+
+    const line = mock.stdinWrites.join("").split("\n").filter(Boolean)[0];
+    const id = JSON.parse(line).id;
+
+    mock.stdout.emit(
+      "data",
+      Buffer.from(`${JSON.stringify({ id, exitCode: 0, stdout: '{"ok": true}' })}\n`),
+    );
+
+    await promise;
+    expect(progressUpdates).toEqual([{ percent: 30, stage: "Loading" }]);
+  });
+
+  it("handles readiness signal split across stderr chunks", async () => {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const initPromise = initDispatcher();
+
+    // Split the ready signal across two chunks
+    mock.stderr.emit("data", Buffer.from('{"ready": tr'));
+    mock.stderr.emit("data", Buffer.from('ue, "gpu": false}\n'));
+
+    const result = await initPromise;
+    expect(result).toEqual({ ready: true, gpu: false });
+  });
+
+  it("handles multiple complete lines in a single stderr chunk", async () => {
+    const mock = await setupReadyDispatcher();
+    const progressUpdates: Array<{ percent: number; stage: string }> = [];
+
+    const promise = runPythonWithProgress("test.py", [], {
+      onProgress: (p, s) => progressUpdates.push({ percent: p, stage: s }),
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Two progress lines in one chunk
+    mock.stderr.emit(
+      "data",
+      Buffer.from('{"progress": 25, "stage": "Step 1"}\n{"progress": 75, "stage": "Step 2"}\n'),
+    );
+
+    const line = mock.stdinWrites.join("").split("\n").filter(Boolean)[0];
+    const id = JSON.parse(line).id;
+
+    mock.stdout.emit("data", Buffer.from(`${JSON.stringify({ id, exitCode: 0, stdout: "{}" })}\n`));
+
+    await promise;
+    expect(progressUpdates).toEqual([
+      { percent: 25, stage: "Step 1" },
+      { percent: 75, stage: "Step 2" },
+    ]);
+  });
+
+  it("does not fire progress for partial JSON that is not yet complete", async () => {
+    const mock = await setupReadyDispatcher();
+    const progressUpdates: Array<{ percent: number; stage: string }> = [];
+
+    const promise = runPythonWithProgress("test.py", [], {
+      onProgress: (p, s) => progressUpdates.push({ percent: p, stage: s }),
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Send incomplete JSON with no trailing newline
+    mock.stderr.emit("data", Buffer.from('{"progress": 50, "stage": "Half'));
+
+    // No progress should have fired yet
+    expect(progressUpdates).toEqual([]);
+
+    // Complete the line
+    mock.stderr.emit("data", Buffer.from('way"}\n'));
+    expect(progressUpdates).toEqual([{ percent: 50, stage: "Halfway" }]);
+
+    // Finish
+    const line = mock.stdinWrites.join("").split("\n").filter(Boolean)[0];
+    const id = JSON.parse(line).id;
+    mock.stdout.emit("data", Buffer.from(`${JSON.stringify({ id, exitCode: 0, stdout: "{}" })}\n`));
+    await promise;
+  });
+});
+
+// ── Dispatcher shutdown behavior ─────────────────────────────────────
+
+describe("bridge - dispatcher shutdown behavior", () => {
+  let initDispatcher: typeof import("../../../packages/ai/src/bridge.js").initDispatcher;
+  let shutdownDispatcher: typeof import("../../../packages/ai/src/bridge.js").shutdownDispatcher;
+  let getDispatcherStatus: typeof import("../../../packages/ai/src/bridge.js").getDispatcherStatus;
+  let isGpuAvailable: typeof import("../../../packages/ai/src/bridge.js").isGpuAvailable;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    initDispatcher = mod.initDispatcher;
+    shutdownDispatcher = mod.shutdownDispatcher;
+    getDispatcherStatus = mod.getDispatcherStatus;
+    isGpuAvailable = mod.isGpuAvailable;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls kill(SIGTERM) on the dispatcher process", async () => {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": false}\n'));
+    await initPromise;
+
+    shutdownDispatcher();
+
+    expect(mock.process.kill).toHaveBeenCalledWith("SIGTERM");
+  });
+
+  it("calls stdin.end() before killing the process", async () => {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const stdinEndSpy = vi.spyOn(mock.stdin, "end");
+
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": false}\n'));
+    await initPromise;
+
+    shutdownDispatcher();
+
+    expect(stdinEndSpy).toHaveBeenCalled();
+  });
+
+  it("sets status to not running and not ready after shutdown", async () => {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": true}\n'));
+    await initPromise;
+
+    expect(getDispatcherStatus().running).toBe(true);
+    expect(getDispatcherStatus().ready).toBe(true);
+
+    shutdownDispatcher();
+
+    expect(getDispatcherStatus().running).toBe(false);
+    expect(getDispatcherStatus().ready).toBe(false);
+  });
+
+  it("does not change GPU status after shutdown (isGpuAvailable returns module-level state)", async () => {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": true}\n'));
+    await initPromise;
+
+    expect(isGpuAvailable()).toBe(true);
+
+    shutdownDispatcher();
+
+    // GPU status persists at module level even after shutdown
+    expect(isGpuAvailable()).toBe(true);
+  });
+});
+
+// ── initDispatcher edge cases ────────────────────────────────────────
+
+describe("bridge - initDispatcher edge cases", () => {
+  let initDispatcher: typeof import("../../../packages/ai/src/bridge.js").initDispatcher;
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let shutdownDispatcher: typeof import("../../../packages/ai/src/bridge.js").shutdownDispatcher;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    initDispatcher = mod.initDispatcher;
+    runPythonWithProgress = mod.runPythonWithProgress;
+    shutdownDispatcher = mod.shutdownDispatcher;
+  });
+
+  afterEach(() => {
+    shutdownDispatcher();
+    vi.restoreAllMocks();
+  });
+
+  it("returns ready=false immediately when dispatcher already permanently failed", async () => {
+    // Force dispatcherFailed by triggering ENOENT error
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const initPromise1 = initDispatcher();
+
+    const enoent = new Error("spawn ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mock.emitEvent("error", enoent);
+
+    const result1 = await initPromise1;
+    expect(result1).toEqual({ ready: false, gpu: false });
+
+    // Second call should return immediately without spawning
+    const result2 = await initDispatcher();
+    expect(result2).toEqual({ ready: false, gpu: false });
+    expect(spawn).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns ready=false when spawn throws synchronously", async () => {
+    vi.mocked(spawn).mockImplementation(() => {
+      throw new Error("Cannot spawn");
+    });
+
+    const result = await initDispatcher();
+    expect(result).toEqual({ ready: false, gpu: false });
+  });
+
+  it("resolves with ready=false when dispatcher fails during init timeout", async () => {
+    vi.useFakeTimers();
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+
+    const promise = initDispatcher(500);
+
+    // Dispatcher crashes before timeout
+    const err = new Error("spawn error") as NodeJS.ErrnoException;
+    err.code = "ENOENT";
+    mock.emitEvent("error", err);
+
+    vi.advanceTimersByTime(100);
+
+    const result = await promise;
+    expect(result).toEqual({ ready: false, gpu: false });
+
+    vi.useRealTimers();
+  });
+});
+
+// ── Per-request fallback edge cases ──────────────────────────────────
+
+describe("bridge - per-request fallback edge cases", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("handles stderr that mixes progress JSON and regular text", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const progressUpdates: Array<{ percent: number; stage: string }> = [];
+    const promise = runPythonWithProgress("test.py", [], {
+      onProgress: (p, s) => progressUpdates.push({ percent: p, stage: s }),
+    });
+
+    // Kill dispatcher
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Mix of progress JSON and regular log lines on per-request stderr
+    mockPerReq.stderr.emit(
+      "data",
+      Buffer.from(
+        'WARNING: GPU not found\n{"progress": 40, "stage": "Loading model"}\nINFO: Using CPU\n',
+      ),
+    );
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"success": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+
+    const result = await promise;
+
+    expect(progressUpdates).toEqual([{ percent: 40, stage: "Loading model" }]);
+    expect(result.stderr).toContain("WARNING: GPU not found");
+    expect(result.stderr).toContain("INFO: Using CPU");
+  });
+
+  it("per-request stderr JSON with only progress is not collected as error output", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", [], {
+      onProgress: vi.fn(),
+    });
+
+    // Kill dispatcher
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Only progress JSON on stderr
+    mockPerReq.stderr.emit("data", Buffer.from('{"progress": 100, "stage": "Done"}\n'));
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"success": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+
+    const result = await promise;
+    // Stderr should not contain the progress JSON since it was parsed as progress
+    expect(result.stderr).toBe("");
+  });
+
+  it("handles empty stdout with successful exit", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Empty stdout, exit code 0
+    mockPerReq.emitEvent("close", 0, null);
+
+    const result = await promise;
+    expect(result.stdout).toBe("");
+  });
+
+  it("handles large stdout that arrives in many small chunks", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Send large JSON result in many small pieces
+    const fullJson = JSON.stringify({ success: true, data: "x".repeat(1000) });
+    for (let i = 0; i < fullJson.length; i += 50) {
+      mockPerReq.stdout.emit("data", Buffer.from(fullJson.slice(i, i + 50)));
+    }
+    mockPerReq.stdout.emit("data", Buffer.from("\n"));
+    mockPerReq.emitEvent("close", 0, null);
+
+    const result = await promise;
+    expect(result.stdout).toBe(fullJson);
+  });
+
+  it("does not invoke onProgress for JSON stderr that lacks stage field", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const onProgress = vi.fn();
+    const promise = runPythonWithProgress("test.py", [], { onProgress });
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // JSON on stderr but missing "stage" field
+    mockPerReq.stderr.emit("data", Buffer.from('{"progress": 50}\n'));
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"success": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+
+    await promise;
+    expect(onProgress).not.toHaveBeenCalled();
+  });
+
+  it("does not invoke onProgress for JSON stderr that lacks progress field", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const onProgress = vi.fn();
+    const promise = runPythonWithProgress("test.py", [], { onProgress });
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // JSON on stderr but missing "progress" field
+    mockPerReq.stderr.emit("data", Buffer.from('{"stage": "Loading"}\n'));
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"success": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+
+    await promise;
+    expect(onProgress).not.toHaveBeenCalled();
+  });
+});
+
+// ── Dispatcher error event handling ──────────────────────────────────
+
+describe("bridge - dispatcher error event handling", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let getDispatcherStatus: typeof import("../../../packages/ai/src/bridge.js").getDispatcherStatus;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+    getDispatcherStatus = mod.getDispatcherStatus;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("ENOENT error permanently disables the dispatcher", async () => {
+    const mock = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mock.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mock.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+    await promise;
+
+    expect(getDispatcherStatus().failed).toBe(true);
+  });
+
+  it("non-ENOENT error records a crash but does not permanently disable", async () => {
+    const mock = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mock.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const eacces = new Error("EACCES") as NodeJS.ErrnoException;
+    eacces.code = "EACCES";
+    mock.emitEvent("error", eacces);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockPerReq.stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+    await promise;
+
+    const status = getDispatcherStatus();
+    expect(status.failed).toBe(false);
+    expect(status.consecutiveCrashes).toBeGreaterThanOrEqual(1);
+  });
+
+  it("non-ENOENT dispatcher error increments crash counter and clears dispatcher state", async () => {
+    const mock = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mock.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    // Non-ENOENT error: records a crash, does NOT permanently disable
+    const eacces = new Error("permission denied") as NodeJS.ErrnoException;
+    eacces.code = "EACCES";
+    mock.emitEvent("error", eacces);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Per-request fallback picks up
+    mockPerReq.stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mockPerReq.emitEvent("close", 0, null);
+
+    await promise;
+
+    const status = getDispatcherStatus();
+    expect(status.consecutiveCrashes).toBeGreaterThanOrEqual(1);
+    expect(status.failed).toBe(false);
+    expect(status.running).toBe(false);
+    expect(status.ready).toBe(false);
+  });
+});
+
+// ── Dispatcher stdout partial line buffering ─────────────────────────
+
+describe("bridge - dispatcher stdout partial line buffering", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let initDispatcher: typeof import("../../../packages/ai/src/bridge.js").initDispatcher;
+  let shutdownDispatcher: typeof import("../../../packages/ai/src/bridge.js").shutdownDispatcher;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+    initDispatcher = mod.initDispatcher;
+    shutdownDispatcher = mod.shutdownDispatcher;
+  });
+
+  afterEach(() => {
+    shutdownDispatcher();
+    vi.restoreAllMocks();
+  });
+
+  async function setupReadyDispatcher() {
+    const mock = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock.process);
+    const initPromise = initDispatcher();
+    mock.stderr.emit("data", Buffer.from('{"ready": true, "gpu": false}\n'));
+    await initPromise;
+    return mock;
+  }
+
+  it("handles dispatcher response split across 3 or more stdout chunks", async () => {
+    const mock = await setupReadyDispatcher();
+
+    const promise = runPythonWithProgress("test.py", []);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const line = mock.stdinWrites.join("").split("\n").filter(Boolean)[0];
+    const id = JSON.parse(line).id;
+
+    const fullResponse = JSON.stringify({ id, exitCode: 0, stdout: '{"ok":true}' });
+
+    // Split into 3 chunks
+    const third = Math.floor(fullResponse.length / 3);
+    mock.stdout.emit("data", Buffer.from(fullResponse.slice(0, third)));
+    mock.stdout.emit("data", Buffer.from(fullResponse.slice(third, third * 2)));
+    mock.stdout.emit("data", Buffer.from(`${fullResponse.slice(third * 2)}\n`));
+
+    const result = await promise;
+    expect(result.stdout).toBe('{"ok":true}');
+  });
+
+  it("handles two complete responses in a single stdout data event", async () => {
+    const mock = await setupReadyDispatcher();
+
+    const p1 = runPythonWithProgress("a.py", []);
+    const p2 = runPythonWithProgress("b.py", []);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const lines = mock.stdinWrites.join("").split("\n").filter(Boolean);
+    const id1 = JSON.parse(lines[0]).id;
+    const id2 = JSON.parse(lines[1]).id;
+
+    // Both responses in a single chunk
+    const response1 = JSON.stringify({ id: id1, exitCode: 0, stdout: '{"r":"one"}' });
+    const response2 = JSON.stringify({ id: id2, exitCode: 0, stdout: '{"r":"two"}' });
+    mock.stdout.emit("data", Buffer.from(`${response1}\n${response2}\n`));
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.stdout).toBe('{"r":"one"}');
+    expect(r2.stdout).toBe('{"r":"two"}');
+  });
+});
+
+// ── Crash recovery resets on success ─────────────────────────────────
+
+describe("bridge - crash recovery resets on successful readiness", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let initDispatcher: typeof import("../../../packages/ai/src/bridge.js").initDispatcher;
+  let getDispatcherStatus: typeof import("../../../packages/ai/src/bridge.js").getDispatcherStatus;
+  let shutdownDispatcher: typeof import("../../../packages/ai/src/bridge.js").shutdownDispatcher;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+    initDispatcher = mod.initDispatcher;
+    getDispatcherStatus = mod.getDispatcherStatus;
+    shutdownDispatcher = mod.shutdownDispatcher;
+  });
+
+  afterEach(() => {
+    shutdownDispatcher();
+    vi.restoreAllMocks();
+  });
+
+  it("resets consecutiveCrashes to 0 when dispatcher becomes ready", async () => {
+    vi.useFakeTimers();
+
+    // First: cause a crash to increment the counter
+    const mock1 = createMockProcess();
+    const mockPR = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mock1.process;
+      if (callCount === 2) return mockPR.process;
+      // Third call will be a new dispatcher
+      return createMockProcess().process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+    mock1.emitEvent("close", 1, null);
+
+    await vi.advanceTimersByTimeAsync(20);
+
+    mockPR.stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mockPR.emitEvent("close", 0, null);
+    await promise;
+
+    expect(getDispatcherStatus().consecutiveCrashes).toBeGreaterThanOrEqual(1);
+
+    // Now: successfully initialize dispatcher after backoff
+    vi.advanceTimersByTime(5000);
+
+    const mock2 = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mock2.process);
+
+    const initPromise = initDispatcher();
+    mock2.stderr.emit("data", Buffer.from('{"ready": true, "gpu": false}\n'));
+
+    vi.advanceTimersByTime(100);
+    await initPromise;
+
+    expect(getDispatcherStatus().consecutiveCrashes).toBe(0);
+    expect(getDispatcherStatus().ready).toBe(true);
+
+    vi.useRealTimers();
+  });
+});
+
+// ── Backoff prevents restarts during cooldown ────────────────────────
+
+describe("bridge - backoff prevents restart during cooldown", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+  let getDispatcherStatus: typeof import("../../../packages/ai/src/bridge.js").getDispatcherStatus;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+    getDispatcherStatus = mod.getDispatcherStatus;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("second crash has 2x the backoff delay of the first crash", async () => {
+    vi.useFakeTimers();
+
+    const mocks: ReturnType<typeof createMockProcess>[] = [];
+    for (let i = 0; i < 8; i++) {
+      mocks.push(createMockProcess());
+    }
+
+    let callCount = 0;
+    vi.mocked(spawn).mockImplementation(() => {
+      const m = mocks[callCount % mocks.length];
+      callCount++;
+      return m.process;
+    });
+
+    // First crash: backoff = 1000ms
+    const p1 = runPythonWithProgress("test.py", []);
+    mocks[0].emitEvent("close", 1, null);
+    await vi.advanceTimersByTimeAsync(20);
+    mocks[1].stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mocks[1].emitEvent("close", 0, null);
+    await p1;
+
+    expect(getDispatcherStatus().consecutiveCrashes).toBe(1);
+
+    // Still in first backoff: advance only 500ms (< 1000ms)
+    vi.advanceTimersByTime(500);
+
+    // Second request during backoff: should skip dispatcher, go to per-request only
+    const spawnCountBefore = callCount;
+    const p2 = runPythonWithProgress("test2.py", []);
+    await vi.advanceTimersByTimeAsync(20);
+
+    mocks[callCount - 1].stdout.emit("data", Buffer.from('{"ok": true}\n'));
+    mocks[callCount - 1].emitEvent("close", 0, null);
+    await p2;
+
+    // Only 1 additional spawn (per-request), not 2 (dispatcher + per-request)
+    expect(callCount - spawnCountBefore).toBe(1);
+
+    vi.useRealTimers();
+  });
+});
+
+// ── extractPythonError comprehensive coverage ────────────────────────
+
+describe("bridge - extractPythonError coverage via per-request path", () => {
+  let runPythonWithProgress: typeof import("../../../packages/ai/src/bridge.js").runPythonWithProgress;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.mocked(spawn).mockReset();
+
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    runPythonWithProgress = mod.runPythonWithProgress;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("extracts error from JSON on stdout when non-zero exit", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // stdout contains JSON error, stderr is empty
+    mockPerReq.stdout.emit("data", Buffer.from('{"error": "Model failed to load"}\n'));
+    mockPerReq.emitEvent("close", 1, null);
+
+    await expect(promise).rejects.toThrow("Model failed to load");
+  });
+
+  it("extracts last meaningful line from traceback when error is only in stderr", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Full Python traceback on stderr
+    mockPerReq.stderr.emit(
+      "data",
+      Buffer.from(
+        "Traceback (most recent call last):\n" +
+          '  File "model.py", line 42, in load\n' +
+          "    weights = torch.load(path)\n" +
+          "FileNotFoundError: [Errno 2] No such file or directory: 'model.pth'\n",
+      ),
+    );
+    mockPerReq.emitEvent("close", 1, null);
+
+    await expect(promise).rejects.toThrow("FileNotFoundError");
+  });
+
+  it("returns generic exit code message when stderr has only the traceback header", async () => {
+    const mockDisp = createMockProcess();
+    const mockPerReq = createMockProcess();
+    let callCount = 0;
+
+    vi.mocked(spawn).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return mockDisp.process;
+      return mockPerReq.process;
+    });
+
+    const promise = runPythonWithProgress("test.py", []);
+
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    mockDisp.emitEvent("error", enoent);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Only traceback header, no actual error line
+    mockPerReq.stderr.emit("data", Buffer.from("Traceback (most recent call last):\n"));
+    mockPerReq.emitEvent("close", 3, null);
+
+    await expect(promise).rejects.toThrow("exited with code 3");
+  });
+});
+
+// ── parseStdoutJson boundary conditions ──────────────────────────────
+
+describe("bridge - parseStdoutJson boundary conditions", () => {
+  let parseStdoutJson: (stdout: string) => unknown;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import("../../../packages/ai/src/bridge.js");
+    parseStdoutJson = mod.parseStdoutJson;
+  });
+
+  it("handles JSON with escaped quotes in string values", () => {
+    const result = parseStdoutJson('{"text": "he said \\"hello\\""}');
+    expect(result).toEqual({ text: 'he said "hello"' });
+  });
+
+  it("handles JSON with empty object", () => {
+    const result = parseStdoutJson("{}");
+    expect(result).toEqual({});
+  });
+
+  it("handles JSON with empty arrays and nested empty objects", () => {
+    const result = parseStdoutJson('{"faces": [], "meta": {}}');
+    expect(result).toEqual({ faces: [], meta: {} });
+  });
+
+  it("handles JSON with very long string values", () => {
+    const longText = "a".repeat(10000);
+    const result = parseStdoutJson(`{"text": "${longText}"}`);
+    expect((result as { text: string }).text).toBe(longText);
+  });
+
+  it("handles JSON preceded by ANSI escape codes in stdout", () => {
+    // Some Python programs write ANSI codes before output
+    const stdout = '\x1b[32mProcessing complete\x1b[0m\n{"success": true}';
+    // The regex matches from the first { to the last }
+    const result = parseStdoutJson(stdout);
+    expect(result).toEqual({ success: true });
+  });
+
+  it("handles JSON with negative numbers", () => {
+    const result = parseStdoutJson('{"x": -10, "y": -0.5}');
+    expect(result).toEqual({ x: -10, y: -0.5 });
+  });
+
+  it("throws on truncated JSON", () => {
+    expect(() => parseStdoutJson('{"success": true, "dat')).toThrow();
+  });
+
+  it("handles JSON with only whitespace before the object", () => {
+    const result = parseStdoutJson('   \n  \t  {"success": true}');
+    expect(result).toEqual({ success: true });
+  });
+});

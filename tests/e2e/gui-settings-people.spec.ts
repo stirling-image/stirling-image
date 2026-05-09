@@ -119,6 +119,59 @@ test.describe("GUI Settings - People Tab", () => {
     }
   });
 
+  test("role dropdown in add form contains admin, editor, and user options", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /people/i }).click();
+    await page.waitForTimeout(500);
+
+    await page.getByRole("button", { name: /add members/i }).click();
+    await expect(page.getByPlaceholder("Username")).toBeVisible();
+
+    // The role dropdown is the first select in the form
+    const roleSelect = page.locator("form select").first();
+    await expect(roleSelect).toBeVisible();
+
+    // Verify all three built-in role options are available
+    await expect(roleSelect.locator("option[value='admin']")).toBeAttached();
+    await expect(roleSelect.locator("option[value='editor']")).toBeAttached();
+    await expect(roleSelect.locator("option[value='user']")).toBeAttached();
+
+    // Cancel the form
+    await page.getByRole("button", { name: /cancel/i }).click();
+  });
+
+  test("creating a user with editor role shows correct role in table", async ({
+    loggedInPage: page,
+  }) => {
+    const username = `guieditor-${UID}`;
+    let adminToken: string;
+
+    try {
+      await openSettings(page);
+      await page.getByRole("button", { name: /people/i }).click();
+      await page.waitForTimeout(500);
+
+      await page.getByRole("button", { name: /add members/i }).click();
+      await page.getByPlaceholder("Username").fill(username);
+      await page.getByPlaceholder("Password").fill("TestPass123!");
+
+      // Select editor role
+      const roleSelect = page.locator("form select").first();
+      await roleSelect.selectOption("editor");
+
+      await page.getByRole("button", { name: /create/i }).click();
+
+      // User should appear in the table with editor role
+      await expect(page.getByText(username)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText("EDITOR")).toBeVisible();
+    } finally {
+      adminToken = await getAdminToken();
+      await cleanupUsersByPrefix(adminToken, "guieditor-");
+    }
+  });
+
   test("creating a user via the form adds them to the table", async ({ loggedInPage: page }) => {
     const username = `guipeople-${UID}`;
     let adminToken: string;
@@ -481,5 +534,188 @@ test.describe("GUI Settings - Roles Tab", () => {
     await page.getByRole("button", { name: /^roles$/i }).click();
 
     await expect(page.getByRole("button", { name: /create custom role/i })).toBeVisible();
+  });
+
+  test("Create Custom Role opens form with name, description, and permissions", async ({
+    loggedInPage: page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /^roles$/i }).click();
+
+    await page.getByRole("button", { name: /create custom role/i }).click();
+
+    // Form fields should be visible
+    await expect(page.getByText("New Role")).toBeVisible();
+    await expect(page.getByPlaceholder("Role name")).toBeVisible();
+    await expect(page.getByPlaceholder("Description (optional)")).toBeVisible();
+    await expect(page.getByText("Permissions")).toBeVisible();
+
+    // Permission checkboxes should be present
+    await expect(page.locator("input[type='checkbox']").first()).toBeVisible();
+    await expect(page.getByText("tools:use")).toBeVisible();
+
+    // Create and Cancel buttons
+    await expect(page.getByRole("button", { name: /^create$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
+
+    // Cancel closes the form
+    await page.getByRole("button", { name: /cancel/i }).click();
+    await expect(page.getByText("New Role")).not.toBeVisible();
+  });
+
+  test("creating a custom role adds it to the list with edit/delete buttons", async ({
+    loggedInPage: page,
+  }) => {
+    const roleName = `guirole${UID}`;
+    const adminToken = await getAdminToken();
+
+    try {
+      await openSettings(page);
+      await page.getByRole("button", { name: /^roles$/i }).click();
+
+      await page.getByRole("button", { name: /create custom role/i }).click();
+      await page.getByPlaceholder("Role name").fill(roleName);
+      await page.getByPlaceholder("Description (optional)").fill("Test custom role");
+
+      // Select a permission
+      const toolsCheckbox = page
+        .locator("label")
+        .filter({ hasText: "tools:use" })
+        .locator("input[type='checkbox']");
+      await toolsCheckbox.check();
+
+      await page.getByRole("button", { name: /^create$/i }).click();
+
+      // Role should appear in the list
+      await expect(page.getByText(roleName)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText("Role created successfully")).toBeVisible({ timeout: 3_000 });
+
+      // Custom roles have edit and delete buttons
+      await expect(page.locator("button[title='Edit role']").first()).toBeVisible();
+      await expect(page.locator("button[title='Delete role']").first()).toBeVisible();
+    } finally {
+      // Clean up via API
+      await fetch(`${API}/api/v1/roles`, { headers: authOnly(adminToken) })
+        .then((r) => r.json())
+        .then(async ({ roles }: { roles: Array<{ id: string; name: string }> }) => {
+          for (const r of roles) {
+            if (r.name === roleName) {
+              await fetch(`${API}/api/v1/roles/${r.id}`, {
+                method: "DELETE",
+                headers: authOnly(adminToken),
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  });
+
+  test("editing a custom role updates its name", async ({ loggedInPage: page }) => {
+    const roleName = `guiedit${UID}`;
+    const updatedName = `guieditup${UID}`;
+    const adminToken = await getAdminToken();
+
+    try {
+      // Create role via API
+      await fetch(`${API}/api/v1/roles`, {
+        method: "POST",
+        headers: authJson(adminToken),
+        body: JSON.stringify({
+          name: roleName,
+          description: "Editable role",
+          permissions: ["tools:use"],
+        }),
+      });
+
+      await openSettings(page);
+      await page.getByRole("button", { name: /^roles$/i }).click();
+      await expect(page.getByText(roleName)).toBeVisible({ timeout: 5_000 });
+
+      // Click the edit button for the custom role
+      await page.locator("button[title='Edit role']").first().click();
+
+      // The edit form should appear
+      await expect(page.getByText(/edit role/i)).toBeVisible();
+
+      // Change the role name
+      const nameInput = page.getByPlaceholder("Role name");
+      await nameInput.fill(updatedName);
+
+      // Save
+      await page.getByRole("button", { name: /^save$/i }).click();
+      await expect(page.getByText("Role updated")).toBeVisible({ timeout: 5_000 });
+
+      // Updated name should appear
+      await expect(page.getByText(updatedName)).toBeVisible({ timeout: 5_000 });
+    } finally {
+      // Clean up both possible names
+      await fetch(`${API}/api/v1/roles`, { headers: authOnly(adminToken) })
+        .then((r) => r.json())
+        .then(async ({ roles }: { roles: Array<{ id: string; name: string }> }) => {
+          for (const r of roles) {
+            if (r.name === roleName || r.name === updatedName) {
+              await fetch(`${API}/api/v1/roles/${r.id}`, {
+                method: "DELETE",
+                headers: authOnly(adminToken),
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  });
+
+  test("deleting a custom role removes it from the list", async ({ loggedInPage: page }) => {
+    const roleName = `guidel${UID}`;
+    const adminToken = await getAdminToken();
+
+    try {
+      // Create role via API
+      await fetch(`${API}/api/v1/roles`, {
+        method: "POST",
+        headers: authJson(adminToken),
+        body: JSON.stringify({
+          name: roleName,
+          description: "Deletable role",
+          permissions: ["tools:use"],
+        }),
+      });
+
+      await openSettings(page);
+      await page.getByRole("button", { name: /^roles$/i }).click();
+      await expect(page.getByText(roleName)).toBeVisible({ timeout: 5_000 });
+
+      // Click the delete button for the custom role
+      page.on("dialog", (d) => d.accept());
+      await page.locator("button[title='Delete role']").first().click();
+
+      // Role should be removed
+      await expect(page.getByText(roleName)).not.toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(/deleted/i)).toBeVisible({ timeout: 3_000 });
+    } finally {
+      // Cleanup fallback
+      await fetch(`${API}/api/v1/roles`, { headers: authOnly(adminToken) })
+        .then((r) => r.json())
+        .then(async ({ roles }: { roles: Array<{ id: string; name: string }> }) => {
+          for (const r of roles) {
+            if (r.name === roleName) {
+              await fetch(`${API}/api/v1/roles/${r.id}`, {
+                method: "DELETE",
+                headers: authOnly(adminToken),
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  });
+
+  test("built-in roles display their permissions list", async ({ loggedInPage: page }) => {
+    await openSettings(page);
+    await page.getByRole("button", { name: /^roles$/i }).click();
+
+    // Built-in roles should show permission badges (font-mono spans inside role cards)
+    await expect(page.locator(".font-mono").filter({ hasText: "tools:use" }).first()).toBeVisible();
   });
 });

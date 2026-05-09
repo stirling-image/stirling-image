@@ -484,4 +484,57 @@ describe("removeBackground", () => {
       expect(JSON.parse(fallbackArgs[2]).model).toBe("u2net");
     });
   });
+
+  describe("edge cases", () => {
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+        "segmentation fault",
+      );
+    });
+
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output missing");
+    });
+
+    it("handles missing width and height from metadata", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            resize: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-png-data")),
+            metadata: vi.fn().mockResolvedValue({ width: undefined, height: undefined }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      // Should not throw: origW and origH default to 0
+      await removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR);
+      expect(runPythonWithProgress).toHaveBeenCalled();
+    });
+
+    it("passes backgroundColor option in args JSON", async () => {
+      await removeBackground(FAKE_INPUT, FAKE_OUTPUT_DIR, {
+        model: "u2net",
+        backgroundColor: "#00FF00",
+      });
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({
+        model: "u2net",
+        backgroundColor: "#00FF00",
+      });
+    });
+  });
 });

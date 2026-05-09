@@ -693,6 +693,295 @@ test.describe("Text Overlay — validation", () => {
   });
 });
 
+// ─── Watermark Text -- Rotation Angles ───────────────────────────
+
+test.describe("Watermark Text -- rotation", () => {
+  const rotations = [-45, -30, 0, 30, 45, 90] as const;
+
+  for (const rotation of rotations) {
+    test(`tiled watermark with rotation=${rotation}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/watermark-text", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+          settings: JSON.stringify({
+            text: `ROT-${rotation}`,
+            fontSize: 18,
+            color: "#888888",
+            opacity: 30,
+            position: "tiled",
+            rotation,
+          }),
+        },
+      });
+      expect(res.ok(), `tiled watermark with rotation=${rotation} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Watermark Text -- Opacity Range ────────────────────────────
+
+test.describe("Watermark Text -- opacity range", () => {
+  const opacities = [1, 25, 50, 75, 100] as const;
+
+  for (const opacity of opacities) {
+    test(`watermark with opacity=${opacity}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/watermark-text", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+          settings: JSON.stringify({
+            text: `OP-${opacity}`,
+            fontSize: 20,
+            color: "#000000",
+            opacity,
+            position: "center",
+          }),
+        },
+      });
+      expect(res.ok(), `watermark with opacity=${opacity} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Watermark Image -- All Positions ──────────────────────────
+
+test.describe("Watermark Image -- all positions", () => {
+  const positions = ["top-left", "top-right", "bottom-left", "bottom-right", "center"] as const;
+
+  for (const position of positions) {
+    test(`image watermark at ${position}`, async ({ request }) => {
+      const { body, contentType } = buildMultipart(
+        [
+          { name: "file", filename: "main.jpg", contentType: "image/jpeg", buffer: JPG_SAMPLE },
+          {
+            name: "watermark",
+            filename: "wm.png",
+            contentType: "image/png",
+            buffer: WEBP_50x50,
+          },
+        ],
+        [
+          {
+            name: "settings",
+            value: JSON.stringify({ position, opacity: 50, scale: 20 }),
+          },
+        ],
+      );
+      const res = await request.post("/api/v1/tools/watermark-image", {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+        data: body,
+      });
+      expect(res.ok(), `image watermark at ${position} should succeed`).toBe(true);
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Watermark Image -- Scale Variations ───────────────────────
+
+test.describe("Watermark Image -- scale variations", () => {
+  const scales = [5, 15, 30, 50, 75] as const;
+
+  for (const scale of scales) {
+    test(`image watermark with scale=${scale}%`, async ({ request }) => {
+      const { body, contentType } = buildMultipart(
+        [
+          { name: "file", filename: "main.jpg", contentType: "image/jpeg", buffer: JPG_SAMPLE },
+          {
+            name: "watermark",
+            filename: "wm.png",
+            contentType: "image/png",
+            buffer: PNG_200x150,
+          },
+        ],
+        [
+          {
+            name: "settings",
+            value: JSON.stringify({ position: "center", opacity: 40, scale }),
+          },
+        ],
+      );
+      const res = await request.post("/api/v1/tools/watermark-image", {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+        data: body,
+      });
+      expect(res.ok(), `image watermark with scale=${scale} should succeed`).toBe(true);
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Text Overlay -- All Positions ─────────────────────────────
+
+test.describe("Text Overlay -- all positions", () => {
+  const positions = ["top", "center", "bottom"] as const;
+
+  for (const position of positions) {
+    test(`text overlay at ${position}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/text-overlay", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+          settings: JSON.stringify({
+            text: `Position: ${position}`,
+            fontSize: 20,
+            color: "#FF0000",
+            position,
+          }),
+        },
+      });
+      expect(res.ok(), `text overlay at ${position} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Text Overlay -- Font Size Range ───────────────────────────
+
+test.describe("Text Overlay -- font size range", () => {
+  const fontSizes = [8, 16, 32, 64, 128] as const;
+
+  for (const fontSize of fontSizes) {
+    test(`text overlay with fontSize=${fontSize}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/text-overlay", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "sample.jpg", mimeType: "image/jpeg", buffer: JPG_SAMPLE },
+          settings: JSON.stringify({
+            text: "Font Size Test",
+            fontSize,
+            color: "#333333",
+            position: "center",
+          }),
+        },
+      });
+      expect(res.ok(), `text overlay with fontSize=${fontSize} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Text Overlay -- Color Variations ──────────────────────────
+
+test.describe("Text Overlay -- color variations", () => {
+  const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFFFF", "#000000", "#FFAA33"] as const;
+
+  for (const color of colors) {
+    test(`text overlay with color=${color}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/text-overlay", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+          settings: JSON.stringify({
+            text: "Color Test",
+            fontSize: 24,
+            color,
+            position: "center",
+          }),
+        },
+      });
+      expect(res.ok(), `text overlay with color=${color} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Compose -- Output Download Verification ───────────────────
+
+test.describe("Compose -- output verification", () => {
+  test("composed image can be downloaded and is valid", async ({ request }) => {
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "base.png", contentType: "image/png", buffer: PNG_200x150 },
+        {
+          name: "overlay",
+          filename: "overlay.jpg",
+          contentType: "image/jpeg",
+          buffer: JPG_100x100,
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ x: 10, y: 10, opacity: 80 }) }],
+    );
+    const res = await request.post("/api/v1/tools/compose", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+
+    // Download and verify
+    const dlRes = await request.get(json.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const buffer = Buffer.from(await dlRes.body());
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+
+  test("compose with zero offset overlays at origin", async ({ request }) => {
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "base.jpg", contentType: "image/jpeg", buffer: JPG_SAMPLE },
+        {
+          name: "overlay",
+          filename: "overlay.webp",
+          contentType: "image/webp",
+          buffer: WEBP_50x50,
+        },
+      ],
+      [{ name: "settings", value: JSON.stringify({ x: 0, y: 0, opacity: 100 }) }],
+    );
+    const res = await request.post("/api/v1/tools/compose", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+    expect(json.processedSize).toBeGreaterThan(0);
+  });
+});
+
+// ─── Watermark Text -- Download and Verify ─────────────────────
+
+test.describe("Watermark Text -- download verification", () => {
+  test("watermarked file is downloadable and non-empty", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/watermark-text", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({
+          text: "VERIFY",
+          fontSize: 24,
+          color: "#FF0000",
+          opacity: 50,
+          position: "center",
+        }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+
+    const dlRes = await request.get(body.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const buffer = Buffer.from(await dlRes.body());
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+});
+
 // ─── Auth Failure ──────────────────────────────────────────────────
 
 test.describe("Auth failure", () => {

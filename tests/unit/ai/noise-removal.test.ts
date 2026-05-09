@@ -329,5 +329,59 @@ describe("noiseRemoval", () => {
         Buffer.from("mock-png-data"),
       );
     });
+
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Image decode failed")),
+            metadata: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow(
+        "Image decode failed",
+      );
+    });
+  });
+
+  describe("edge cases", () => {
+    it("handles zero dimensions from metadata", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-png-data")),
+            metadata: vi.fn().mockResolvedValue({ width: undefined, height: undefined }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      // Should not throw; dimensions default to 0
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      expect(options.timeout).toBe(300000); // min timeout since megapixels = 0
+    });
+
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output missing");
+    });
+
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(noiseRemoval(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
   });
 });

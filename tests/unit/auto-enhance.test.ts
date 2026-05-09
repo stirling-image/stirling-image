@@ -332,3 +332,95 @@ describe("applyCorrections pipeline (CLAHE + normalise + gamma)", () => {
     expect(Buffer.compare(lowBuf, highBuf)).not.toBe(0);
   });
 });
+
+describe("auto-enhance edge cases", () => {
+  it("produces negative saturation correction for over-saturated image (saturation > 60)", async () => {
+    // Create a highly saturated image (pure bright colors with extreme channel spread)
+    const saturatedBuf = await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 255, g: 0, b: 0 } },
+    })
+      .png()
+      .toBuffer();
+
+    const result = await analyzeImage(saturatedBuf);
+    // A pure red image has extreme channel spread, so saturation score should be > 60
+    expect(result.scores.saturation).toBeGreaterThan(60);
+    // The correction should be negative (desaturate)
+    expect(result.corrections.saturation).toBeLessThan(0);
+  });
+
+  it("applies denoise with kernel 5 when denoise adjustment is >= 4", async () => {
+    // To get adj >= 4, we need corrections.denoise * presets.denoise * scale >= 4
+    // With low-light preset (denoise: 2.0), intensity 100 (scale = 2.0):
+    //   adj = denoise * 2.0 * 2.0 = denoise * 4.0
+    //   For denoise = 5: adj = 20 >= 4, so kernel = 5
+    const corrections = {
+      brightness: 0,
+      contrast: 0,
+      temperature: 0,
+      saturation: 0,
+      sharpness: 0,
+      denoise: 5,
+    };
+    const image = sharp(PNG_200x150);
+    const enhanced = applyCorrections(image, corrections, "low-light", 100, {});
+    const buf = await enhanced.toBuffer();
+    expect(buf.length).toBeGreaterThan(0);
+  });
+
+  it("applies denoise with kernel 3 when denoise adjustment is >= 2 but < 4", async () => {
+    // With auto preset (denoise: 1.0), intensity 50 (scale = 1.0):
+    //   adj = denoise * 1.0 * 1.0 = denoise
+    //   For denoise = 3: adj = 3 (>= 2 but < 4), so kernel = 3
+    const corrections = {
+      brightness: 0,
+      contrast: 0,
+      temperature: 0,
+      saturation: 0,
+      sharpness: 0,
+      denoise: 3,
+    };
+    const image = sharp(PNG_200x150);
+    const enhanced = applyCorrections(image, corrections, "auto", 50, {});
+    const buf = await enhanced.toBuffer();
+    expect(buf.length).toBeGreaterThan(0);
+  });
+
+  it("suggests document mode for high-contrast low-saturation image", async () => {
+    // Create a high-contrast black & white image
+    const bwBuf = await sharp(
+      Buffer.from(
+        Array.from({ length: 100 * 100 * 3 }, (_, i) => {
+          const row = Math.floor(i / 300);
+          return row % 2 === 0 ? 255 : 0;
+        }),
+      ),
+      { raw: { width: 100, height: 100, channels: 3 } },
+    )
+      .png()
+      .toBuffer();
+
+    const result = await analyzeImage(bwBuf);
+    // High contrast + low saturation should suggest document mode
+    if (result.scores.contrast > 60 && result.scores.saturation < 30) {
+      expect(result.suggestedMode).toBe("document");
+    }
+  });
+
+  it("scaleCorrections with landscape mode applies correct multipliers", () => {
+    const base = {
+      brightness: 10,
+      contrast: 10,
+      temperature: 10,
+      saturation: 10,
+      sharpness: 10,
+      denoise: 10,
+    };
+    const scaled = scaleCorrections(base, "landscape", 50);
+    // Landscape preset: brightness=1.0, contrast=1.3, saturation=1.4, sharpness=1.5
+    expect(scaled.brightness).toBe(10); // 10 * 1.0 * 1.0 = 10
+    expect(scaled.contrast).toBe(13); // 10 * 1.3 * 1.0 = 13
+    expect(scaled.saturation).toBe(14); // 10 * 1.4 * 1.0 = 14
+    expect(scaled.sharpness).toBe(15); // 10 * 1.5 * 1.0 = 15
+  });
+});

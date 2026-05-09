@@ -138,6 +138,31 @@ test.describe("Responsive - Desktop (1280x720)", () => {
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
   });
+
+  test("no horizontal overflow on files page", async ({ loggedInPage: page }) => {
+    await page.goto("/files");
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+
+  test("fullscreen grid interactive elements are reachable", async ({ loggedInPage: page }) => {
+    await page.goto("/fullscreen");
+
+    // Search bar should be within viewport
+    const searchInput = page.getByPlaceholder(/search/i);
+    await expect(searchInput).toBeVisible();
+    const box = await searchInput.boundingBox();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(DESKTOP.width + 1);
+    }
+
+    // Toggle details button should be reachable
+    const toggleBtn = page.getByRole("button", { name: /hide details|show details/i }).first();
+    await expect(toggleBtn).toBeVisible();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -243,6 +268,34 @@ test.describe("Responsive - Tablet (768x1024)", () => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+
+  test("login page has no horizontal overflow at tablet width", async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+      viewport: TABLET,
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+
+    await context.close();
+  });
+
+  test("fullscreen grid interactive elements are reachable at tablet", async ({
+    loggedInPage: page,
+  }) => {
+    await page.goto("/fullscreen");
+
+    const searchInput = page.getByPlaceholder(/search/i);
+    await expect(searchInput).toBeVisible();
+
+    // Can interact with search
+    await searchInput.fill("resize");
+    await expect(page.getByRole("link", { name: /^Resize/ }).first()).toBeVisible();
   });
 
   test("all text on home page is readable (font-size >= 12px)", async ({ loggedInPage: page }) => {
@@ -522,6 +575,42 @@ test.describe("Responsive - Mobile (375x667)", () => {
       expect(box.x + box.width).toBeLessThanOrEqual(MOBILE.width + 1);
       expect(box.y + box.height).toBeLessThanOrEqual(MOBILE.height + 1);
     }
+  });
+
+  test("hamburger opens sidebar overlay with backdrop blur", async ({ loggedInPage: page }) => {
+    const topBar = page.locator(".fixed").filter({ hasText: "SnapOtter" }).first();
+    const hamburger = topBar.locator("button").first();
+    await hamburger.click();
+
+    // Backdrop should have backdrop-blur-sm class
+    const backdrop = page.locator("[class*='backdrop-blur']").first();
+    await expect(backdrop).toBeVisible();
+  });
+
+  test("login page all interactive elements reachable on mobile", async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+      viewport: MOBILE,
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+
+    // Username input should be reachable and within viewport
+    const usernameInput = page.getByLabel("Username");
+    await expect(usernameInput).toBeVisible();
+    const box = await usernameInput.boundingBox();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(MOBILE.width + 1);
+    }
+
+    // Password input reachable
+    await expect(page.getByLabel("Password")).toBeVisible();
+
+    // Login button reachable
+    await expect(page.getByRole("button", { name: /login/i })).toBeVisible();
+
+    await context.close();
   });
 
   test("SnapOtter branding text is readable on mobile", async ({ loggedInPage: page }) => {

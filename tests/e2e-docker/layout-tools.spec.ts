@@ -674,6 +674,298 @@ test.describe("Border — output verification", () => {
   });
 });
 
+// ─── Collage -- All Template Types ─────────────────────────────
+
+test.describe("Collage -- template types", () => {
+  const templates = [
+    { id: "2-h-equal", images: 2, label: "2-horizontal-equal" },
+    { id: "2-v-equal", images: 2, label: "2-vertical-equal" },
+    { id: "3-v-equal", images: 3, label: "3-vertical-equal" },
+    { id: "3-h-1big-2small", images: 3, label: "3-horizontal-1big-2small" },
+    { id: "4-grid", images: 4, label: "4-grid" },
+  ] as const;
+
+  const imagePool = [
+    { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+    { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+    { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+    { name: "file", filename: "d.jpg", contentType: "image/jpeg", buffer: JPG_PORTRAIT },
+  ];
+
+  for (const tmpl of templates) {
+    test(`collage with template ${tmpl.label}`, async ({ request }) => {
+      const files = imagePool.slice(0, tmpl.images);
+      const { body, contentType } = buildMultipart(files, [
+        {
+          name: "settings",
+          value: JSON.stringify({
+            templateId: tmpl.id,
+            width: 600,
+            height: 600,
+            gap: 5,
+            outputFormat: "png",
+          }),
+        },
+      ]);
+      const res = await request.post("/api/v1/tools/collage", {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+        data: body,
+      });
+      expect(res.ok(), `collage with template ${tmpl.label} should succeed`).toBe(true);
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+      expect(json.processedSize).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ─── Collage -- Background Colors ──────────────────────────────
+
+test.describe("Collage -- background colors", () => {
+  const bgColors = ["#FFFFFF", "#000000", "#FF0000", "#1a1a2e"] as const;
+
+  for (const bg of bgColors) {
+    test(`collage with background ${bg}`, async ({ request }) => {
+      const { body, contentType } = buildMultipart(
+        [
+          { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+          { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        ],
+        [
+          {
+            name: "settings",
+            value: JSON.stringify({
+              templateId: "2-h-equal",
+              gap: 10,
+              backgroundColor: bg,
+              outputFormat: "png",
+            }),
+          },
+        ],
+      );
+      const res = await request.post("/api/v1/tools/collage", {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+        data: body,
+      });
+      expect(res.ok(), `collage with bg=${bg} should succeed`).toBe(true);
+      const json = await res.json();
+      expect(json.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Stitch -- Alignment Options ───────────────────────────────
+
+test.describe("Stitch -- alignment options", () => {
+  test("stitch horizontal with start alignment", async ({ request }) => {
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({ direction: "horizontal", gap: 5, alignment: "start" }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/stitch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+  });
+
+  test("stitch vertical with end alignment", async ({ request }) => {
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({ direction: "vertical", gap: 5, alignment: "end" }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/stitch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+  });
+
+  test("stitch horizontal with center alignment", async ({ request }) => {
+    const { body, contentType } = buildMultipart(
+      [
+        { name: "file", filename: "a.png", contentType: "image/png", buffer: PNG_200x150 },
+        { name: "file", filename: "b.jpg", contentType: "image/jpeg", buffer: JPG_100x100 },
+        { name: "file", filename: "c.webp", contentType: "image/webp", buffer: WEBP_50x50 },
+      ],
+      [
+        {
+          name: "settings",
+          value: JSON.stringify({ direction: "horizontal", gap: 0, alignment: "center" }),
+        },
+      ],
+    );
+    const res = await request.post("/api/v1/tools/stitch", {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+      data: body,
+    });
+    expect(res.ok()).toBe(true);
+    const json = await res.json();
+    expect(json.downloadUrl).toBeTruthy();
+  });
+});
+
+// ─── Split -- Grid Variations ──────────────────────────────────
+
+test.describe("Split -- grid variations", () => {
+  test("split into 1x1 (single tile returns full image)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/split", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ columns: 1, rows: 1 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const buffer = Buffer.from(await res.body());
+    expect(buffer.length).toBeGreaterThan(0);
+    // ZIP magic bytes
+    expect(buffer[0]).toBe(0x50);
+    expect(buffer[1]).toBe(0x4b);
+  });
+
+  test("split into 5x5 tiles", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/split", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ columns: 5, rows: 5 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const buffer = Buffer.from(await res.body());
+    expect(buffer.length).toBeGreaterThan(0);
+    expect(buffer[0]).toBe(0x50);
+    expect(buffer[1]).toBe(0x4b);
+  });
+
+  test("split into 2x5 tiles (more rows than columns)", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/split", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ columns: 2, rows: 5 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const buffer = Buffer.from(await res.body());
+    expect(buffer.length).toBeGreaterThan(0);
+    expect(buffer[0]).toBe(0x50);
+    expect(buffer[1]).toBe(0x4b);
+  });
+
+  test("split into 10x1 columns", async ({ request }) => {
+    const res = await request.post("/api/v1/tools/split", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ columns: 10, rows: 1 }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const buffer = Buffer.from(await res.body());
+    expect(buffer.length).toBeGreaterThan(0);
+    expect(buffer[0]).toBe(0x50);
+    expect(buffer[1]).toBe(0x4b);
+  });
+});
+
+// ─── Border -- Width and Color Variations ──────────────────────
+
+test.describe("Border -- width and color variations", () => {
+  const borderSizes = [1, 5, 20, 50, 100] as const;
+
+  for (const size of borderSizes) {
+    test(`border with size=${size}px`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/border", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+          settings: JSON.stringify({ size, color: "#FF6633" }),
+        },
+      });
+      expect(res.ok(), `border with size=${size} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+      expect(body.processedSize).toBeGreaterThan(0);
+    });
+  }
+
+  const borderColors = ["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF"] as const;
+
+  for (const color of borderColors) {
+    test(`border with color=${color}`, async ({ request }) => {
+      const res = await request.post("/api/v1/tools/border", {
+        headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          file: { name: "test.jpg", mimeType: "image/jpeg", buffer: JPG_100x100 },
+          settings: JSON.stringify({ size: 10, color }),
+        },
+      });
+      expect(res.ok(), `border with color=${color} should succeed`).toBe(true);
+      const body = await res.json();
+      expect(body.downloadUrl).toBeTruthy();
+    });
+  }
+});
+
+// ─── Border -- Dimension Verification ──────────────────────────
+
+test.describe("Border -- dimension verification", () => {
+  test("bordered image dimensions increase by 2x border size", async ({ request }) => {
+    const borderSize = 20;
+    const res = await request.post("/api/v1/tools/border", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "test.png", mimeType: "image/png", buffer: PNG_200x150 },
+        settings: JSON.stringify({ size: borderSize, color: "#FF0000" }),
+      },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+
+    // Download and check dimensions
+    const dlRes = await request.get(body.downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(dlRes.ok()).toBe(true);
+    const buffer = Buffer.from(await dlRes.body());
+
+    const infoRes = await request.post("/api/v1/tools/info", {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: { name: "bordered.png", mimeType: "image/png", buffer: buffer },
+      },
+    });
+    expect(infoRes.ok()).toBe(true);
+    const infoBody = await infoRes.json();
+    // 200 + 20*2 = 240, 150 + 20*2 = 190
+    expect(infoBody.width).toBe(200 + borderSize * 2);
+    expect(infoBody.height).toBe(150 + borderSize * 2);
+  });
+});
+
 // ─── Auth Failure ──────────────────────────────────────────────────
 
 test.describe("Auth failure", () => {

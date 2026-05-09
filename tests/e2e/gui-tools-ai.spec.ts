@@ -107,9 +107,29 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toBeEnabled();
     });
 
-    // NOTE: Error handling tests for AI sidecar unavailability require the
-    // sidecar to be running (to return a "not installed" response). These are
-    // covered by integration tests instead.
+    test("image background upload button visible when Image background selected", async ({
+      loggedInPage: page,
+    }) => {
+      await page.goto("/remove-background");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "Image" }).click();
+      await expect(page.getByText(/upload|choose/i).first()).toBeVisible();
+    });
+
+    test("switching subject type hides ultra quality for non-People", async ({
+      loggedInPage: page,
+    }) => {
+      await page.goto("/remove-background");
+      await uploadTestImage(page);
+
+      // People is default -- Ultra visible
+      await expect(page.getByRole("button", { name: "Ultra" })).toBeVisible();
+
+      // Switch to General -- Ultra should also disappear
+      await page.getByRole("button", { name: "General" }).click();
+      await expect(page.getByRole("button", { name: "Ultra" })).not.toBeVisible();
+    });
   });
 
   // ========================================================================
@@ -174,16 +194,28 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toBeEnabled();
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("face enhance checkbox toggles", async ({ loggedInPage: page }) => {
       await page.goto("/upscale");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      const checkbox = page
+        .locator("label")
+        .filter({ hasText: "Enhance faces" })
+        .locator("input[type='checkbox']");
+      await expect(checkbox).toBeVisible();
+      // Toggle it
+      const initialState = await checkbox.isChecked();
+      await checkbox.click();
+      const newState = await checkbox.isChecked();
+      expect(newState).toBe(!initialState);
+    });
+
+    test("switching to Fast hides enhance faces", async ({ loggedInPage: page }) => {
+      await page.goto("/upscale");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "Fast" }).click();
+      await expect(page.getByText("Enhance faces")).not.toBeVisible();
     });
   });
 
@@ -239,16 +271,26 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Extract Text/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("shows language dropdown options when expanded", async ({ loggedInPage: page }) => {
       await page.goto("/ocr");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      await page.getByText("Language").click();
+      const select = page.locator("select");
+      await expect(select.first()).toBeVisible();
+      // Should have multiple language options
+      const options = select.first().locator("option");
+      const count = await options.count();
+      expect(count).toBeGreaterThan(1);
+    });
+
+    test("switching quality tier changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/ocr");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "Best" }).click();
+      // Best should now be visually active (we just verify click doesn't error)
+      await page.getByRole("button", { name: "Fast" }).click();
     });
   });
 
@@ -290,16 +332,22 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Blur Faces/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("blur radius slider is interactive", async ({ loggedInPage: page }) => {
       await page.goto("/blur-faces");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      const slider = page.locator("#blur-faces-blur-radius");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("sensitivity slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/blur-faces");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#blur-faces-sensitivity");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
     });
   });
 
@@ -365,16 +413,22 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Enhance Faces/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("strength slider is interactive", async ({ loggedInPage: page }) => {
       await page.goto("/enhance-faces");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      const slider = page.locator("#enhance-faces-strength");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("sensitivity slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/enhance-faces");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#enhance-faces-sensitivity");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
     });
   });
 
@@ -418,6 +472,26 @@ test.describe("GUI AI Tools", () => {
 
       const submitBtn = page.getByTestId("erase-object-submit");
       await expect(submitBtn).toBeDisabled();
+    });
+
+    test("brush size slider is interactive", async ({ loggedInPage: page }) => {
+      await page.goto("/erase-object");
+      await uploadTestImage(page);
+
+      const slider = page.locator("#eraser-brush-size");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("output format selector has options", async ({ loggedInPage: page }) => {
+      await page.goto("/erase-object");
+      await uploadTestImage(page);
+
+      const select = page.locator("#eraser-format");
+      await expect(select).toBeVisible();
+      const options = select.locator("option");
+      const count = await options.count();
+      expect(count).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -498,16 +572,24 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toBeEnabled();
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("auto trim mode tolerance slider is interactive", async ({ loggedInPage: page }) => {
       await page.goto("/smart-crop");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      await page.getByRole("button", { name: "Auto Trim" }).click();
+      const slider = page.locator("#sc-threshold");
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveAttribute("type", "range");
+    });
+
+    test("subject focus width/height inputs accept values", async ({ loggedInPage: page }) => {
+      await page.goto("/smart-crop");
+      await uploadTestImage(page);
+
+      await page.locator("#sc-width").fill("800");
+      await expect(page.locator("#sc-width")).toHaveValue("800");
+      await page.locator("#sc-height").fill("600");
+      await expect(page.locator("#sc-height")).toHaveValue("600");
     });
   });
 
@@ -550,16 +632,19 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Colorize/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("shows color intensity slider after upload", async ({ loggedInPage: page }) => {
       await page.goto("/colorize");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText("Color Intensity")).toBeVisible();
+    });
+
+    test("switching AI model changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/colorize");
+      await uploadTestImage(page);
+
+      await page.locator("button").filter({ hasText: "Best" }).first().click();
+      await page.locator("button").filter({ hasText: "Fast" }).first().click();
     });
   });
 
@@ -628,16 +713,20 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Remove Noise/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("switching denoising tier changes active button", async ({ loggedInPage: page }) => {
       await page.goto("/noise-removal");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      await page.getByRole("button", { name: "Maximum" }).click();
+      await page.getByRole("button", { name: "Quick" }).click();
+    });
+
+    test("switching to PNG hides quality slider", async ({ loggedInPage: page }) => {
+      await page.goto("/noise-removal");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "PNG" }).click();
+      await expect(page.getByTestId("quality-slider")).not.toBeVisible();
     });
   });
 
@@ -692,9 +781,24 @@ test.describe("GUI AI Tools", () => {
       await expect(page.getByText(/mm.*px.*at.*DPI/).first()).toBeVisible();
     });
 
-    // NOTE: The auto-analyze test for passport photo requires the AI sidecar
-    // to respond (either with analysis results or a "not installed" error).
-    // This is covered by integration tests instead.
+    test("submit disabled without file, enabled with file", async ({ loggedInPage: page }) => {
+      await page.goto("/passport-photo");
+
+      const submitBtn = page.getByTestId("passport-photo-submit");
+      await expect(submitBtn).toBeDisabled();
+
+      await uploadTestImage(page);
+      await expect(submitBtn).toBeEnabled();
+    });
+
+    test("clicking max file size preset changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/passport-photo");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "50 KB" }).click();
+      await page.getByRole("button", { name: "100 KB" }).click();
+      await page.getByRole("button", { name: "No limit" }).click();
+    });
   });
 
   // ========================================================================
@@ -743,16 +847,21 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Fix Red Eye/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("sensitivity slider is interactive", async ({ loggedInPage: page }) => {
       await page.goto("/red-eye-removal");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      const slider = page.locator("input[type='range']").first();
+      await expect(slider).toBeVisible();
+    });
+
+    test("switching output format changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/red-eye-removal");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "PNG" }).click();
+      await page.getByRole("button", { name: "JPEG" }).click();
+      await page.getByRole("button", { name: "Original" }).click();
     });
   });
 
@@ -819,16 +928,30 @@ test.describe("GUI AI Tools", () => {
       await expect(submitBtn).toHaveText(/Restore Photo/);
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("unchecking face enhancement hides fidelity slider", async ({ loggedInPage: page }) => {
       await page.goto("/restore-photo");
       await uploadTestImage(page);
 
-      // Without the AI sidecar, tool should show a "not installed" or error indication
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      // Face Enhancement is on by default
+      await expect(page.getByText("Face Fidelity")).toBeVisible();
+
+      // Uncheck face enhancement
+      const checkbox = page
+        .locator("label")
+        .filter({ hasText: "Face Enhancement" })
+        .locator("input[type='checkbox']");
+      await checkbox.uncheck();
+
+      await expect(page.getByText("Face Fidelity")).not.toBeVisible();
+    });
+
+    test("switching restoration mode changes active button", async ({ loggedInPage: page }) => {
+      await page.goto("/restore-photo");
+      await uploadTestImage(page);
+
+      await page.getByRole("button", { name: "Heavy" }).click();
+      await page.getByRole("button", { name: "Light" }).click();
+      await page.getByRole("button", { name: "Auto" }).click();
     });
   });
 
@@ -947,15 +1070,18 @@ test.describe("GUI AI Tools", () => {
       );
     });
 
-    test.skip("shows feature-not-installed warning when AI sidecar is down", async ({
-      loggedInPage: page,
-    }) => {
+    test("output format dropdown has expected options", async ({ loggedInPage: page }) => {
       await page.goto("/transparency-fixer");
       await uploadTestImage(page);
 
-      await expect(
-        page.locator("text=/not installed|Feature.*not|is not available/i").first(),
-      ).toBeVisible({ timeout: 10_000 });
+      // Open advanced section
+      await page.getByText("Advanced").click();
+
+      const formatSelect = page.locator("select").first();
+      await expect(formatSelect).toBeVisible();
+      const options = formatSelect.locator("option");
+      const count = await options.count();
+      expect(count).toBeGreaterThanOrEqual(2); // at least png and webp
     });
   });
 

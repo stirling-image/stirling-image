@@ -389,5 +389,65 @@ describe("upscale", () => {
       // 4MP * 4 (2^2) * 180_000 = 2_880_000ms
       expect(options.timeout).toBe(2_880_000);
     });
+
+    it("handles zero dimensions from metadata gracefully", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-png-data")),
+            metadata: vi.fn().mockResolvedValue({ width: undefined, height: undefined }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await upscale(FAKE_INPUT, FAKE_OUTPUT_DIR);
+      const options = vi.mocked(runPythonWithProgress).mock.calls[0][2];
+      // 0 MP: timeout = max(600_000, 0) = 600_000
+      expect(options.timeout).toBe(600_000);
+    });
+  });
+
+  describe("sharp conversion errors", () => {
+    it("propagates sharp toBuffer error", async () => {
+      vi.mocked(sharp).mockImplementation(
+        () =>
+          ({
+            png: vi.fn().mockReturnThis(),
+            toBuffer: vi.fn().mockRejectedValue(new Error("Input buffer is empty")),
+            metadata: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+          }) as unknown as ReturnType<typeof sharp>,
+      );
+
+      await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("Input buffer is empty");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("propagates writeFile error", async () => {
+      vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC: disk full"));
+
+      await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("disk full");
+    });
+
+    it("propagates readFile error after successful Python run", async () => {
+      vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: output missing"));
+
+      await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("output missing");
+    });
+
+    it("passes empty options as empty JSON object", async () => {
+      await upscale(FAKE_INPUT, FAKE_OUTPUT_DIR);
+
+      const args = vi.mocked(runPythonWithProgress).mock.calls[0][1];
+      expect(JSON.parse(args[2])).toEqual({});
+    });
+
+    it("propagates segfault from bridge", async () => {
+      vi.mocked(runPythonWithProgress).mockRejectedValue(
+        new Error("Process crashed (segmentation fault)"),
+      );
+
+      await expect(upscale(FAKE_INPUT, FAKE_OUTPUT_DIR)).rejects.toThrow("segmentation fault");
+    });
   });
 });

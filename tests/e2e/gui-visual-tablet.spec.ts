@@ -1,6 +1,5 @@
 import { expect, openSettings, test, uploadTestImage } from "./helpers";
 
-const isDocker = process.env.CI === "true" || process.env.DOCKER === "true";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 // ---------------------------------------------------------------------------
@@ -40,7 +39,6 @@ async function takeThemedScreenshots(page: import("@playwright/test").Page, base
 // Tablet visual regression: 768x1024
 // ---------------------------------------------------------------------------
 test.describe("Visual Tablet (768x1024)", () => {
-  test.skip(!isDocker, "Visual regression baselines are Docker-specific");
   test.use({ viewport: { width: 768, height: 1024 } });
 
   // ---- Login page (unauthenticated) ----
@@ -77,6 +75,16 @@ test.describe("Visual Tablet (768x1024)", () => {
   test("home page empty - light and dark", async ({ loggedInPage: page }) => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(500);
+
+    // Verify sidebar transitions at tablet width: sidebar should collapse or narrow
+    const sidebar = page.locator("aside");
+    if (await sidebar.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const sidebarBox = await sidebar.boundingBox();
+      if (sidebarBox) {
+        // Sidebar should be narrower than full desktop width (< 280px)
+        expect(sidebarBox.width).toBeLessThan(280);
+      }
+    }
 
     await takeThemedScreenshots(page, "home-empty");
   });
@@ -167,6 +175,14 @@ test.describe("Visual Tablet (768x1024)", () => {
     await openSettings(page);
     await page.waitForTimeout(500);
 
+    // Verify settings dialog fits within 768px tablet viewport
+    const dialog = page.getByRole("dialog");
+    const dialogBox = await dialog.boundingBox();
+    if (dialogBox) {
+      expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+      expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(768 + 1);
+    }
+
     await takeThemedScreenshots(page, "settings-general");
   });
 
@@ -226,8 +242,15 @@ test.describe("Visual Tablet (768x1024)", () => {
     await uploadTestImage(page);
     await page.waitForTimeout(500);
 
-    // Verify settings panel layout at tablet width
+    // Verify settings panel layout at tablet width -- panel should not overflow viewport
     await expect(page.getByText("Settings").first()).toBeVisible();
+    const settingsPanel = page.locator("[class*='settings'], [class*='Settings']").first();
+    if (await settingsPanel.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const panelBox = await settingsPanel.boundingBox();
+      if (panelBox) {
+        expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(768 + 1);
+      }
+    }
 
     await takeThemedScreenshots(page, "tool-resize-settings");
   });
@@ -244,6 +267,14 @@ test.describe("Visual Tablet (768x1024)", () => {
     const slider = page.locator("[class*='before-after'], [class*='BeforeAfter']").first();
     await slider.waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(500);
+
+    // Verify comparison mode renders within narrower tablet width
+    if (await slider.isVisible()) {
+      const sliderBox = await slider.boundingBox();
+      if (sliderBox) {
+        expect(sliderBox.x + sliderBox.width).toBeLessThanOrEqual(768 + 1);
+      }
+    }
 
     await takeThemedScreenshots(page, "tool-compress-result");
   });
