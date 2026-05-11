@@ -114,6 +114,29 @@ function filenameFromUrl(url: string): string {
   return `image-${randomUUID().slice(0, 8)}`;
 }
 
+/**
+ * Return a filename that does not collide with any name already in `used`.
+ * Appends `_1`, `_2`, etc. before the extension when a collision is found.
+ * Mirrors the deduplication logic in batch.ts.
+ */
+function getUniqueName(name: string, used: Set<string>): string {
+  if (!used.has(name)) {
+    used.add(name);
+    return name;
+  }
+  const dotIdx = name.lastIndexOf(".");
+  const base = dotIdx > 0 ? name.slice(0, dotIdx) : name;
+  const ext = dotIdx > 0 ? name.slice(dotIdx) : "";
+  let counter = 1;
+  let candidate = `${base}_${counter}${ext}`;
+  while (used.has(candidate)) {
+    counter++;
+    candidate = `${base}_${counter}${ext}`;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
 export async function registerFetchUrlsRoute(app: FastifyInstance): Promise<void> {
   app.post("/api/v1/fetch-urls", async (request, reply) => {
     // Validate body
@@ -130,13 +153,17 @@ export async function registerFetchUrlsRoute(app: FastifyInstance): Promise<void
 
     const queue = new PQueue({ concurrency: URL_FETCH_CONCURRENCY });
 
+    // Track filenames to prevent collisions when multiple URLs resolve to the
+    // same name (e.g. https://a.com/photo.jpg and https://b.com/photo.jpg).
+    const usedFilenames = new Set<string>();
+
     // Pre-allocate result slots to preserve order
     const resultSlots: FetchResult[] = new Array(urls.length);
 
     await Promise.all(
       urls.map((url, index) =>
         queue.add(async () => {
-          resultSlots[index] = await fetchSingleUrl(url, jobId, outputDir);
+          resultSlots[index] = await fetchSingleUrl(url, jobId, outputDir, usedFilenames);
         }),
       ),
     );
@@ -145,7 +172,12 @@ export async function registerFetchUrlsRoute(app: FastifyInstance): Promise<void
   });
 }
 
-async function fetchSingleUrl(url: string, jobId: string, outputDir: string): Promise<FetchResult> {
+async function fetchSingleUrl(
+  url: string,
+  jobId: string,
+  outputDir: string,
+  usedFilenames: Set<string>,
+): Promise<FetchResult> {
   try {
     // Fetch with SSRF protection and timeout
     const controller = new AbortController();
@@ -199,9 +231,10 @@ async function fetchSingleUrl(url: string, jobId: string, outputDir: string): Pr
       return { success: false, url, error: "Empty response body" };
     }
 
-    // Derive filename from URL
+    // Derive filename from URL, deduplicating to prevent overwrites when
+    // multiple URLs resolve to the same name (all URLs share one workspace).
     const rawFilename = filenameFromUrl(url);
-    const filename = sanitizeFilename(rawFilename);
+    const filename = getUniqueName(sanitizeFilename(rawFilename), usedFilenames);
 
     // Validate as an image
     const validation = await validateImageBuffer(buffer, filename);

@@ -299,6 +299,46 @@ describe("POST /api/v1/fetch-urls", () => {
     expect(downloadRes.rawPayload.length).toBe(JPG.length);
   });
 
+  it("deduplicates filenames when multiple URLs resolve to the same name", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/fetch-urls",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        urls: [`http://127.0.0.1:${mockPort}/photo.jpg`, `http://127.0.0.1:${mockPort}/photo.jpg`],
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.results).toHaveLength(2);
+
+    expect(body.results[0].success).toBe(true);
+    expect(body.results[1].success).toBe(true);
+
+    // Filenames must differ so one does not overwrite the other
+    const names = [body.results[0].filename, body.results[1].filename];
+    expect(new Set(names).size).toBe(2);
+    expect(names).toContain("photo.jpg");
+    expect(names).toContain("photo_1.jpg");
+
+    // Download URLs must also differ
+    expect(body.results[0].downloadUrl).not.toBe(body.results[1].downloadUrl);
+
+    // Both download URLs should serve valid content
+    for (const result of body.results) {
+      const dl = await app.inject({
+        method: "GET",
+        url: result.downloadUrl,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(dl.statusCode).toBe(200);
+      expect(dl.rawPayload.length).toBe(JPG.length);
+    }
+  });
+
   it("returns 400 for invalid URL format", async () => {
     const res = await app.inject({
       method: "POST",
