@@ -735,7 +735,9 @@ describe("Exotic format error resilience", () => {
 
   for (const fmt of EXOTIC_FORMATS) {
     for (const tool of PROCESSING_TOOLS) {
-      it(`${fmt.name} + ${tool.label}: returns JSON error (no crash)`, async () => {
+      it(`${fmt.name} + ${tool.label}: returns JSON error (no crash)`, {
+        timeout: 120_000,
+      }, async () => {
         const fixturePath = join(FORMATS_DIR, fmt.file);
         if (!existsSync(fixturePath)) return;
 

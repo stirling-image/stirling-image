@@ -33,10 +33,6 @@ function isPrivateIPv6(ip: string): boolean {
 }
 
 async function resolveAndCheck(hostname: string): Promise<void> {
-  // Allow tests to bypass private-IP checks so a local mock HTTP server can be
-  // used without fragile vi.mock() overrides that break under V8 coverage.
-  if (process.env.SSRF_ALLOW_PRIVATE === "1") return;
-
   const bare = hostname.replace(/^\[|]$/g, "");
   if (isIP(bare)) {
     if (isPrivateIPv4(bare) || isPrivateIPv6(bare)) {

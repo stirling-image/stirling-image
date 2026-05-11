@@ -60,7 +60,6 @@ export default defineConfig({
       CONCURRENT_JOBS: "3",
       FILE_MAX_AGE_HOURS: "1",
       CLEANUP_INTERVAL_MINUTES: "60",
-      SSRF_ALLOW_PRIVATE: "1",
     },
     coverage: {
       provider: "v8",
