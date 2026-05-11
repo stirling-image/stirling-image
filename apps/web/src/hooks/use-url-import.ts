@@ -81,8 +81,8 @@ export function useUrlImport() {
   }, []);
 
   const downloadAsFile = useCallback(
-    async (downloadUrl: string, filename: string): Promise<File> => {
-      const res = await fetch(downloadUrl, { headers: formatHeaders() });
+    async (downloadUrl: string, filename: string, signal?: AbortSignal): Promise<File> => {
+      const res = await fetch(downloadUrl, { headers: formatHeaders(), signal });
       if (!res.ok) throw new Error(`Download failed: ${res.status}`);
       const blob = await res.blob();
       return new File([blob], filename, { type: blob.type });
@@ -130,11 +130,13 @@ export function useUrlImport() {
 
   const importSingleUrl = useCallback(
     async (url: string): Promise<File | null> => {
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
-        const { results } = await fetchUrls([url]);
+        const { results } = await fetchUrls([url], controller.signal);
         const result = results[0];
         if (!result?.success || !result.downloadUrl || !result.filename) return null;
-        return await downloadAsFile(result.downloadUrl, result.filename);
+        return await downloadAsFile(result.downloadUrl, result.filename, controller.signal);
       } catch {
         return null;
       }
@@ -148,24 +150,29 @@ export function useUrlImport() {
         e.status === "ready" && !!e.downloadUrl && !!e.filename,
     );
 
-    const files = await Promise.all(ready.map((e) => downloadAsFile(e.downloadUrl, e.filename)));
+    const settled = await Promise.allSettled(
+      ready.map((e) => downloadAsFile(e.downloadUrl, e.filename)),
+    );
 
-    return files;
+    return settled
+      .filter((r): r is PromiseFulfilledResult<File> => r.status === "fulfilled")
+      .map((r) => r.value);
   }, [entries, downloadAsFile]);
 
   const retryUrl = useCallback(
     async (index: number) => {
-      const entry = entries[index];
-      if (!entry) return;
-
-      setEntries((prev) =>
-        prev.map((e, i) =>
+      let url: string | undefined;
+      setEntries((prev) => {
+        url = prev[index]?.url;
+        if (!url) return prev;
+        return prev.map((e, i) =>
           i === index ? { ...e, status: "fetching" as const, error: undefined } : e,
-        ),
-      );
+        );
+      });
+      if (!url) return;
 
       try {
-        const { results } = await fetchUrls([entry.url]);
+        const { results } = await fetchUrls([url]);
         const result = results[0];
         if (!result) return;
 
@@ -178,7 +185,7 @@ export function useUrlImport() {
         );
       }
     },
-    [entries, fetchUrls, resultToEntry],
+    [fetchUrls, resultToEntry],
   );
 
   const cancel = useCallback(() => {
@@ -189,8 +196,6 @@ export function useUrlImport() {
   }, []);
 
   const reset = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
     setEntries([]);
     setImporting(false);
   }, []);
