@@ -23,6 +23,7 @@ import { auditLogRoutes } from "./routes/audit-log.js";
 import { registerBatchRoutes } from "./routes/batch.js";
 import { docsRoutes } from "./routes/docs.js";
 import { registerFeatureRoutes } from "./routes/features.js";
+import { registerFetchUrlsRoute } from "./routes/fetch-urls.js";
 import { fileRoutes } from "./routes/files.js";
 import { registerMemeTemplates } from "./routes/meme-templates.js";
 import { registerPipelineRoutes } from "./routes/pipeline.js";
@@ -164,6 +165,9 @@ await registerToolRoutes(app);
 
 // Batch processing routes (must be after tool routes so the registry is populated)
 await registerBatchRoutes(app);
+
+// URL fetch routes (server-side image fetching with SSRF protection)
+await registerFetchUrlsRoute(app);
 
 // Pipeline routes (must be after tool routes so the registry is populated)
 await registerPipelineRoutes(app);

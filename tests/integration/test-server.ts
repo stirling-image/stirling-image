@@ -37,6 +37,7 @@ import { apiKeyRoutes } from "../../apps/api/src/routes/api-keys.js";
 import { auditLogRoutes } from "../../apps/api/src/routes/audit-log.js";
 import { registerBatchRoutes } from "../../apps/api/src/routes/batch.js";
 import { docsRoutes } from "../../apps/api/src/routes/docs.js";
+import { registerFetchUrlsRoute } from "../../apps/api/src/routes/fetch-urls.js";
 import { fileRoutes } from "../../apps/api/src/routes/files.js";
 import { registerMemeTemplates } from "../../apps/api/src/routes/meme-templates.js";
 import { registerPipelineRoutes } from "../../apps/api/src/routes/pipeline.js";
@@ -99,6 +100,9 @@ export async function buildTestApp(): Promise<TestApp> {
 
   // Batch processing routes
   await registerBatchRoutes(app);
+
+  // URL fetch routes
+  await registerFetchUrlsRoute(app);
 
   // Pipeline routes
   await registerPipelineRoutes(app);
