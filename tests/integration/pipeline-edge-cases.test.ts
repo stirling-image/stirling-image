@@ -447,7 +447,7 @@ describe("Pipeline batch execution", () => {
 
     expect(res.statusCode).toBe(200);
     const raw = res.headers["x-file-results"] as string;
-    expect(raw).not.toMatch(/[-￿]/);
+    expect(raw).toMatch(/^[\x20-\x7E]+$/);
     const fileResults = JSON.parse(decodeURIComponent(raw));
     expect(fileResults["0"]).toContain("图片");
     expect(fileResults["1"]).toContain("写真テスト");
