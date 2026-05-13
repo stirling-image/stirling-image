@@ -3,10 +3,13 @@ import { extractText } from "@snapotter/ai";
 import { getBundleForTool, TOOL_BUNDLE_MAP } from "@snapotter/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { autoOrient } from "../../lib/auto-orient.js";
 import { formatZodErrors } from "../../lib/errors.js";
 import { isToolInstalled } from "../../lib/feature-status.js";
 import { validateImageBuffer } from "../../lib/file-validation.js";
 import { sanitizeFilename } from "../../lib/filename.js";
+import { decodeToSharpCompat, needsCliDecode } from "../../lib/format-decoders.js";
+import { decodeHeic } from "../../lib/heic-converter.js";
 import { createWorkspace } from "../../lib/workspace.js";
 import { updateSingleFileProgress } from "../progress.js";
 
@@ -74,6 +77,19 @@ export function registerOcr(app: FastifyInstance) {
     }
 
     try {
+      // Decode HEIC/HEIF input via system decoder
+      if (validation.format === "heif") {
+        fileBuffer = await decodeHeic(fileBuffer);
+      }
+
+      // Decode CLI-decoded formats (RAW, TGA, PSD, EXR, HDR, etc.)
+      if (needsCliDecode(validation.format)) {
+        fileBuffer = await decodeToSharpCompat(fileBuffer, validation.format);
+      }
+
+      // Auto-orient to fix EXIF rotation before OCR
+      fileBuffer = await autoOrient(fileBuffer);
+
       let settings: z.infer<typeof settingsSchema>;
       try {
         const parsed = settingsRaw ? JSON.parse(settingsRaw) : {};
