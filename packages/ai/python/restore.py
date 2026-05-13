@@ -91,16 +91,17 @@ def detect_scratches(img_bgr, _sensitivity=None):
     response_u8 = np.clip(response, 0, 255).astype(np.uint8)
     otsu_thresh, mask = cv2.threshold(response_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    if otsu_thresh < 60:
+    if otsu_thresh < 40:
         return np.zeros_like(gray)
+
+    # When Otsu is borderline, use a high fixed threshold to only catch strong scratches
+    if otsu_thresh < 60:
+        _, mask = cv2.threshold(response_u8, 100, 255, cv2.THRESH_BINARY)
 
     # Connected component filtering
     mask = _filter_components(mask, h * w)
 
-    # Post-processing
-    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open)
-
+    # Connect nearby scratch segments (no opening - it erodes thin scratch lines)
     kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
 
