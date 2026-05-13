@@ -177,4 +177,38 @@ test.describe("PNG Transparency Fixer tool", () => {
     const downloadButton = page.getByRole("button", { name: /download/i });
     await expect(downloadButton).toBeVisible({ timeout: 10_000 });
   });
+
+  test("remove watermark toggle is visible and interactive", async ({ loggedInPage: page }) => {
+    await skipIfFeatureNotInstalled(page);
+
+    const toggle = page.getByTestId("remove-watermark-toggle");
+    await expect(toggle).toBeVisible();
+
+    const isPressed = await toggle.getAttribute("aria-pressed");
+    expect(isPressed).toBe("false");
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("processes with watermark removal enabled", async ({ loggedInPage: page }) => {
+    await skipIfFeatureNotInstalled(page);
+    await uploadFile(page, fixturePath("test-fake-transparency.png"));
+
+    const toggle = page.getByTestId("remove-watermark-toggle");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    await page.getByTestId("transparency-fixer-submit").click();
+
+    await expect(page.locator("section[aria-label='Image area'] img").first()).toBeVisible({
+      timeout: 600_000,
+    });
+    await expect(page.getByTestId("transparency-fixer-submit")).toBeVisible({ timeout: 10_000 });
+
+    await expect(page.getByText("Transparency fix failed")).not.toBeVisible();
+  });
 });
