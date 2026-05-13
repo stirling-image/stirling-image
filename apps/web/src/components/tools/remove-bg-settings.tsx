@@ -607,11 +607,8 @@ export function RemoveBgSettings({ onBgPreview }: RemoveBgSettingsProps = {}) {
     const shadowEnabled = settings.shadowEnabled as boolean;
     const shadowOpacity = (settings.shadowOpacity as number) ?? 35;
 
-    // When no effects are active and background is transparent, show the
-    // before/after slider instead of the CSS preview (pass null).
-    const hasAnyEffect = blurEnabled || shadowEnabled || bgType !== "transparent";
-    if (!hasAnyEffect) {
-      onBgPreview(null);
+    if (!blurEnabled && !shadowEnabled && bgType === "transparent") {
+      onBgPreview({ showCheckerboard: true });
       return;
     }
 
