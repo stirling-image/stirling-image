@@ -88,6 +88,10 @@ interface DropzoneProps {
   currentFiles?: File[];
   /** Use a smaller layout that fits constrained containers like the pipeline preview. */
   compact?: boolean;
+  /** Override the default isImageFile check for drag/drop and paste. */
+  fileFilter?: (file: File) => boolean;
+  /** Override the format hint text (e.g. "SVG files only"). */
+  acceptDescription?: string;
 }
 
 // Browsers may not map certain formats (HEIC, JXL, RAW, etc.) to image/* in file pickers.
@@ -104,7 +108,10 @@ export function Dropzone({
   multiple = true,
   currentFiles = [],
   compact = false,
+  fileFilter,
+  acceptDescription,
 }: DropzoneProps) {
+  const checkFile = fileFilter ?? isImageFile;
   const resolvedAccept = expandAccept(accept);
   const [isDragging, setIsDragging] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -121,13 +128,17 @@ export function Dropzone({
     setUrlError(null);
     const file = await importSingleUrl(url);
     if (file) {
-      setUrlInput("");
-      onUrlImport?.(file);
+      if (!checkFile(file)) {
+        setUrlError(acceptDescription ?? "This file type is not supported by this tool");
+      } else {
+        setUrlInput("");
+        onUrlImport?.(file);
+      }
     } else {
       setUrlError("Could not fetch image from URL");
     }
     setUrlLoading(false);
-  }, [urlInput, importSingleUrl, onUrlImport]);
+  }, [urlInput, importSingleUrl, onUrlImport, checkFile, acceptDescription]);
 
   const handleDrag = useCallback((e: DragEvent) => {
     e.preventDefault();
@@ -141,10 +152,10 @@ export function Dropzone({
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      const files = Array.from(e.dataTransfer.files).filter(isImageFile);
+      const files = Array.from(e.dataTransfer.files).filter(checkFile);
       if (files.length > 0) onFiles?.(files);
     },
-    [onFiles],
+    [onFiles, checkFile],
   );
 
   const handleClick = () => {
@@ -153,7 +164,7 @@ export function Dropzone({
     input.multiple = multiple;
     if (resolvedAccept) input.accept = resolvedAccept;
     input.onchange = (e) => {
-      const files = Array.from((e.target as HTMLInputElement).files || []);
+      const files = Array.from((e.target as HTMLInputElement).files || []).filter(checkFile);
       if (files.length > 0) onFiles?.(files);
     };
     input.click();
@@ -168,13 +179,13 @@ export function Dropzone({
 
       if (clip.files.length > 0) {
         for (const file of clip.files) {
-          if (isImageFile(file)) files.push(file);
+          if (checkFile(file)) files.push(file);
         }
       } else if (clip.items) {
         for (const item of clip.items) {
           if (item.kind === "file") {
             const file = item.getAsFile();
-            if (file && isImageFile(file)) files.push(file);
+            if (file && checkFile(file)) files.push(file);
           }
         }
       }
@@ -186,7 +197,7 @@ export function Dropzone({
     };
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
-  }, [onFiles]);
+  }, [onFiles, checkFile]);
 
   const hasMultipleFiles = currentFiles.length > 1;
 
@@ -246,7 +257,7 @@ export function Dropzone({
           Upload
         </button>
         <p className="text-xs text-muted-foreground/50">
-          PNG, JPG, WebP, HEIC, RAW, PSD, and 65+ formats
+          {acceptDescription ?? "PNG, JPG, WebP, HEIC, RAW, PSD, and 65+ formats"}
         </p>
 
         {!compact && onUrlImport && (
@@ -326,7 +337,9 @@ export function Dropzone({
         <UrlImportModal
           onClose={() => setShowBulkModal(false)}
           onImport={(files) => {
-            for (const file of files) onUrlImport?.(file);
+            for (const file of files) {
+              if (checkFile(file)) onUrlImport?.(file);
+            }
             setShowBulkModal(false);
           }}
         />
