@@ -250,12 +250,12 @@ export const TOOLS: Tool[] = [
     route: "/content-aware-resize",
   },
   {
-    id: "content-aware-crop",
-    name: "Content-Aware Crop",
-    description: "Extend canvas beyond image bounds with AI-powered fill",
+    id: "ai-canvas-expand",
+    name: "AI Canvas Expand",
+    description: "Expand canvas with AI-powered fill",
     category: "ai",
     icon: "Expand",
-    route: "/content-aware-crop",
+    route: "/ai-canvas-expand",
   },
   {
     id: "transparency-fixer",
@@ -1248,5 +1248,5 @@ export const PYTHON_SIDECAR_TOOLS = [
   "restore-photo",
   "passport-photo",
   "transparency-fixer",
-  "content-aware-crop",
+  "ai-canvas-expand",
 ] as const;
