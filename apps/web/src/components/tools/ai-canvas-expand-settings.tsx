@@ -4,6 +4,14 @@ import { ProgressCard } from "@/components/common/progress-card";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
+type Tier = "fast" | "balanced" | "high";
+
+const TIERS: { id: Tier; label: string; desc: string }[] = [
+  { id: "fast", label: "Fast", desc: "Quick preview, fewer AI passes" },
+  { id: "balanced", label: "Balanced", desc: "Good quality, moderate speed" },
+  { id: "high", label: "High Quality", desc: "Best results, slower" },
+];
+
 const EXTEND_PRESETS = [
   { label: "16:9", aspect: 16 / 9 },
   { label: "1:1", aspect: 1 },
@@ -13,15 +21,16 @@ const EXTEND_PRESETS = [
   { label: "4:5", aspect: 4 / 5 },
 ];
 
-export function ContentAwareCropSettings() {
+export function AiCanvasExpandSettings() {
   const { files } = useFileStore();
   const { processFiles, processAllFiles, processing, error, downloadUrl, progress } =
-    useToolProcessor("content-aware-crop");
+    useToolProcessor("ai-canvas-expand");
 
   const [extendTop, setExtendTop] = useState(0);
   const [extendRight, setExtendRight] = useState(0);
   const [extendBottom, setExtendBottom] = useState(0);
   const [extendLeft, setExtendLeft] = useState(0);
+  const [tier, setTier] = useState<Tier>("balanced");
   const [imgDimensions, setImgDimensions] = useState<{ width: number; height: number } | null>(
     null,
   );
@@ -71,7 +80,7 @@ export function ContentAwareCropSettings() {
   const hasExtension = extendTop > 0 || extendRight > 0 || extendBottom > 0 || extendLeft > 0;
 
   const handleProcess = () => {
-    const settings = { extendTop, extendRight, extendBottom, extendLeft };
+    const settings = { extendTop, extendRight, extendBottom, extendLeft, tier };
     if (files.length > 1) {
       processAllFiles(files, settings);
     } else {
@@ -86,6 +95,31 @@ export function ContentAwareCropSettings() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Quality tier */}
+      <div>
+        <p className="text-xs text-muted-foreground mb-1">Quality</p>
+        <div className="grid grid-cols-3 gap-1">
+          {TIERS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              data-testid={`tier-${t.id}`}
+              onClick={() => setTier(t.id)}
+              className={`text-xs py-2 rounded transition-colors ${
+                tier === t.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          {TIERS.find((t) => t.id === tier)?.desc}
+        </p>
+      </div>
+
       {/* Aspect ratio presets */}
       <div>
         <p className="text-xs text-muted-foreground mb-1">Extend to aspect ratio</p>
@@ -185,7 +219,7 @@ export function ContentAwareCropSettings() {
       ) : (
         <button
           type="submit"
-          data-testid="content-aware-crop-submit"
+          data-testid="ai-canvas-expand-submit"
           disabled={!hasFile || !hasExtension || processing}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
@@ -197,7 +231,7 @@ export function ContentAwareCropSettings() {
         <a
           href={downloadUrl}
           download
-          data-testid="content-aware-crop-download"
+          data-testid="ai-canvas-expand-download"
           className="w-full py-2.5 rounded-lg border border-primary text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
         >
           <Download className="h-4 w-4" />
