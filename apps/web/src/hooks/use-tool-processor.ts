@@ -392,7 +392,11 @@ export function useToolProcessor(toolId: string) {
         for (let i = 0; i < entries.length; i++) {
           const processedName = fileResults[String(i)];
           if (processedName && extracted[processedName]) {
-            const blob = new Blob([extracted[processedName] as BlobPart]);
+            const blobType = processedName.endsWith(".svg") ? "image/svg+xml" : undefined;
+            const blob = new Blob(
+              [extracted[processedName] as BlobPart],
+              blobType ? { type: blobType } : undefined,
+            );
             updateEntry(i, {
               processedUrl: URL.createObjectURL(blob),
               processedFilename: processedName,

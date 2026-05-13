@@ -1,6 +1,7 @@
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { useState } from "react";
-import { formatHeaders } from "@/lib/api";
+import { ProgressCard } from "@/components/common/progress-card";
+import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { useFileStore } from "@/stores/file-store";
 
 type ColorMode = "bw" | "color";
@@ -71,8 +72,17 @@ function speckleToDetail(speckle: number): Detail {
 }
 
 export function VectorizeSettings() {
-  const { files, processing, error, setProcessing, setError, setProcessedUrl, setSizes, setJobId } =
-    useFileStore();
+  const { files } = useFileStore();
+  const {
+    processFiles,
+    processAllFiles,
+    processing,
+    error,
+    downloadUrl,
+    originalSize,
+    processedSize,
+    progress,
+  } = useToolProcessor("vectorize");
 
   const [preset, setPreset] = useState<Preset>("logo");
   const [colorMode, setColorMode] = useState<ColorMode>("bw");
@@ -83,9 +93,6 @@ export function VectorizeSettings() {
   const [pathMode, setPathMode] = useState<PathMode>("spline");
   const [cornerThreshold, setCornerThreshold] = useState(60);
   const [invert, setInvert] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [originalSize, setOriginalSize] = useState<number | null>(null);
-  const [processedSize, setProcessedSize] = useState<number | null>(null);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
@@ -108,14 +115,8 @@ export function VectorizeSettings() {
     };
   };
 
-  const handleProcess = async () => {
-    if (files.length === 0) return;
-
-    setProcessing(true);
-    setError(null);
-    setDownloadUrl(null);
-
-    const settingsJson = JSON.stringify({
+  const handleProcess = () => {
+    const settings = {
       colorMode,
       threshold,
       colorPrecision,
@@ -124,87 +125,11 @@ export function VectorizeSettings() {
       pathMode,
       cornerThreshold,
       invert,
-    });
-
-    try {
-      if (files.length === 1) {
-        const formData = new FormData();
-        formData.append("file", files[0]);
-        formData.append("settings", settingsJson);
-
-        const res = await fetch("/api/v1/tools/vectorize", {
-          method: "POST",
-          headers: formatHeaders(),
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Failed: ${res.status}`);
-        }
-
-        const result = await res.json();
-        setJobId(result.jobId);
-        setProcessedUrl(result.downloadUrl);
-        setDownloadUrl(result.downloadUrl);
-        setOriginalSize(result.originalSize);
-        setProcessedSize(result.processedSize);
-        setSizes(result.originalSize, result.processedSize);
-      } else {
-        const { updateEntry, setBatchZip } = useFileStore.getState();
-        const JSZip = (await import("jszip")).default;
-        const zip = new JSZip();
-        let totalOriginal = 0;
-        let totalProcessed = 0;
-
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("settings", settingsJson);
-
-          const res = await fetch("/api/v1/tools/vectorize", {
-            method: "POST",
-            headers: formatHeaders(),
-            body: formData,
-          });
-
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            updateEntry(i, {
-              status: "failed",
-              error: body.error || `Failed: ${res.status}`,
-            });
-            continue;
-          }
-
-          const result = await res.json();
-          totalOriginal += result.originalSize;
-          totalProcessed += result.processedSize;
-
-          const svgRes = await fetch(result.downloadUrl, { headers: formatHeaders() });
-          const svgBlob = await svgRes.blob();
-          const svgName = file.name.replace(/\.[^.]+$/, ".svg");
-          zip.file(svgName, svgBlob);
-
-          updateEntry(i, {
-            processedUrl: result.downloadUrl,
-            processedSize: result.processedSize,
-            status: "completed",
-            error: null,
-          });
-        }
-
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        setBatchZip(zipBlob, "vectorize-batch.zip");
-        setOriginalSize(totalOriginal);
-        setProcessedSize(totalProcessed);
-        setSizes(totalOriginal, totalProcessed);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Vectorization failed");
-    } finally {
-      setProcessing(false);
+    };
+    if (files.length > 1) {
+      processAllFiles(files, settings);
+    } else {
+      processFiles(files, settings);
     }
   };
 
@@ -424,16 +349,26 @@ export function VectorizeSettings() {
       )}
 
       {/* Submit */}
-      <button
-        type="button"
-        data-testid="vectorize-submit"
-        onClick={handleProcess}
-        disabled={!hasFile || processing}
-        className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-        {processing ? "Vectorizing..." : "Vectorize"}
-      </button>
+      {processing ? (
+        <ProgressCard
+          active={processing}
+          phase={progress.phase === "idle" ? "uploading" : progress.phase}
+          label="Vectorizing"
+          stage={progress.stage}
+          percent={progress.percent}
+          elapsed={progress.elapsed}
+        />
+      ) : (
+        <button
+          type="button"
+          data-testid="vectorize-submit"
+          onClick={handleProcess}
+          disabled={!hasFile || processing}
+          className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {files.length > 1 ? `Vectorize (${files.length} files)` : "Vectorize"}
+        </button>
+      )}
 
       {/* Download */}
       {downloadUrl && (

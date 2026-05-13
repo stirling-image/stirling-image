@@ -8,9 +8,13 @@ import sharp from "sharp";
 import { z } from "zod";
 import { autoOrient } from "../../lib/auto-orient.js";
 import { formatZodErrors } from "../../lib/errors.js";
+import { validateImageBuffer } from "../../lib/file-validation.js";
 import { sanitizeFilename } from "../../lib/filename.js";
-import { ensureSharpCompat } from "../../lib/heic-converter.js";
+import { decodeToSharpCompat, needsCliDecode } from "../../lib/format-decoders.js";
+import { decodeHeic } from "../../lib/heic-converter.js";
+import { decompressSvgz, sanitizeSvg } from "../../lib/svg-sanitize.js";
 import { createWorkspace } from "../../lib/workspace.js";
+import { registerToolProcessFn } from "../tool-factory.js";
 
 const settingsSchema = z.object({
   colorMode: z.enum(["bw", "color"]).default("bw"),
@@ -47,6 +51,53 @@ const ALPHA_MAX_MAP: Record<string, number> = {
   polygon: 0.5,
   spline: 1,
 };
+
+async function vectorizeBuffer(
+  inputBuffer: Buffer,
+  settings: z.infer<typeof settingsSchema>,
+  filename: string,
+): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
+  let buf = inputBuffer;
+
+  if (settings.invert) {
+    buf = await sharp(buf).negate({ alpha: false }).toBuffer();
+  }
+
+  let svg: string;
+
+  if (settings.colorMode === "color") {
+    const pngBuffer = await sharp(buf).png().toBuffer();
+    svg = await vtrace(pngBuffer, {
+      colorMode: 0,
+      colorPrecision: settings.colorPrecision,
+      filterSpeckle: settings.filterSpeckle,
+      cornerThreshold: settings.cornerThreshold,
+      layerDifference: settings.layerDifference,
+      hierarchical: 0,
+      mode: (PATH_MODE_MAP[settings.pathMode] ?? 2) as 0 | 1 | 2,
+      lengthThreshold: 4,
+      maxIterations: 2,
+      spliceThreshold: 45,
+      pathPrecision: 5,
+    });
+  } else {
+    const pngBuffer = await sharp(buf).grayscale().png().toBuffer();
+    svg = await traceImage(pngBuffer, {
+      threshold: settings.threshold,
+      turdSize: settings.filterSpeckle,
+      alphamax: ALPHA_MAX_MAP[settings.pathMode] ?? 1,
+    });
+  }
+
+  const svgBuffer = Buffer.from(svg, "utf-8");
+  const baseName = filename.replace(/\.[^.]+$/, "");
+
+  return {
+    buffer: svgBuffer,
+    filename: `${baseName}.svg`,
+    contentType: "image/svg+xml",
+  };
+}
 
 export function registerVectorize(app: FastifyInstance) {
   app.post("/api/v1/tools/vectorize", async (request, reply) => {
@@ -94,50 +145,59 @@ export function registerVectorize(app: FastifyInstance) {
     }
 
     try {
-      fileBuffer = await autoOrient(await ensureSharpCompat(fileBuffer));
-
-      if (settings.invert) {
-        fileBuffer = await sharp(fileBuffer).negate({ alpha: false }).toBuffer();
+      const validation = await validateImageBuffer(fileBuffer, filename);
+      if (!validation.valid) {
+        return reply.status(400).send({ error: `Invalid image: ${validation.reason}` });
       }
-
-      let svg: string;
-
-      if (settings.colorMode === "color") {
-        const pngBuffer = await sharp(fileBuffer).png().toBuffer();
-        svg = await vtrace(pngBuffer, {
-          colorMode: 0, // ColorMode.Color
-          colorPrecision: settings.colorPrecision,
-          filterSpeckle: settings.filterSpeckle,
-          cornerThreshold: settings.cornerThreshold,
-          layerDifference: settings.layerDifference,
-          hierarchical: 0, // Hierarchical.Stacked
-          mode: (PATH_MODE_MAP[settings.pathMode] ?? 2) as 0 | 1 | 2,
-          lengthThreshold: 4,
-          maxIterations: 2,
-          spliceThreshold: 45,
-          pathPrecision: 5,
-        });
-      } else {
-        const pngBuffer = await sharp(fileBuffer).grayscale().png().toBuffer();
-        svg = await traceImage(pngBuffer, {
-          threshold: settings.threshold,
-          turdSize: settings.filterSpeckle,
-          alphamax: ALPHA_MAX_MAP[settings.pathMode] ?? 1,
-        });
+      if (validation.format === "heif") {
+        try {
+          fileBuffer = await decodeHeic(fileBuffer);
+        } catch (err) {
+          return reply.status(422).send({
+            error: "Failed to decode HEIC file. Ensure libheif-examples is installed.",
+            details: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
+      if (needsCliDecode(validation.format)) {
+        try {
+          const fileExt = filename.split(".").pop()?.toLowerCase();
+          fileBuffer = await decodeToSharpCompat(fileBuffer, validation.format, fileExt);
+        } catch {
+          try {
+            await sharp(fileBuffer).metadata();
+          } catch (err) {
+            return reply.status(422).send({
+              error: `Failed to decode ${validation.format.toUpperCase()} file`,
+              details: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+      }
+      if (validation.format === "svg") {
+        try {
+          fileBuffer = decompressSvgz(fileBuffer);
+          fileBuffer = sanitizeSvg(fileBuffer);
+        } catch (err) {
+          return reply.status(400).send({
+            error: err instanceof Error ? err.message : "Invalid SVG",
+          });
+        }
+      }
+      fileBuffer = await autoOrient(fileBuffer);
 
-      const svgBuffer = Buffer.from(svg, "utf-8");
-      const outFilename = `${filename}.svg`;
+      const result = await vectorizeBuffer(fileBuffer, settings, filename);
+
       const jobId = randomUUID();
       const workspacePath = await createWorkspace(jobId);
-      const outputPath = join(workspacePath, "output", outFilename);
-      await writeFile(outputPath, svgBuffer);
+      const outputPath = join(workspacePath, "output", result.filename);
+      await writeFile(outputPath, result.buffer);
 
       return reply.send({
         jobId,
-        downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(outFilename)}`,
+        downloadUrl: `/api/v1/download/${jobId}/${encodeURIComponent(result.filename)}`,
         originalSize: fileBuffer.length,
-        processedSize: svgBuffer.length,
+        processedSize: result.buffer.length,
       });
     } catch (err) {
       return reply.status(422).send({
@@ -145,5 +205,15 @@ export function registerVectorize(app: FastifyInstance) {
         details: err instanceof Error ? err.message : "Unknown error",
       });
     }
+  });
+
+  registerToolProcessFn({
+    toolId: "vectorize",
+    settingsSchema: settingsSchema as z.ZodType<unknown, z.ZodTypeDef, unknown>,
+    process: vectorizeBuffer as (
+      inputBuffer: Buffer,
+      settings: unknown,
+      filename: string,
+    ) => Promise<{ buffer: Buffer; filename: string; contentType: string }>,
   });
 }
