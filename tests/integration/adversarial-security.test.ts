@@ -611,7 +611,9 @@ describe("Concurrent requests -- data integrity verification", () => {
     // Batch request must succeed
     expect(batchRes.statusCode).toBe(200);
     expect(batchRes.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(batchRes.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(
+      decodeURIComponent(batchRes.headers["x-file-results"] as string),
+    );
     expect(Object.keys(fileResults).length).toBe(3);
 
     // The single request's job ID must not appear in the batch results

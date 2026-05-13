@@ -731,7 +731,7 @@ export async function registerPipelineRoutes(app: FastifyInstance): Promise<void
       "Content-Disposition": `attachment; filename="pipeline-batch-${jobId.slice(0, 8)}.zip"`,
       "Transfer-Encoding": "chunked",
       "X-Job-Id": jobId,
-      "X-File-Results": JSON.stringify(fileResultsMap),
+      "X-File-Results": encodeURIComponent(JSON.stringify(fileResultsMap)),
     });
 
     const archive = archiver("zip", { zlib: { level: 5 } });

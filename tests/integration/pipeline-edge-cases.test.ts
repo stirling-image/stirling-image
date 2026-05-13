@@ -426,6 +426,33 @@ describe("Pipeline batch execution", () => {
     expect(res.headers["x-file-results"]).toBeDefined();
   });
 
+  it("handles non-ASCII filenames without ERR_INVALID_CHAR (#133)", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "图片.png", contentType: "image/png", content: PNG_200x150 },
+      { name: "file", filename: "写真テスト.png", contentType: "image/png", content: PNG_200x150 },
+      {
+        name: "pipeline",
+        content: JSON.stringify({
+          steps: [{ toolId: "resize", settings: { width: 50 } }],
+        }),
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/pipeline/batch",
+      headers: { "content-type": contentType, authorization: `Bearer ${adminToken}` },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const raw = res.headers["x-file-results"] as string;
+    expect(raw).toMatch(/^[\x20-\x7E]+$/);
+    const fileResults = JSON.parse(decodeURIComponent(raw));
+    expect(fileResults["0"]).toContain("图片");
+    expect(fileResults["1"]).toContain("写真テスト");
+  });
+
   it("rejects pipeline batch with no files", async () => {
     const { body, contentType } = createMultipartPayload([
       {

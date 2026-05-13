@@ -854,7 +854,7 @@ describe("svg-to-raster", () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
     // X-File-Results should contain deduplicated names
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     const filenames = Object.values(fileResults) as string[];
     // Filenames should be unique
     expect(new Set(filenames).size).toBe(filenames.length);
@@ -1036,7 +1036,7 @@ describe("svg-to-raster", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(Object.keys(fileResults).length).toBe(5);
   });
 

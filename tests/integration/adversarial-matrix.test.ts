@@ -1035,7 +1035,7 @@ describe("Batch -- all identical files", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(Object.keys(fileResults).length).toBe(5);
   });
 
@@ -1050,7 +1050,7 @@ describe("Batch -- all identical files", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     const names = Object.values(fileResults);
     // All three entries should have unique names in the ZIP
     expect(new Set(names).size).toBe(3);

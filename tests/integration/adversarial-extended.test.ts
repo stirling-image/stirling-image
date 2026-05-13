@@ -649,7 +649,7 @@ describe("Batch edge cases — extended", () => {
     // Should succeed and deduplicate filenames in the ZIP
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     // All three entries should have unique names
     const names = Object.values(fileResults);
     expect(new Set(names).size).toBe(3);
@@ -1524,7 +1524,7 @@ describe("Batch limits — boundary tests", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(Object.keys(fileResults).length).toBe(1);
   });
 
@@ -1546,7 +1546,7 @@ describe("Batch limits — boundary tests", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(Object.keys(fileResults).length).toBe(10);
   }, 120_000);
 

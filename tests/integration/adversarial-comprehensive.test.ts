@@ -1104,7 +1104,7 @@ describe("Batch with mixed image formats (PNG + JPEG + WebP)", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/zip");
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(Object.keys(fileResults).length).toBe(3);
   });
 

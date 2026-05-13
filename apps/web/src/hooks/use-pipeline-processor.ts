@@ -330,7 +330,9 @@ export function usePipelineProcessor() {
         const entries = useFileStore.getState().entries;
         let fileResults: Record<string, string> = {};
         try {
-          fileResults = JSON.parse(response.headers.get("X-File-Results") ?? "{}");
+          fileResults = JSON.parse(
+            decodeURIComponent(response.headers.get("X-File-Results") ?? "%7B%7D"),
+          );
         } catch {
           // Malformed header - fall back to empty mapping, all entries marked failed
         }

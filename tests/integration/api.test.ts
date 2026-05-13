@@ -3102,7 +3102,7 @@ describe("Batch processing", () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.headers["x-file-results"]).toBeDefined();
-      const parsed = JSON.parse(res.headers["x-file-results"] as string);
+      const parsed = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
       expect(parsed["0"]).toBeDefined();
       expect(parsed["1"]).toBeDefined();
     });
@@ -3189,7 +3189,7 @@ describe("Batch processing", () => {
 
       const fileResults = res.headers["x-file-results"];
       expect(fileResults).toBeDefined();
-      const parsed = JSON.parse(fileResults as string);
+      const parsed = JSON.parse(decodeURIComponent(fileResults as string));
       expect(parsed["0"]).toBeDefined();
       expect(parsed["1"]).toBeDefined();
       expect(typeof parsed["0"]).toBe("string");
@@ -3215,7 +3215,7 @@ describe("Batch processing", () => {
       });
       expect(res.statusCode).toBe(200);
 
-      const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+      const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
       const names = [fileResults["0"], fileResults["1"], fileResults["2"]];
       expect(names[0]).toContain("aaa");
       expect(names[1]).toContain("bbb");

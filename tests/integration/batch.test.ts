@@ -130,11 +130,89 @@ describe("X-File-Results header", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(fileResults).toBeDefined();
     // Should have entries for index 0 and 1
     expect(fileResults["0"]).toBeDefined();
     expect(fileResults["1"]).toBeDefined();
+  });
+
+  it("encodes non-ASCII filenames in header without ERR_INVALID_CHAR", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "图片测试.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "テスト.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "settings", content: JSON.stringify({ width: 80 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/resize/batch",
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const raw = res.headers["x-file-results"] as string;
+    expect(raw).toMatch(/^[\x20-\x7E]+$/);
+    const fileResults = JSON.parse(decodeURIComponent(raw));
+    expect(fileResults["0"]).toContain("图片测试");
+    expect(fileResults["1"]).toContain("テスト");
+  });
+
+  it("handles mixed ASCII and non-ASCII filenames", async () => {
+    const { body, contentType } = createMultipartPayload([
+      { name: "file", filename: "normal.png", contentType: "image/png", content: PNG },
+      { name: "file", filename: "élève-photo.jpg", contentType: "image/jpeg", content: JPG },
+      { name: "file", filename: "📷-snap.png", contentType: "image/png", content: PNG },
+      { name: "settings", content: JSON.stringify({ width: 80 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/resize/batch",
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const raw = res.headers["x-file-results"] as string;
+    expect(raw).toMatch(/^[\x20-\x7E]+$/);
+    const fileResults = JSON.parse(decodeURIComponent(raw));
+    expect(fileResults["0"]).toContain("normal");
+    expect(fileResults["1"]).toContain("élève");
+    expect(fileResults["2"]).toContain("📷");
+  });
+
+  it("round-trips filenames with special URI characters", async () => {
+    const { body, contentType } = createMultipartPayload([
+      {
+        name: "file",
+        filename: "file with spaces & (parens).png",
+        contentType: "image/png",
+        content: PNG,
+      },
+      { name: "settings", content: JSON.stringify({ width: 80 }) },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/tools/resize/batch",
+      headers: {
+        "content-type": contentType,
+        authorization: `Bearer ${adminToken}`,
+      },
+      body,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
+    expect(fileResults["0"]).toBeDefined();
   });
 });
 
@@ -363,7 +441,7 @@ describe("Exotic format batch processing", () => {
     it(`processes ${ext.toUpperCase()} through batch compress`, async () => {
       const res = await batchCompress(ext, mime);
       expect(res.statusCode).toBe(200);
-      const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+      const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
       expect(fileResults["0"]).toBeDefined();
     });
   }
@@ -408,7 +486,7 @@ describe("Exotic format batch processing", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
     expect(fileResults["0"]).toBeDefined();
     expect(fileResults["1"]).toBeDefined();
     expect(fileResults["2"]).toBeDefined();
@@ -439,7 +517,7 @@ describe("Batch preserves upload order", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const fileResults = JSON.parse(res.headers["x-file-results"] as string);
+    const fileResults = JSON.parse(decodeURIComponent(res.headers["x-file-results"] as string));
 
     // Index 0 should be derived from alpha, 1 from beta, 2 from gamma
     expect(fileResults["0"]).toContain("alpha");

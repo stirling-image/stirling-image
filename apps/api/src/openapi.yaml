@@ -4470,7 +4470,7 @@ paths:
             X-File-Results:
               schema:
                 type: string
-              description: JSON mapping of input index to output filename
+              description: Percent-encoded JSON mapping of input index to output filename (decode with decodeURIComponent before JSON.parse)
           content:
             application/zip:
               schema:

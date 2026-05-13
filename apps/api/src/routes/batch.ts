@@ -262,7 +262,7 @@ export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
         "Content-Disposition": `attachment; filename="batch-${toolId}-${jobId.slice(0, 8)}.zip"`,
         "Transfer-Encoding": "chunked",
         "X-Job-Id": jobId,
-        "X-File-Results": JSON.stringify(fileResultsMap),
+        "X-File-Results": encodeURIComponent(JSON.stringify(fileResultsMap)),
       });
 
       const archive = archiver("zip", { zlib: { level: 5 } });
