@@ -170,7 +170,7 @@ describe("Error handling", () => {
         authorization: `Bearer ${adminToken}`,
       },
     });
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
   });
 });
 

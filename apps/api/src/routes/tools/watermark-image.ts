@@ -23,6 +23,7 @@ export function registerWatermarkImage(app: FastifyInstance) {
     let mainBuffer: Buffer | null = null;
     let watermarkBuffer: Buffer | null = null;
     let filename = "image";
+    let wmFilename = "watermark";
     let settingsRaw: string | null = null;
 
     try {
@@ -36,6 +37,7 @@ export function registerWatermarkImage(app: FastifyInstance) {
           const buf = Buffer.concat(chunks);
           if (part.fieldname === "watermark") {
             watermarkBuffer = buf;
+            wmFilename = sanitizeFilename(part.filename ?? "watermark");
           } else {
             mainBuffer = buf;
             filename = sanitizeFilename(part.filename ?? "image");
@@ -117,7 +119,7 @@ export function registerWatermarkImage(app: FastifyInstance) {
       }
       mainBuffer = await autoOrient(mainBuffer);
 
-      const valWm = await validateImageBuffer(watermarkBuffer, "watermark");
+      const valWm = await validateImageBuffer(watermarkBuffer, wmFilename);
       if (!valWm.valid) {
         return reply.status(400).send({ error: `Invalid watermark image: ${valWm.reason}` });
       }

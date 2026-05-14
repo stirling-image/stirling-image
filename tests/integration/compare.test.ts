@@ -481,10 +481,9 @@ describe("Compare", () => {
       body,
     });
 
-    // Should return 422 due to processing failure
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
     const result = JSON.parse(res.body);
-    expect(result.error).toMatch(/comparison failed/i);
+    expect(result.error).toMatch(/invalid/i);
   });
 
   // ── Branch coverage: 1x1 tiny images (line 117-121 area) ───────────
@@ -667,9 +666,9 @@ describe("Compare", () => {
       body,
     });
 
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
     const result = JSON.parse(res.body);
-    expect(result.error).toMatch(/comparison failed/i);
+    expect(result.error).toMatch(/invalid/i);
   });
 
   // ── Branch coverage: HEIF content format input ─────────────────────

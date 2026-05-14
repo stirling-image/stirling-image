@@ -226,9 +226,9 @@ describe("watermark-image", () => {
       body,
     });
 
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
     const json = JSON.parse(res.body);
-    expect(json.error).toContain("Processing failed");
+    expect(json.error).toMatch(/invalid/i);
   });
 
   // ── HEIC input handling ───────────────────────────────────────────
@@ -353,9 +353,9 @@ describe("watermark-image", () => {
       body,
     });
 
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
     const json = JSON.parse(res.body);
-    expect(json.error).toContain("Processing failed");
+    expect(json.error).toMatch(/invalid/i);
   });
 
   // ── Tiny 1x1 main image ──────────────────────────────────────────
