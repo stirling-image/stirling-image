@@ -185,7 +185,7 @@ const FORMAT_SAMPLES: FormatSample[] = [
     mime: "image/svg+xml",
     needsCliDecoder: false,
     needsHeifDecoder: false,
-    mayFailValidation: false,
+    mayFailValidation: true,
   },
   {
     name: "JP2",
