@@ -26,11 +26,12 @@ function buildMinimalEnv(): Record<string, string> {
     "LD_LIBRARY_PATH",
     // Application-specific vars the sidecar scripts depend on
     "DATA_DIR",
-    "MODELS_DIR",
+    "MODELS_PATH",
     "U2NET_HOME",
     "PROCESSING_TIMEOUT_S",
     "DISPATCHER_MAX_REQUESTS",
     "PYTHON_VENV_PATH",
+    "SNAPOTTER_GPU",
   ];
   for (const key of passthrough) {
     if (process.env[key] !== undefined) {
