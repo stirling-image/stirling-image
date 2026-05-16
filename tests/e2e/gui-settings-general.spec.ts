@@ -586,7 +586,7 @@ test.describe("GUI Settings - Product Analytics Tab (deep)", () => {
     await page.getByRole("button", { name: /product analytics/i }).click();
 
     await expect(page.getByText(/share anonymous usage data/i)).toBeVisible();
-    await expect(page.getByText(/images never leave your machine/i)).toBeVisible();
+    await expect(page.getByText(/images never leave your network/i)).toBeVisible();
   });
 
   test("shows either consent toggle or admin-disabled message", async ({ loggedInPage: page }) => {

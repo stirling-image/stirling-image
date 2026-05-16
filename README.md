@@ -24,7 +24,7 @@
 - **REST API** -- Every tool available via API with API key auth. Interactive docs at `/api/docs`
 - **Single container** -- One `docker run`, no Redis, no Postgres, no external services
 - **Multi-arch** -- Runs on AMD64 and ARM64 (Intel, Apple Silicon, Raspberry Pi)
-- **Privacy first** -- Your images never leave your machine. SnapOtter asks once whether you'd like to share anonymous product analytics (which tools are used, errors encountered, never file data). Change anytime in Settings, or set `ANALYTICS_ENABLED=false` to disable completely
+- **Privacy first** -- Your images never leave your network. SnapOtter asks once whether you'd like to share anonymous product analytics (which tools are used, errors encountered, never file data). Change anytime in Settings, or set `ANALYTICS_ENABLED=false` to disable completely
 
 ## Quick Start
 

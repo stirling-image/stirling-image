@@ -1597,7 +1597,7 @@ export const en = {
     analytics: {
       heading: "Product Analytics",
       description: "Share anonymous usage data to help improve SnapOtter.",
-      privacyNote: "Your images never leave your machine.",
+      privacyNote: "Your images never leave your network.",
       disabledByAdmin: "Product analytics has been disabled by the server administrator.",
       enabledLabel: "Analytics enabled",
       disabledLabel: "Analytics disabled",
@@ -1886,13 +1886,13 @@ export const en = {
   analytics: {
     consentTitle: "Help improve SnapOtter",
     consentDescription:
-      "Anonymous usage stats help us fix bugs and build the tools you actually need. Your images and files stay on your machine.",
+      "Anonymous usage stats help us fix bugs and build the tools you actually need. Your images and files stay on your network.",
     consentChangeable: "You can turn this off anytime in Settings.",
     acceptButton: "Sure, sounds good",
     declineButton: "Not right now",
     settingsTitle: "Product Analytics",
     settingsDescription: "Share anonymous usage data to help improve SnapOtter.",
-    settingsPrivacy: "Your images never leave your machine.",
+    settingsPrivacy: "Your images never leave your network.",
     settingsDisabledByAdmin: "Product analytics has been disabled by the server administrator.",
     learnMore: "Learn more",
   },

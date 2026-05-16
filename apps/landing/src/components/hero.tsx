@@ -119,7 +119,7 @@ export function Hero() {
         </h1>
 
         <p className="mt-4 animate-[fadeUp_0.6s_ease-out_0.1s_both] text-base text-muted md:text-lg">
-          A free, open-source image toolkit with 52 tools that runs entirely on your device.
+          A free, open-source image toolkit with 52 tools that runs entirely on your network.
         </p>
 
         <p className="mt-4 animate-[fadeUp_0.6s_ease-out_0.2s_both] text-xl font-medium md:text-2xl">
