@@ -8,7 +8,7 @@ const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 export const metadata: Metadata = {
   title: "SnapOtter | Self-Hosted Image Processing",
   description:
-    "51 image processing tools with local AI. Runs 100% offline. No data leaves your network. Open source and free forever.",
+    "52 image processing tools with local AI. Runs 100% offline. No data leaves your network. Open source and free forever.",
   metadataBase: new URL("https://snapotter.com"),
   icons: {
     icon: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SnapOtter | Self-Hosted Image Processing",
     description:
-      "51 image processing tools with local AI. Runs 100% offline. No data leaves your network.",
+      "52 image processing tools with local AI. Runs 100% offline. No data leaves your network.",
     url: "https://snapotter.com",
     siteName: "SnapOtter",
     type: "website",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SnapOtter | Self-Hosted Image Processing",
     description:
-      "51 image processing tools with local AI. Runs 100% offline. No data leaves your network.",
+      "52 image processing tools with local AI. Runs 100% offline. No data leaves your network.",
     images: ["/og-image.svg"],
   },
 };

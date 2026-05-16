@@ -7,7 +7,7 @@ const freePlan = {
   price: "Free",
   subtitle: "For everyone. Forever.",
   features: [
-    "All 51 image processing tools",
+    "All 52 image processing tools",
     "Unlimited usage, no hidden caps",
     "Full REST API with OpenAPI docs",
     "Pipeline automation",

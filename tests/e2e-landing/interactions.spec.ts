@@ -9,28 +9,28 @@ test.describe("BentoGrid Interactions", () => {
     const input = page.getByPlaceholder("Search tools...");
     await input.fill("resize");
     await expect(page.getByText("Resize", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText(/Showing \d+ of 51 tools/)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of 52 tools/)).toBeVisible();
   });
 
   test("category pill filters tools", async ({ page }) => {
     await page.getByText(/AI Tools/).click();
-    await expect(page.getByText(/Showing 15 of 51 tools/)).toBeVisible();
+    await expect(page.getByText(/Showing 16 of 52 tools/)).toBeVisible();
     await expect(page.getByText("Remove Background")).toBeVisible();
   });
 
   test("clicking All resets category filter", async ({ page }) => {
     await page.getByText(/AI Tools/).click();
-    await expect(page.getByText(/Showing 15 of 51 tools/)).toBeVisible();
+    await expect(page.getByText(/Showing 16 of 52 tools/)).toBeVisible();
 
-    await page.getByText(/All \(51\)/).click();
-    await expect(page.getByText(/Showing 51 of 51 tools/)).toBeVisible();
+    await page.getByText(/All \(52\)/).click();
+    await expect(page.getByText(/Showing 52 of 52 tools/)).toBeVisible();
   });
 
   test("search with no results shows empty state", async ({ page }) => {
     const input = page.getByPlaceholder("Search tools...");
     await input.fill("xyznonexistent");
     await expect(page.getByText("No tools found. Try a different search.")).toBeVisible();
-    await expect(page.getByText(/Showing 0 of 51 tools/)).toBeVisible();
+    await expect(page.getByText(/Showing 0 of 52 tools/)).toBeVisible();
   });
 
   test("combined search and category filter works", async ({ page }) => {

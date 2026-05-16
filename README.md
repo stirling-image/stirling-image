@@ -15,7 +15,7 @@
 
 ## Key Features
 
-- **51 image tools** - Resize, crop, compress, convert, watermark, color adjust, beautify screenshots, generate memes, vectorize, create GIFs, find duplicates, generate passport photos, and more. Supports 55+ input formats (including 23 camera RAW formats) and 14 output formats
+- **52 image tools** - Resize, crop, compress, convert, watermark, color adjust, beautify screenshots, generate memes, vectorize, create GIFs, find duplicates, generate passport photos, and more. Supports 55+ input formats (including 23 camera RAW formats) and 14 output formats
 - **Local AI** - Remove backgrounds, upscale images, restore and colorize old photos, erase objects, blur faces, enhance faces, extract text (OCR). All on your hardware - no internet required
 - **Pipelines** - Chain tools into reusable workflows with unlimited steps. Batch process unlimited images at once
 - **REST API** - Every tool available via API with API key auth. Interactive docs at `/api/docs`

@@ -157,7 +157,7 @@ describe("Pricing", () => {
 
   it("renders free plan features", () => {
     render(<Pricing />);
-    expect(screen.getByText("All 51 image processing tools")).toBeDefined();
+    expect(screen.getByText("All 52 image processing tools")).toBeDefined();
     expect(screen.getByText("Unlimited usage, no hidden caps")).toBeDefined();
     expect(screen.getByText("15 local AI models included")).toBeDefined();
     expect(screen.getByText("AGPL-3.0 licensed")).toBeDefined();

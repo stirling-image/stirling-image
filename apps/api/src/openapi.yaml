@@ -3,7 +3,7 @@ info:
   title: SnapOtter API
   version: 1.16.0
   description: |
-    REST API for SnapOtter, a self-hosted image processing platform with 51 tools.
+    REST API for SnapOtter, a self-hosted image processing platform with 52 tools.
 
     ## Authentication
 

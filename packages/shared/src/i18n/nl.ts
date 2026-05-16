@@ -1663,7 +1663,7 @@ export const nl: TranslationKeys = {
       heading: "Over",
       appName: "SnapOtter",
       appDescription:
-        "Een zelf-gehoste, privacy-first beeldverwerkingssuite met 51 tools. Schalen, comprimeren, converteren, watermerken en je beeldworkflows automatiseren zonder data naar de cloud te sturen.",
+        "Een zelf-gehoste, privacy-first beeldverwerkingssuite met 52 tools. Schalen, comprimeren, converteren, watermerken en je beeldworkflows automatiseren zonder data naar de cloud te sturen.",
       versionLabel: "Versie:",
       linksHeading: "Links",
       githubLink: "GitHub-repository",

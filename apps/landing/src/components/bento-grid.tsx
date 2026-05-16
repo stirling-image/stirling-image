@@ -246,6 +246,12 @@ const tools: { name: string; description: string; category: string; icon: Lucide
     icon: Scaling,
   },
   {
+    name: "AI Canvas Expand",
+    description: "Expand canvas with AI-powered fill",
+    category: "ai",
+    icon: Maximize2,
+  },
+  {
     name: "PNG Transparency Fixer",
     description: "Fix fake transparent PNGs with AI matting",
     category: "ai",
@@ -415,7 +421,7 @@ export function BentoGrid() {
       <div className="mx-auto max-w-6xl">
         <FadeIn>
           <h2 className="font-[family-name:var(--font-nunito)] text-center text-3xl font-bold tracking-tight md:text-4xl">
-            51 tools. Zero cloud dependency.
+            52 tools. Zero cloud dependency.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-lg text-muted">
             Search to find exactly what you need. Every tool runs 100% locally.

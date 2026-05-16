@@ -13,7 +13,7 @@ test.describe("Docs Homepage", () => {
     await expect(page.getByText("SnapOtter").first()).toBeVisible();
     await expect(page.getByText("A Self Hosted Image Manipulator")).toBeVisible();
     await expect(
-      page.getByText("51 tools. Local AI. No cloud. Your images never leave your home."),
+      page.getByText("52 tools. Local AI. No cloud. Your images never leave your home."),
     ).toBeVisible();
   });
 
@@ -29,7 +29,7 @@ test.describe("Docs Homepage", () => {
 
   test("features section renders all 6 feature cards", async ({ page }) => {
     const features = [
-      "51 Image Tools",
+      "52 Image Tools",
       "Local AI",
       "Pipelines",
       "REST API",
