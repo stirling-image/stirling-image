@@ -1,4 +1,4 @@
-import { Github, MessageCircle, Star } from "lucide-react";
+import { Github, Heart, MessageCircle, Star } from "lucide-react";
 import { FadeIn } from "./fade-in";
 
 export function OpenSource() {
@@ -23,6 +23,15 @@ export function OpenSource() {
               <Github size={20} />
               Star on GitHub
               <Star size={16} className="text-accent" />
+            </a>
+            <a
+              href="https://github.com/sponsors/snapotter-hq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3 text-base font-semibold transition-colors hover:bg-background-alt"
+            >
+              <Heart size={20} />
+              Sponsor
             </a>
             <a
               href="https://discord.gg/hr3s7HPUsr"

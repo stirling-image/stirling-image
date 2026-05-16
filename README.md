@@ -9,6 +9,7 @@
   <a href="https://github.com/snapotter-hq/snapotter/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-blue" alt="License"></a>
   <a href="https://github.com/snapotter-hq/snapotter/stargazers"><img src="https://img.shields.io/github/stars/snapotter-hq/snapotter?style=social" alt="Stars"></a>
   <a href="https://discord.gg/hr3s7HPUsr"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://github.com/sponsors/snapotter-hq"><img src="https://img.shields.io/badge/Sponsor-pink?logo=githubsponsors&logoColor=white" alt="Sponsor"></a>
 </p>
 
 ![SnapOtter - Dashboard](branding/dashboard.png)
@@ -82,16 +83,20 @@ We welcome bug reports, feature ideas, and pull requests. See [CONTRIBUTING.md](
 - [Submit a PR](CONTRIBUTING.md#code-requires-cla)
 - [Join Discord](https://discord.gg/hr3s7HPUsr) for help and discussion
 
-## Show Your Support
+## Support SnapOtter
 
 <p align="center">
-  If SnapOtter saves you time, money or both, consider giving us a star.<br>
-  It helps others discover the project and keeps us motivated.
+  If SnapOtter saves you time, money, or both, consider starring the repo or sponsoring the project.<br>
+  Stars help others discover SnapOtter. Sponsorships fund development and keep it free for everyone.
 </p>
 
 <p align="center">
   <a href="https://github.com/snapotter-hq/SnapOtter/stargazers">
     <img src="https://img.shields.io/github/stars/snapotter-hq/SnapOtter?style=for-the-badge&logo=github&color=yellow" alt="Star SnapOtter">
+  </a>
+  &nbsp;
+  <a href="https://github.com/sponsors/snapotter-hq">
+    <img src="https://img.shields.io/badge/Sponsor-pink?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor SnapOtter">
   </a>
 </p>
 
