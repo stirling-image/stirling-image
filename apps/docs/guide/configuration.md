@@ -1,3 +1,7 @@
+---
+description: All SnapOtter environment variables with defaults. Configure auth, storage, AI models, analytics, and more.
+---
+
 # Configuration
 
 All configuration is done through environment variables. Every variable has a sensible default, so SnapOtter works out of the box without setting any of them.

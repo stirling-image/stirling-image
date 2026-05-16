@@ -1,3 +1,7 @@
+---
+description: Set up Single Sign-On with OpenID Connect. Step-by-step guides for Keycloak, Authentik, Google, and other OIDC providers.
+---
+
 # OIDC / Single Sign-On
 
 SnapOtter supports OpenID Connect (OIDC) for single sign-on. Users can log in with an external identity provider such as Keycloak, Authentik, or Google instead of (or alongside) local username/password authentication.

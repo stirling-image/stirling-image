@@ -1,3 +1,7 @@
+---
+description: Local development setup, commands, code conventions, and how to add a new image processing tool to SnapOtter.
+---
+
 # Developer guide
 
 How to set up a local development environment and contribute code to SnapOtter.

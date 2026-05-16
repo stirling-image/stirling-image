@@ -118,8 +118,8 @@ export function Hero() {
           Your images. Stay yours.
         </h1>
 
-        <p className="mt-4 animate-[fadeUp_0.6s_ease-out_0.1s_both] text-lg text-muted md:text-xl">
-          Every image tool you need.
+        <p className="mt-4 animate-[fadeUp_0.6s_ease-out_0.1s_both] text-base text-muted md:text-lg">
+          A free, open-source image editor with 52 tools that runs entirely on your device.
         </p>
 
         <p className="mt-4 animate-[fadeUp_0.6s_ease-out_0.2s_both] text-xl font-medium md:text-2xl">

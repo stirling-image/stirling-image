@@ -1,3 +1,7 @@
+---
+description: Image engine operations reference. All Sharp-based image processing operations and their parameters.
+---
+
 # Image engine
 
 The `@snapotter/image-engine` package handles all non-AI image operations. It wraps [Sharp](https://sharp.pixelplumbing.com/) and runs entirely in-process with no external dependencies.

@@ -1,3 +1,7 @@
+---
+description: Complete REST API reference. Tool endpoints, batch processing, pipelines, file library, authentication, teams, and admin operations.
+---
+
 # REST API Reference
 
 Interactive API docs with request/response examples are available at [http://localhost:1349/api/docs](http://localhost:1349/api/docs).

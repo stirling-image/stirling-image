@@ -1,3 +1,7 @@
+---
+description: 21 supported languages and how to create or improve translations for SnapOtter using the TypeScript-enforced i18n system.
+---
+
 # Translation guide
 
 SnapOtter ships with 21 languages out of the box. The i18n system uses a lightweight custom runtime with TypeScript-enforced locale completeness and dynamic code-splitting.

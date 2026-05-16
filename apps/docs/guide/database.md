@@ -1,3 +1,7 @@
+---
+description: SQLite database schema, tables, migrations, and backup procedures for SnapOtter.
+---
+
 # Database
 
 SnapOtter uses SQLite with [Drizzle ORM](https://orm.drizzle.team/) for data persistence. The schema is defined in `apps/api/src/db/schema.ts`.

@@ -1,3 +1,7 @@
+---
+description: How to contribute to SnapOtter. Bug reports, feature requests, and community guidelines.
+---
+
 # Contributing
 
 Thanks for your interest in SnapOtter. Community feedback helps shape the project, and there are several ways to get involved.

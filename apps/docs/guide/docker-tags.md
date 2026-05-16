@@ -1,3 +1,7 @@
+---
+description: SnapOtter Docker image tags, GPU benchmarks, version pinning, and multi-platform support for AMD64 and ARM64.
+---
+
 # Docker Image
 
 SnapOtter ships as a single Docker image that works on all platforms.

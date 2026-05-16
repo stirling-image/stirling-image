@@ -1,3 +1,7 @@
+---
+description: 55+ supported input formats including 23 camera RAW formats, and 14 output formats with full compatibility tables.
+---
+
 # Supported Image Formats
 
 SnapOtter supports 55+ image formats for input and 14 formats for output.

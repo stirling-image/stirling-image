@@ -1,3 +1,7 @@
+---
+description: Deploy SnapOtter to production with Docker. Hardware requirements, GPU setup, and reverse proxy configs for Nginx, Traefik, and Cloudflare.
+---
+
 # Deployment
 
 SnapOtter ships as a single Docker container. The image supports **linux/amd64** (with NVIDIA CUDA) and **linux/arm64** (CPU), so it runs natively on Intel/AMD servers, Apple Silicon Macs, and ARM devices like the Raspberry Pi 4/5.
