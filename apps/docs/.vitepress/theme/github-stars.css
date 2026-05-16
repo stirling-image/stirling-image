@@ -111,9 +111,49 @@
   border-radius: 6px 0 0 6px;
 }
 
-/* Hide stars on small screens, keep toggle */
+/* Fund Development button */
+.fund-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 30px;
+  color: #db2777;
+  background: rgba(219, 39, 119, 0.08);
+  border: 1px solid rgba(219, 39, 119, 0.3);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: border-color 0.25s, background 0.25s;
+  white-space: nowrap;
+}
+
+.fund-btn:hover {
+  background: rgba(219, 39, 119, 0.15);
+  border-color: rgba(219, 39, 119, 0.5);
+}
+
+.fund-icon {
+  flex-shrink: 0;
+}
+
+.dark .fund-btn {
+  color: #f472b6;
+  background: rgba(244, 114, 182, 0.08);
+  border-color: rgba(244, 114, 182, 0.25);
+}
+
+.dark .fund-btn:hover {
+  background: rgba(244, 114, 182, 0.15);
+  border-color: rgba(244, 114, 182, 0.4);
+}
+
+/* Hide stars and fund button on small screens, keep toggle */
 @media (max-width: 640px) {
-  .github-btn-wrapper {
+  .github-btn-wrapper,
+  .fund-btn {
     display: none;
   }
 }

@@ -79,10 +79,6 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "API Reference", link: "/api/rest" },
       {
-        text: "Fund Development",
-        link: "https://github.com/sponsors/snapotter-hq",
-      },
-      {
         text: `v${pkg.version}`,
         link: "https://github.com/snapotter-hq/snapotter/releases",
       },
