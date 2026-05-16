@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Menu, Star, X } from "lucide-react";
+import { Github, Heart, Menu, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 function formatStarCount(count: number): string {
@@ -70,6 +70,15 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           <a
+            href="https://github.com/sponsors/snapotter-hq"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-pink-300 px-3 py-1.5 text-sm font-medium text-pink-500 transition-colors hover:bg-pink-50 dark:border-pink-500/30 dark:text-pink-400 dark:hover:bg-pink-500/10"
+          >
+            <Heart size={14} />
+            <span>Fund Development</span>
+          </a>
+          <a
             href="https://github.com/snapotter-hq/snapotter"
             target="_blank"
             rel="noopener noreferrer"
@@ -113,6 +122,15 @@ export function Navbar() {
             </a>
           ))}
           <div className="mt-3 flex flex-col gap-2">
+            <a
+              href="https://github.com/sponsors/snapotter-hq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-pink-300 px-4 py-2 text-sm font-medium text-pink-500 dark:border-pink-500/30 dark:text-pink-400"
+            >
+              <Heart size={14} />
+              Fund Development
+            </a>
             <a
               href="https://github.com/snapotter-hq/snapotter"
               target="_blank"
