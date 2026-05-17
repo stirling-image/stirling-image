@@ -45,11 +45,11 @@ describe("Navbar", () => {
     expect(screen.getAllByText("Contact").length).toBeGreaterThan(0);
   });
 
-  it("renders Book a Demo CTA", async () => {
+  it("renders Try Demo CTA", async () => {
     await act(async () => {
       render(<Navbar />);
     });
-    const ctas = screen.getAllByText("Book a Demo");
+    const ctas = screen.getAllByText("Try Demo");
     expect(ctas.length).toBeGreaterThan(0);
   });
 
@@ -101,7 +101,7 @@ describe("Navbar", () => {
       render(<Navbar />);
     });
     const toggleButton = screen.getByLabelText("Toggle menu");
-    expect(screen.queryByText("Book a Demo")).toBeDefined();
+    expect(screen.queryByText("Try Demo")).toBeDefined();
     fireEvent.click(toggleButton);
     const mobileLinks = screen.getAllByText("Features");
     expect(mobileLinks.length).toBeGreaterThanOrEqual(2);
