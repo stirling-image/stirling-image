@@ -1,5 +1,5 @@
 import { FolderOpen, Grid3x3, HelpCircle, LayoutGrid, Settings, Workflow } from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "@/contexts/i18n-context";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,7 @@ import { ImageEditIcon } from "../common/image-edit-icon";
 import { OtterLogo } from "../common/otter-logo";
 
 interface SidebarItem {
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   href?: string;
 }
