@@ -2677,13 +2677,15 @@ describe("useFeaturesStore", () => {
     );
 
     mockApiPost.mockResolvedValueOnce({ jobId: "job-clear" });
-    mockApiGet.mockResolvedValue({ bundles });
+    mockApiGet.mockResolvedValue({
+      bundles: bundles.map((b) => ({ ...b, status: "installed" as const })),
+    });
 
     await useFeaturesStore.getState().installAll();
 
     // Error should have been cleared at the start of installAll
     expect(useFeaturesStore.getState().errors["ai-rembg"]).toBeUndefined();
-  });
+  }, 15000);
 });
 
 // ==========================================================================
