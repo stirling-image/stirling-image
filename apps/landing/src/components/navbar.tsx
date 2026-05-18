@@ -12,8 +12,8 @@ function formatStarCount(count: number): string {
 }
 
 const links = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Features", href: "/#features" },
+  { label: "Pricing", href: "/#pricing" },
   { label: "Docs", href: "https://docs.snapotter.com" },
   { label: "Discord", href: "https://discord.gg/hr3s7HPUsr" },
   { label: "Contact", href: "/contact" },
