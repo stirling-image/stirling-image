@@ -40,6 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@SnapOtterHQ",
     title: "SnapOtter | Self-Hosted Image Processing",
     description:
       "52 image processing tools with local AI. Runs 100% offline. No data leaves your network.",
@@ -50,6 +51,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${nunito.variable}`} suppressHydrationWarning>
+      <head>
+        <link rel="llms-txt" href="/llms.txt" />
+      </head>
       <body
         className="bg-background text-foreground font-[family-name:var(--font-inter)] antialiased"
         suppressHydrationWarning

@@ -134,7 +134,25 @@ interface LockData {
   startedAt: string;
 }
 
+const LOCK_STALE_MS = 45 * 60 * 1000;
+
 export function acquireInstallLock(bundleId: string): boolean {
+  // If a lock exists, check its age. OOM-killed processes or crashes
+  // may leave a stale lock file behind; treat anything older than 45
+  // minutes as abandoned.
+  if (existsSync(LOCK_PATH)) {
+    try {
+      const age = Date.now() - statSync(LOCK_PATH).mtimeMs;
+      if (age > LOCK_STALE_MS) {
+        unlinkSync(LOCK_PATH);
+        console.warn(
+          `[feature-status] Removed stale install lock (age: ${Math.round(age / 1000)}s)`,
+        );
+      }
+    } catch {
+      // stat/unlink failed -- fall through to O_EXCL which will fail too
+    }
+  }
   try {
     const fd = openSync(LOCK_PATH, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL);
     const lock: LockData = {

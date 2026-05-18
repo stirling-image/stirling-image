@@ -32,6 +32,7 @@ const websiteJsonLd = {
     },
     sameAs: [
       "https://github.com/snapotter-hq/snapotter",
+      "https://x.com/SnapOtterHQ",
       "https://discord.gg/hr3s7HPUsr",
       "https://hub.docker.com/r/snapotter/snapotter",
     ],

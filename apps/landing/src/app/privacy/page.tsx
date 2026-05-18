@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 import { Navbar } from "@/components/navbar";
 
 export const metadata: Metadata = {
@@ -9,11 +10,37 @@ export const metadata: Metadata = {
   description:
     "SnapOtter is self-hosted software. We do not process, store, or have access to your images or data. Learn about our privacy practices.",
   alternates: { canonical: "https://snapotter.com/privacy" },
+  openGraph: {
+    title: "Privacy Policy | SnapOtter",
+    description:
+      "SnapOtter is self-hosted software. We do not process, store, or have access to your images or data.",
+    url: "https://snapotter.com/privacy",
+  },
+  twitter: {
+    title: "Privacy Policy | SnapOtter",
+    description:
+      "SnapOtter is self-hosted software. We do not process, store, or have access to your images or data.",
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://snapotter.com" },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Privacy Policy",
+      item: "https://snapotter.com/privacy",
+    },
+  ],
 };
 
 export default function PrivacyPage() {
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd} />
       <Navbar />
       <main className="pt-16">
         <section className="px-6 py-24 md:py-32">
@@ -21,7 +48,7 @@ export default function PrivacyPage() {
             <FadeIn>
               <div className="text-center">
                 <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Privacy Policy</h1>
-                <p className="mt-6 text-lg text-muted">Last updated: April 24, 2026</p>
+                <p className="mt-6 text-lg text-muted">Last updated: May 18, 2026</p>
               </div>
             </FadeIn>
 
@@ -39,7 +66,11 @@ export default function PrivacyPage() {
                 <h2 className="text-lg font-semibold text-foreground">Website (snapotter.com)</h2>
                 <ul className="mt-3 list-disc space-y-2 pl-5">
                   <li>We do not use tracking cookies.</li>
-                  <li>We do not use third-party analytics on the website.</li>
+                  <li>
+                    We use Cloudflare Web Analytics for anonymous, aggregate traffic metrics (page
+                    views, visits, referrers). It uses no cookies, collects no personal data, and
+                    does not track individual users across sites.
+                  </li>
                   <li>
                     Contact form submissions are processed via Formspree. Their privacy policy
                     applies to that data.

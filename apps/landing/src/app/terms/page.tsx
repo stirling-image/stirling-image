@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 import { Navbar } from "@/components/navbar";
 
 export const metadata: Metadata = {
@@ -9,11 +10,37 @@ export const metadata: Metadata = {
   description:
     "Terms governing your use of the SnapOtter website and self-hosted image processing software.",
   alternates: { canonical: "https://snapotter.com/terms" },
+  openGraph: {
+    title: "Terms and Conditions | SnapOtter",
+    description:
+      "Terms governing your use of the SnapOtter website and self-hosted image processing software.",
+    url: "https://snapotter.com/terms",
+  },
+  twitter: {
+    title: "Terms and Conditions | SnapOtter",
+    description:
+      "Terms governing your use of the SnapOtter website and self-hosted image processing software.",
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://snapotter.com" },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Terms and Conditions",
+      item: "https://snapotter.com/terms",
+    },
+  ],
 };
 
 export default function TermsPage() {
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd} />
       <Navbar />
       <main className="pt-16">
         <section className="px-6 py-24 md:py-32">

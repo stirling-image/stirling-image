@@ -283,15 +283,16 @@ export const useFeaturesStore = create<FeaturesState>((set, get) => {
         await refreshBundles();
       }
 
-      // Process the queue: re-read which bundles still need installing
-      // (the one that was active may have just finished).
+      // Process the queue sequentially. After each install, wait briefly
+      // so the backend lock file is fully released before the next attempt.
+      // If a bundle fails, re-enqueue it for one retry.
+      const retried = new Set<string>();
       while (true) {
         const q = get().queued;
         if (q.length === 0) break;
         const nextId = q[0];
         set({ queued: q.slice(1) });
 
-        // Skip if it got installed in the meantime
         const current = get().bundles.find((b) => b.id === nextId);
         if (current?.status === "installed") continue;
 
@@ -299,6 +300,18 @@ export const useFeaturesStore = create<FeaturesState>((set, get) => {
           completionRefs[nextId] = resolve;
           get().installBundle(nextId);
         });
+        await refreshBundles();
+
+        const after = get().bundles.find((b) => b.id === nextId);
+        if (after?.status !== "installed" && !retried.has(nextId)) {
+          retried.add(nextId);
+          const errors = { ...get().errors };
+          delete errors[nextId];
+          set({ queued: [...get().queued, nextId], errors });
+        }
+
+        // Brief pause to let the backend fully release the install lock
+        await new Promise((r) => setTimeout(r, 2000));
       }
 
       set({ queued: [], installAllActive: false });

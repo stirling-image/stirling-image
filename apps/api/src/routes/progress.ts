@@ -219,6 +219,11 @@ export async function registerProgressRoutes(app: FastifyInstance): Promise<void
       // Take over the response from Fastify for SSE streaming
       reply.hijack();
 
+      // Disable socket timeout -- feature installs can take 30+ minutes
+      // for large model downloads. Without this, Node's requestTimeout
+      // kills the SSE connection mid-install.
+      request.raw.socket?.setTimeout?.(0);
+
       // Send SSE headers via the raw Node response
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",
