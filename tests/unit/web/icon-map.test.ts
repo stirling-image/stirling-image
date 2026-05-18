@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CATEGORIES, TOOLS } from "@snapotter/shared";
 import { describe, expect, it } from "vitest";
 import { ICON_MAP } from "@/lib/icon-map";
 
@@ -17,63 +18,16 @@ describe("ICON_MAP", () => {
   });
 
   it("contains all category icons referenced by shared constants", () => {
-    const categoryIcons = [
-      "Layers",
-      "Zap",
-      "SlidersHorizontal",
-      "Stamp",
-      "Wrench",
-      "LayoutGrid",
-      "FileType",
-      "Sparkles",
-    ];
+    const categoryIcons = [...new Set(CATEGORIES.map((c) => c.icon))];
     for (const icon of categoryIcons) {
-      expect(ICON_MAP[icon]).toBeDefined();
+      expect(ICON_MAP[icon], `ICON_MAP missing category icon "${icon}"`).toBeDefined();
     }
   });
 
   it("contains all tool icons referenced by shared constants", () => {
-    const toolIcons = [
-      "Maximize2",
-      "Crop",
-      "RotateCw",
-      "FileOutput",
-      "Minimize2",
-      "Globe",
-      "ShieldOff",
-      "PenLine",
-      "FileEdit",
-      "FileText",
-      "Focus",
-      "Pipette",
-      "Eraser",
-      "ZoomIn",
-      "Wand2",
-      "ScanText",
-      "EyeOff",
-      "ScanFace",
-      "Palette",
-      "Eye",
-      "Undo2",
-      "UserCheck",
-      "Type",
-      "Image",
-      "TextCursorInput",
-      "Info",
-      "Columns2",
-      "Copy",
-      "QrCode",
-      "ScanLine",
-      "Code",
-      "Columns",
-      "Grid3x3",
-      "Frame",
-      "FileImage",
-      "PenTool",
-      "Film",
-    ];
+    const toolIcons = [...new Set(TOOLS.map((t) => t.icon))];
     for (const icon of toolIcons) {
-      expect(ICON_MAP[icon]).toBeDefined();
+      expect(ICON_MAP[icon], `ICON_MAP missing "${icon}"`).toBeDefined();
     }
   });
 

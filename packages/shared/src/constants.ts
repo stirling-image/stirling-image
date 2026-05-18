@@ -84,7 +84,7 @@ export const TOOLS: Tool[] = [
     name: "Bulk Rename",
     description: "Rename multiple files with patterns",
     category: "optimization",
-    icon: "FileEdit",
+    icon: "FilePen",
     route: "/bulk-rename",
   },
   {
