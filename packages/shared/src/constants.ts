@@ -158,7 +158,7 @@ export const TOOLS: Tool[] = [
     name: "Object Eraser",
     description: "Remove unwanted objects with AI",
     category: "ai",
-    icon: "Wand2",
+    icon: "Wand",
     route: "/erase-object",
   },
   {
@@ -377,7 +377,7 @@ export const TOOLS: Tool[] = [
     name: "Stitch / Combine",
     description: "Join images side by side, stacked, or in a grid",
     category: "layout",
-    icon: "Columns",
+    icon: "Columns2",
     route: "/stitch",
   },
   {
