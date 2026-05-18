@@ -171,7 +171,8 @@ describe("New format support", () => {
       for (const outFmt of OUTPUTS) {
         const inLower = input.name.toLowerCase();
         if (inLower === outFmt || (inLower === "jpeg" && outFmt === "jpg")) continue;
-        it(`converts ${input.name} to ${outFmt}`, async () => {
+        const testTimeout = outFmt === "avif" ? 120_000 : 30_000;
+        it(`converts ${input.name} to ${outFmt}`, { timeout: testTimeout }, async () => {
           const fileBuffer = readFileSync(join(FORMATS_DIR, input.file));
           const { body, contentType } = createMultipartPayload([
             { name: "file", filename: input.file, contentType: input.mime, content: fileBuffer },

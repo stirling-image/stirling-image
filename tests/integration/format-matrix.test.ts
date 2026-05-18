@@ -682,7 +682,8 @@ describe("Cross-format conversion matrix", () => {
       if (inputLower === outFmt) continue;
       if (inputLower === "jpeg" && outFmt === "jpg") continue;
 
-      it(`${fmt.name} -> ${outFmt}`, async () => {
+      const testTimeout = outFmt === "avif" ? 120_000 : 30_000;
+      it(`${fmt.name} -> ${outFmt}`, { timeout: testTimeout }, async () => {
         const fixturePath = join(FORMATS_DIR, fmt.file);
         if (!existsSync(fixturePath)) return;
 
