@@ -26,11 +26,24 @@ export default defineConfig({
     ["meta", { property: "og:image:width", content: "1280" }],
     ["meta", { property: "og:image:height", content: "640" }],
     ["meta", { property: "og:image:alt", content: "SnapOtter - Self-Hosted Image Processing" }],
-    ["meta", { property: "og:url", content: "https://docs.snapotter.com" }],
     ["meta", { property: "og:locale", content: "en_US" }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    ["meta", { name: "twitter:site", content: "@SnapOtterHQ" }],
     ["meta", { name: "twitter:image", content: "https://docs.snapotter.com/og-image.png" }],
   ],
+
+  transformHead({ pageData }) {
+    const head: Array<[string, Record<string, string>]> = [];
+    const canonicalUrl = `https://docs.snapotter.com/${pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "")}`;
+    head.push(["meta", { property: "og:url", content: canonicalUrl }]);
+    head.push(["meta", { property: "og:title", content: pageData.title }]);
+    if (pageData.description) {
+      head.push(["meta", { property: "og:description", content: pageData.description }]);
+      head.push(["meta", { name: "twitter:description", content: pageData.description }]);
+    }
+    head.push(["meta", { name: "twitter:title", content: pageData.title }]);
+    return head;
+  },
 
   vite: {
     plugins: [
@@ -78,9 +91,10 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "Guide", link: "/guide/getting-started" },
       { text: "API Reference", link: "/api/rest" },
+      { text: "Changelog", link: "/changelog" },
       {
         text: `v${pkg.version}`,
-        link: "https://github.com/snapotter-hq/snapotter/releases",
+        link: "/changelog",
       },
     ],
 
@@ -109,6 +123,10 @@ export default defineConfig({
           { text: "Image engine", link: "/api/image-engine" },
           { text: "AI engine", link: "/api/ai" },
         ],
+      },
+      {
+        text: "Project",
+        items: [{ text: "Changelog", link: "/changelog" }],
       },
     ],
 
