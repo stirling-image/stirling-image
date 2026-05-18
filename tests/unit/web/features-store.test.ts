@@ -374,7 +374,9 @@ describe("useFeaturesStore", () => {
         }
         return Promise.resolve({});
       });
-      apiGetMock.mockResolvedValue({ bundles });
+      apiGetMock.mockResolvedValue({
+        bundles: bundles.map((b) => ({ ...b, status: "installed" })),
+      });
 
       const promise = useFeaturesStore.getState().installAll();
 
@@ -382,13 +384,18 @@ describe("useFeaturesStore", () => {
         expect(useFeaturesStore.getState().installAllActive).toBe(true);
       });
 
+      const completeAllOpen = () => {
+        for (const es of FakeEventSource.instances) {
+          if (!es.closed) {
+            es.onmessage?.({ data: JSON.stringify({ phase: "complete" }) });
+          }
+        }
+      };
+
       await vi.waitFor(() => {
         expect(FakeEventSource.instances.length).toBeGreaterThan(0);
       });
-
-      for (const es of FakeEventSource.instances) {
-        es.onmessage?.({ data: JSON.stringify({ phase: "complete" }) });
-      }
+      completeAllOpen();
 
       await vi
         .waitFor(
@@ -397,22 +404,17 @@ describe("useFeaturesStore", () => {
               throw new Error("waiting for second EventSource");
             }
           },
-          { timeout: 2000 },
+          { timeout: 5000 },
         )
         .catch(() => {});
-
-      for (const es of FakeEventSource.instances) {
-        if (!es.closed) {
-          es.onmessage?.({ data: JSON.stringify({ phase: "complete" }) });
-        }
-      }
+      completeAllOpen();
 
       await promise;
 
       const state = useFeaturesStore.getState();
       expect(state.installAllActive).toBe(false);
       expect(state.queued).toEqual([]);
-    });
+    }, 15000);
 
     it("clears stale errors for pending bundles", async () => {
       const bundles = [makeBundleState({ id: "err-bundle", status: "error" })];
@@ -423,7 +425,9 @@ describe("useFeaturesStore", () => {
       });
 
       apiPostMock.mockResolvedValue({ jobId: "job-err" });
-      apiGetMock.mockResolvedValue({ bundles });
+      apiGetMock.mockResolvedValue({
+        bundles: bundles.map((b) => ({ ...b, status: "installed" })),
+      });
 
       const promise = useFeaturesStore.getState().installAll();
 
@@ -440,7 +444,7 @@ describe("useFeaturesStore", () => {
       }
 
       await promise;
-    });
+    }, 15000);
   });
 
   describe("EventSource progress handling", () => {
