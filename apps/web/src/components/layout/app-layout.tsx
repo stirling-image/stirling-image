@@ -145,13 +145,6 @@ export function AppLayout({
         <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
           {children || <Dropzone onFiles={onFiles} onUrlImport={onUrlImport} accept="image/*" />}
         </div>
-        {!isMobile && (
-          <div className="text-center text-xs text-muted-foreground py-2 border-t border-border">
-            <Link to="/privacy" className="hover:text-foreground transition-colors">
-              {t.common.privacyPolicy}
-            </Link>
-          </div>
-        )}
       </main>
 
       {!isMobile && <Footer />}
