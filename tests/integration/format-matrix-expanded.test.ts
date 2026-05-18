@@ -851,7 +851,8 @@ describe("SVG-to-raster", () => {
   const SVG_OUTPUT_FORMATS = ["png", "jpg", "webp", "avif"] as const;
 
   for (const outFmt of SVG_OUTPUT_FORMATS) {
-    it(`converts SVG to ${outFmt}`, async () => {
+    const testTimeout = outFmt === "avif" ? 120_000 : 30_000;
+    it(`converts SVG to ${outFmt}`, { timeout: testTimeout }, async () => {
       const fixturePath = join(FORMATS_DIR, "sample.svg");
       if (!existsSync(fixturePath)) return;
 

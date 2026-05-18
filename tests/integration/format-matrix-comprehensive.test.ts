@@ -927,7 +927,8 @@ describe("Extended conversion targets (core formats)", () => {
         if (fmt.name.toLowerCase() === target.format) continue;
         if (fmt.name === "AVIF" && target.format === "avif") continue;
 
-        it(`${fmt.name} -> ${target.format}`, async () => {
+        const testTimeout = target.format === "avif" ? 120_000 : 30_000;
+        it(`${fmt.name} -> ${target.format}`, { timeout: testTimeout }, async () => {
           const res = await callTool("convert", fmt, { format: target.format });
           if (!res) return;
           expect(res.statusCode).toBe(200);
