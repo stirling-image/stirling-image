@@ -11,6 +11,9 @@ concurrency:
   group: deploy-docs
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy

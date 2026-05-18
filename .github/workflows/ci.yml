@@ -25,6 +25,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -90,7 +93,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install pip-audit
+      - run: pip install "pip-audit==2.10.0"
       - name: Run pip-audit (ignoring CVEs blocked by dependency constraints)
         run: >-
           pip-audit -r packages/ai/python/requirements.txt

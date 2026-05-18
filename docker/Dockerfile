@@ -10,7 +10,7 @@
 # Run on the native build platform to avoid QEMU crashes with esbuild on
 # Apple Silicon.  The output (HTML/CSS/JS) is architecture-agnostic so it
 # is safe to build on arm64 and copy into the amd64 production layer.
-FROM --platform=$BUILDPLATFORM node:22-bookworm AS builder
+FROM --platform=$BUILDPLATFORM node:22-bookworm@sha256:e3ca095133ba41a0a73b009f19e4253f1a878e70bb9499f6a9d21b19d082bd91 AS builder
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
@@ -47,7 +47,7 @@ RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
 # on Apple Silicon when cross-compiling for linux/amd64.
 # caire imports gioui.org/app which requires CGO on Linux, so we use a
 # proper C cross-compiler instead of CGO_ENABLED=0.
-FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS caire-builder
+FROM --platform=$BUILDPLATFORM golang:1.23-bookworm@sha256:167053a2bb901972bf2c1611f8f52c44d5fe7e762e5cab213708d82c421614db AS caire-builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH
@@ -110,12 +110,12 @@ RUN set -e; \
 # Stage 3: Platform-specific base images
 # Pin tags to specific major.minor for reproducible builds.
 # ============================================
-FROM node:22-bookworm AS base-linux-arm64
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04 AS base-linux-amd64
+FROM node:22-bookworm@sha256:e3ca095133ba41a0a73b009f19e4253f1a878e70bb9499f6a9d21b19d082bd91 AS base-linux-arm64
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04@sha256:8aef630a54bc5c5146ae5ce68e6af5caa3df0fb690bb91544175c91f307e4356 AS base-linux-amd64
 
 # Node.js donor: provides Node binaries for the CUDA amd64 image without
 # relying on NodeSource apt repos or Ubuntu mirrors (which are flaky on CI).
-FROM node:22-bookworm AS node-bins
+FROM node:22-bookworm@sha256:e3ca095133ba41a0a73b009f19e4253f1a878e70bb9499f6a9d21b19d082bd91 AS node-bins
 
 # ============================================
 # Stage 4: Production runtime
@@ -198,7 +198,7 @@ COPY --from=caire-builder /tmp/caire /usr/local/bin/caire
 # Uses pre-built manylinux wheels where available; gcc/g++ above covers the rest.
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install --upgrade "pip==25.1.1" && \
     /opt/venv/bin/pip install \
         Pillow==11.1.0 \
         numpy==1.26.4 \

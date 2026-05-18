@@ -6,11 +6,7 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-permissions:
-  actions: write
-  contents: read
-  pull-requests: write
-  statuses: write
+permissions: {}
 
 jobs:
   cla:
@@ -18,6 +14,11 @@ jobs:
       (github.event_name == 'pull_request_target') ||
       (github.event_name == 'issue_comment' && github.event.comment.body == 'recheck')
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: write
+      statuses: write
     steps:
       - name: CLA Assistant
         uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1

@@ -6,12 +6,14 @@ on:
     paths: [.github/labels.yml]
   workflow_dispatch:
 
-permissions:
-  issues: write
+permissions: {}
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a # v2

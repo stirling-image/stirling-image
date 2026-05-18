@@ -11,6 +11,9 @@ concurrency:
   group: deploy-landing
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy
